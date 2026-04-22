@@ -4,3 +4,15 @@ dist/
 .DS_Store
 coverage/
 .harness-hash
+
+# Python wrapper build artifacts
+python/.venv/
+python/dist/
+python/build/
+python/*.egg-info/
+**/__pycache__/
+*.pyc
+
+# Rust wrapper build artifacts
+rust/target/
+rust/Cargo.lock

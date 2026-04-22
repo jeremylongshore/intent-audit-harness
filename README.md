@@ -19,10 +19,34 @@ A small CLI wrapping 6 deterministic scripts:
 
 ## Install
 
+Pick the install flavor that matches your repo's ecosystem — all three publish the same CLI surface.
+
+**Node / JS / TS** (from npm):
+
 ```bash
 pnpm add -D @intentsolutions/audit-harness
 # or: npm install --save-dev @intentsolutions/audit-harness
 # or: yarn add --dev @intentsolutions/audit-harness
+```
+
+**Python** (from PyPI):
+
+```bash
+pip install intent-audit-harness
+# or inside a project venv:
+python -m pip install intent-audit-harness
+```
+
+**Rust** (from crates.io):
+
+```bash
+cargo install intent-audit-harness
+```
+
+**Any other language** (Go, Ruby, PHP, Java, .NET, shell, etc.) — vendor the scripts:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/jeremylongshore/audit-harness/main/install.sh | bash
 ```
 
 ## Quick usage
