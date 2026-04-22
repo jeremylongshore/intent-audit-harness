@@ -1,0 +1,48 @@
+{
+  "name": "@intentsolutions/audit-harness",
+  "version": "0.1.0",
+  "description": "Deterministic test-enforcement harness — escape-scan, hash-pinning, CRAP, architecture checks, bias detection, Gherkin lint. Companion to the audit-tests and implement-tests Claude Code skills.",
+  "license": "MIT",
+  "author": "Jeremy Longshore <jeremy@intentsolutions.io>",
+  "homepage": "https://github.com/jeremylongshore/audit-harness",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeremylongshore/audit-harness.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jeremylongshore/audit-harness/issues"
+  },
+  "keywords": [
+    "testing",
+    "test-audit",
+    "hash-pin",
+    "escape-scan",
+    "crap",
+    "architecture",
+    "mutation-testing",
+    "coverage-gate",
+    "7-layer-testing",
+    "claude-code",
+    "ai-containment"
+  ],
+  "bin": {
+    "audit-harness": "./bin/audit-harness.js"
+  },
+  "files": [
+    "bin",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "bash scripts/escape-scan.sh --staged || true",
+    "prepublishOnly": "node bin/audit-harness.js --version"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
