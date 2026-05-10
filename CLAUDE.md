@@ -14,6 +14,31 @@ The canonical implementation of the test-enforcement scripts used by the `audit-
 4. **Policy-driven, never hardcoded.** Thresholds (coverage floor, CRAP limits, mutation kill rate) read from the target repo's `tests/TESTING.md`. Never hardcode a number in a script.
 5. **The harness tests itself.** Run `bash scripts/escape-scan.sh --staged` on any proposed diff before committing.
 
+## Three-repo convergence (Phase A complete 2026-05-10)
+
+This repo is the **deterministic-gates layer** of the three-repo convergence vision (`intent-eval-lab` + `audit-harness` + `j-rig-binary-eval`). The convergence sits on a shared **Evidence Bundle** schema authored upstream in `intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/`. This repo emits gate-result rows into that bundle; downstream tools (j-rig, Rollout Gate GHA) consume them.
+
+**Master plan (local-only):** `~/.claude/plans/please-take-your-time-glimmering-stardust.md`
+**ID mapping artifact:** `~/.claude/plans/please-take-your-time-glimmering-stardust-id-map.md`
+**Convergence umbrella:** [`jeremylongshore/intent-eval-lab#4`](https://github.com/jeremylongshore/intent-eval-lab/issues/4) (`IEL-CONV-1`)
+
+### Phase A landed (this repo)
+
+- **8 work beads + GH issues** filed via bd-sync three-layer mirror (#1–#8 in this repo, LAB-14..21 in Plane LAB project)
+- **5 Phase A.0 chores closed:** `AH-1a` (`bd init`), `AH-1b` (issue templates), `AH-1d` (Plane sub-stream + label), and parts of the structural setup
+- **First CI workflow ever in this repo:** `.github/workflows/ci.yml` — 3-Node-version matrix, audit-harness self-check, shellcheck, Python compile-check (per `AH-1c`)
+- **Issue templates:** `.github/ISSUE_TEMPLATE/{bug_report,feature_request,config}.md` — author-side templates that require repro command + version info upfront
+- **Evidence Bundle envelope design notes** at `000-docs/001-DR-DESIGN-evidence-bundle-envelope-design-notes.md` — Phase A deliverable for `AH-4`. Field-by-field design (required + optional + recommended `metadata` sub-fields), versioning rules, open questions for Phase B. The canonical schema lives upstream in `intent-eval-lab`; this doc is the audit-harness side of the design conversation.
+
+### Phase B work (gated on first paying-customer signal)
+
+- `AH-2` — adopt `--json` flag across all subcommands (uniform machine-readable output)
+- `AH-3` — add `emit-evidence` subcommand emitting Evidence Bundle gate-result rows
+- `AH-4` Phase B — adopt the schema in audit-harness via `AH-3`
+- `AH-5` — backward-compat regression suite for new `--json` flag
+
+**No feature code commits until Phase B kickoff** per master plan § Risks. The 45,000+ npm downloads of this package are a migration burden — the polyglot trifecta (npm + PyPI + crates) and existing CLI surface stay; `--json` is purely additive.
+
 ## Relationship to the skills
 
 - `~/.claude/skills/audit-tests/` — the *diagnostic* skill; its SKILL.md Step 1/4/6 invoke commands in this package
