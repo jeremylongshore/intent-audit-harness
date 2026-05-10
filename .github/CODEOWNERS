@@ -1,0 +1,14 @@
+# Default code owners
+* @jeremylongshore
+
+# CI/CD workflows require owner approval
+/.github/workflows/ @jeremylongshore
+
+# Security-sensitive files
+SECURITY.md @jeremylongshore
+.github/dependabot.yml @jeremylongshore
+
+# Harness scripts — every change requires re-running `audit-harness init`
+# on consumer repos. Keep these tight.
+/scripts/ @jeremylongshore
+/bin/ @jeremylongshore
