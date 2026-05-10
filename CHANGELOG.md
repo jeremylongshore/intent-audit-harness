@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.2.0] - 2026-05-10
+
+- docs: add release.yml — complete /repo-dress 21-file canon (c0298ef)
+- docs: fill baseline OSS governance gaps via /repo-dress (closes #10) (29a8520)
+- docs: Part 2 Workstream A upgrade landscape (c967f3e)
+- docs(CLAUDE.md): add three-repo convergence section (b8255a3)
+- infra: convergence Phase A.0 + A — bd init, GH templates, CI workflow, design notes (8f30db4)
+- bd init: initialize beads issue tracking (ffc7597)
+- feat: add PyPI and crates.io wrappers for audit-harness (9b97217)
+
+
 All notable changes to `@intentsolutions/audit-harness` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
