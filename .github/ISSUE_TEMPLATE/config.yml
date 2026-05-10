@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/jeremylongshore/audit-harness/security/advisories/new
+    about: Report security issues privately via GitHub Security Advisories — do NOT open a public issue.
+  - name: Intent Solutions Testing SOP
+    url: https://github.com/jeremylongshore/audit-harness/blob/main/README.md
+    about: Read the full testing SOP and 7-layer taxonomy before filing a feature request.
