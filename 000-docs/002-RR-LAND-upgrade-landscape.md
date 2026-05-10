@@ -5,7 +5,7 @@
 | **Date** | 2026-05-10 |
 | **Author** | Jeremy Longshore |
 | **Status** | Draft v1.0 — Part 2 research deliverable (Workstream A) |
-| **Source plan** | `~/.claude/plans/please-take-your-time-glimmering-stardust.md` § Part 2 |
+| **Source plan** | Author's local working source (private to Intent Solutions workspace; not part of this repository). Public-facing companion docs in `intent-eval-lab/000-docs/003-PP-PLAN-phase-b-scope-refinement.md` (synthesis) + `intent-eval-lab/000-docs/004-AT-DECR-isedc-council-record-2026-05-10.md` (Decision Record). |
 | **Companion specs** | `000-docs/001-DR-DESIGN-evidence-bundle-envelope-design-notes.md` (AH-4) · `intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/` (IEL-4) |
 | **Scope** | Landscape mapping — NOT implementation guidance, NOT a refactor plan |
 
@@ -61,7 +61,7 @@ Targeted papers that anchor the design choices below. All retrieved via Semantic
 | 6 | Syed, T. A. et al. **"Agentic AI for Autonomous Defense in Software Supply Chain Security: Beyond Provenance to Vulnerability Mitigation."** *Int. Conf. Computing Advancements 2025*. [paper](https://www.semanticscholar.org/paper/7ef12e7f28b538a044f3b2c2af4160446723a200) | Frames SLSA + SBOM + in-toto as **necessary but insufficient** — they prove what was built but not what's safe to merge. The Evidence Bundle plays the same role for *test quality* that SCAI plays for *binary integrity*. |
 | 7 | Hemmat, A. et al. **"Advanced Mutation Testing with Zero and Few-Shot Evaluation Using GPT-V4."** *IoT 2025*. [paper](https://www.semanticscholar.org/paper/eaac22fe50ba4fa2dd93224892963890f7f0d649) | LLM-driven mutation generation as a new branch of the field. Forward-looking flag: in 12–24 months the harness's mutation layer will likely dispatch an LLM-mutation step alongside Stryker/PIT. Architect for that. |
 
-**Origin of the CRAP metric.** Note: a direct semantic-scholar query for Savoia/Evans/Crap4j did not surface the original 2007 trade-press article (which lives at [`www.artima.com/weblogs/viewpost.jsp?thread=210575`](https://www.artima.com/weblogs/viewpost.jsp?thread=210575) — Alberto Savoia's column introducing CRAP, complexity-times-coverage). The formula in `crap-score.py` (`C² × (1 - cov/100)³ + C`) matches Savoia & Evans's original definition; Crap4j was the reference Java implementation. The metric has *never* had a peer-reviewed primary citation — it's industry-original, which is worth flagging when defending the gate to academic reviewers.
+**Origin of the CRAP metric.** Note: a direct semantic-scholar query for Savoia/Evans/Crap4j did not surface the original 2007 trade-press article (which lives at [`www.artima.com/weblogs/viewpost.jsp?thread=210575`](https://www.artima.com/weblogs/viewpost.jsp?thread=210575) — Alberto Savoia's column introducing CRAP, complexity-times-coverage). The formula in `crap-score.py` is `C² × (1 - cov)³ + C` where `cov` is the coverage *fraction* (0.0 ≤ cov ≤ 1.0); this matches Savoia & Evans's original definition (Crap4j was the reference Java implementation, expressing the same relation as percentages). The metric has *never* had a peer-reviewed primary citation — it's industry-original, which is worth flagging when defending the gate to academic reviewers.
 
 ---
 
@@ -115,7 +115,7 @@ Categorized URLs. ≥15 unique sources, all directly relevant to upgrade decisio
 **Transparency log + signing**
 
 13. Sigstore docs — https://docs.sigstore.dev/
-14. Cosign overview — https://docs.sigstore.dev/cosign/signing/overview/ (corrected from the 404 URL in the original prompt)
+14. Cosign overview — https://docs.sigstore.dev/cosign/signing/overview/
 15. Rekor transparency log — https://docs.sigstore.dev/logging/overview/
 
 **Supply-chain composition**
@@ -175,11 +175,11 @@ The Evidence Bundle is the substrate the three repos share. Each row below asks:
 
 Patterns with named source and direct mapping to a convergence bead.
 
-- **in-toto v1 Statement as the Evidence Bundle row shape.** Replace the Phase-A envelope's bespoke top-level with `{_type: "https://in-toto.io/Statement/v1", subject: [...], predicateType: "https://intent-eval.dev/gate-result/v1", predicate: {<current envelope contents>}}`. Cost: ~20 lines of wrapping in `emit-evidence`. Payoff: GUAC ingestion + Cosign signing + SLSA toolchain interoperability **for free**. **Maps to: IEL-CONV-2, AH-4.**
+- **in-toto v1 Statement as the Evidence Bundle row shape.** Replace the Phase-A envelope's bespoke top-level with `{_type: "https://in-toto.io/Statement/v1", subject: [...], predicateType: "https://evals.intentsolutions.io/gate-result/v1", predicate: {<current envelope contents>}}`. Cost: ~20 lines of wrapping in `emit-evidence`. Payoff: GUAC ingestion + Cosign signing + SLSA toolchain interoperability **for free**. **Maps to: IEL-CONV-2, AH-4.**
 
-- **Predicate-type URI versioning (SLSA pattern).** `https://intent-eval.dev/gate-result/v1` resolves to latest 1.x; bump to `/v2` on a breaking change. Mirrors the `schema_version` field rather than replacing it — URI is the human-readable contract, `schema_version` is the machine-precise one. **Maps to: AH-4.**
+- **Predicate-type URI versioning (SLSA pattern).** `https://evals.intentsolutions.io/gate-result/v1` resolves to latest 1.x; bump to `/v2` on a breaking change. Mirrors the `schema_version` field rather than replacing it — URI is the human-readable contract, `schema_version` is the machine-precise one. **Maps to: AH-4.**
 
-- **Quality-gate-as-named-entity (SonarQube pattern).** `tests/TESTING.md` becomes a named gate bundle ("AH-Default-2026", "AH-Strict-2026") with `policy_hash` baking in the version. Consumers can compare bundles across repos. **Maps to: AH-?? (future), tests/TESTING.md spec evolution.**
+- **Quality-gate-as-named-entity (SonarQube pattern).** `tests/TESTING.md` becomes a named gate bundle ("AH-Default-2026", "AH-Strict-2026") with `policy_hash` baking in the version. Consumers can compare bundles across repos. **Maps to: future audit-harness work (TBD — file as new AH-N when scoped), tests/TESTING.md spec evolution.**
 
 - **Risk-stratified score weighting (Scorecard pattern).** When the Bundle aggregates rows into one health number (Phase B+), use Scorecard's `critical=10, high=7.5, medium=5, low=2.5` rubric. Avoid inventing a new weighting system. **Maps to: j-rig binary-eval scoring.**
 
@@ -267,6 +267,6 @@ To prevent scope creep:
 
 - **Companion design (Phase A):** `000-docs/001-DR-DESIGN-evidence-bundle-envelope-design-notes.md`
 - **Spec home (canonical Evidence Bundle schema):** `intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/`
-- **Master plan:** `~/.claude/plans/please-take-your-time-glimmering-stardust.md` § Part 2
-- **Taxonomy (7-layer):** `~/.claude/skills/audit-tests/references/taxonomy.md`
+- **Master plan:** author's local working source (not part of this repository); public companion synthesis at `intent-eval-lab/000-docs/003-PP-PLAN-phase-b-scope-refinement.md`
+- **Taxonomy (7-layer):** ships as part of the `@intentsolutions/audit-harness` documentation; reference summary in `audit-tests` skill installed via the Intent Solutions Testing SOP
 - **Beads:** `AH-2`, `AH-3`, `AH-4`, `AH-5`; sibling `IEL-CONV-1`, `IEL-CONV-2`, `IEL-4`
