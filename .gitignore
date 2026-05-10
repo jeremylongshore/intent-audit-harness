@@ -16,3 +16,8 @@ python/*.egg-info/
 # Rust wrapper build artifacts
 rust/target/
 rust/Cargo.lock
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
