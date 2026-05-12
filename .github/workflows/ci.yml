@@ -86,6 +86,31 @@ jobs:
         run: |
           find scripts -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
 
-# convergence note: this workflow is the first CI for audit-harness and the prerequisite
-# for AH-5 (backward-compatibility test suite for new --json flag). Per master plan
-# ~/.claude/plans/please-take-your-time-glimmering-stardust.md § "audit-harness — what's needed".
+  regression:
+    name: backward-compat regression suite (v0.3.0+)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install jsonschema (for SPEC validation)
+        run: pip install jsonschema
+      - name: Stage gate-result schema fixture
+        run: |
+          mkdir -p tests/fixtures
+          # The schema lives in the sister repo intent-eval-lab; for CI we fetch
+          # the published v0.1.0-draft URL once that's online. Until then, copy
+          # any local sibling clone if available; otherwise the suite skips
+          # Section 3 with a warning and still validates Sections 1, 2, 4.
+          if [[ ! -f tests/fixtures/gate-result.schema.json ]]; then
+            curl -sSL -o tests/fixtures/gate-result.schema.json \
+              https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/main/specs/evidence-bundle/v0.1.0-draft/schema/gate-result.schema.json \
+              || echo "schema not yet available — Section 3 will be skipped"
+          fi
+      - name: Run regression suite
+        run: bash tests/regression/run-regression.sh
+
+# Convergence: this workflow is the first CI for audit-harness. The regression job
+# (added v0.3.0 / Milestone 2 of build journey ~/.claude/plans/se-the-council-bubbly-frog.md)
+# enforces backward-compat for the --json + emit-evidence additions. See SEMVER.md.

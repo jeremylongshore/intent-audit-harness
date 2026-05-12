@@ -1,0 +1,7 @@
+diff --git a/pytest.ini b/pytest.ini
+index 0000001..0000002 100644
+--- a/pytest.ini
++++ b/pytest.ini
+@@ -1 +1,2 @@
+ [pytest]
++addopts = --cov-fail-under=10

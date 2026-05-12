@@ -1,0 +1,7 @@
+diff --git a/foo.py b/foo.py
+index 0000001..0000002 100644
+--- a/foo.py
++++ b/foo.py
+@@ -1 +1 @@
+-x = 1
++x = 2

@@ -302,6 +302,10 @@ def main() -> int:
                     help="Test CRAP max (default 15)")
     ap.add_argument("--threshold-avg", type=float, default=10.0,
                     help="Project average max (default 10)")
+    ap.add_argument("--json", action="store_true",
+                    help="Emit gate-result envelope JSON on stdout (suitable for piping "
+                         "to `audit-harness emit-evidence`). Preserves existing CSV/JSON "
+                         "files written under --out.")
     args = ap.parse_args()
 
     root = Path(args.root).resolve()
@@ -377,7 +381,44 @@ def main() -> int:
     if args.format in ("json", "both"):
         (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
 
-    print(json.dumps({"pass": pass_, "summary_path": str(out_dir / "summary.json")}))
+    if args.json:
+        import hashlib, os
+        side = os.environ.get("AUDIT_HARNESS_SIDE", "ci")
+        # input_hash: SHA256 over all production+test source-file contents under root, sorted.
+        digest = hashlib.sha256()
+        exts = (".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".kt", ".cs", ".php", ".rb")
+        for fp in sorted(root.rglob("*")):
+            if fp.is_file() and fp.suffix in exts and "node_modules" not in fp.parts and ".venv" not in fp.parts:
+                digest.update(fp.read_bytes())
+        input_hash = f"sha256:{digest.hexdigest()}"
+        # policy_hash: SHA256 over the threshold tuple (stable, deterministic)
+        policy_repr = f"prod={args.threshold_prod}|test={args.threshold_test}|avg={args.threshold_avg}".encode()
+        policy_hash = f"sha256:{hashlib.sha256(policy_repr).hexdigest()}"
+        result = "PASS" if pass_ else "FAIL"
+        envelope = {
+            "gate_id": f"audit-harness:{side}:crap-score",
+            "result": result,
+            "input_hash": input_hash,
+            "policy_hash": policy_hash,
+            "metadata": {
+                "language": lang,
+                "thresholds": summary["thresholds"],
+                "production_max_crap": summary["production"]["max_crap"],
+                "production_avg_crap": summary["production"]["avg_crap"],
+                "production_methods_scored": summary["production"]["methods_scored"],
+                "production_blockers_count": len(prod_blockers),
+                "test_max_crap": summary["test"]["max_crap"],
+                "test_methods_scored": summary["test"]["methods_scored"],
+                "test_blockers_count": len(test_blockers),
+                "avg_fail": avg_fail,
+                "summary_path": str(out_dir / "summary.json"),
+            },
+        }
+        if not pass_:
+            envelope["failure_mode"] = "crap-threshold-exceeded"
+        print(json.dumps(envelope))
+    else:
+        print(json.dumps({"pass": pass_, "summary_path": str(out_dir / "summary.json")}))
     return 0 if pass_ else 1
 
 
