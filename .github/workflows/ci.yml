@@ -57,7 +57,14 @@ jobs:
           mkdir -p /tmp/synthetic-repo
           cd /tmp/synthetic-repo
           git init -q
-          echo "coverage_floor: 80" > tests/TESTING.md 2>/dev/null || mkdir -p tests && echo "coverage_floor: 80" > tests/TESTING.md
+          # GitHub-hosted runners do NOT set a default git identity. Without
+          # this, `git commit` below fails with "fatal: empty ident name". We
+          # set it locally to this synthetic repo only — does not pollute the
+          # actual workspace.
+          git config --local user.email "ci@audit-harness.local"
+          git config --local user.name "audit-harness CI"
+          mkdir -p tests
+          echo "coverage_floor: 80" > tests/TESTING.md
           git add tests/TESTING.md
           git commit -q -m "baseline" --allow-empty-message
           echo "coverage_floor: 60" > tests/TESTING.md
