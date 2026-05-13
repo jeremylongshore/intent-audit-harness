@@ -37,7 +37,7 @@ This repo is the **deterministic-gates layer** of the three-repo convergence vis
 - `AH-4` Phase B — adopt the schema in audit-harness via `AH-3`
 - `AH-5` — backward-compat regression suite for new `--json` flag
 
-**No feature code commits until Phase B kickoff** per master plan § Risks. The 45,000+ npm downloads of this package are a migration burden — the polyglot trifecta (npm + PyPI + crates) and existing CLI surface stay; `--json` is purely additive.
+**No feature code commits until Phase B kickoff** per master plan § Risks. The ~1,140 npm downloads of this package (verified 2026-05-11 from the npm registry — the previously-stated 45,000+ figure belonged to the separate `claude-code-plugins` package; correction logged in ISEDC Session 3 by the Research Expert seat) still represent real production consumers — the polyglot trifecta (npm + PyPI + crates) and existing CLI surface stay; `--json` is purely additive.
 
 ## Relationship to the skills
 

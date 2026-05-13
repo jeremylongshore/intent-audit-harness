@@ -13,14 +13,15 @@ const { existsSync } = require('node:fs');
 const SCRIPTS = resolve(__dirname, '..', 'scripts');
 
 const COMMANDS = {
-  'verify':       { script: 'harness-hash.sh',  args: ['--verify'] },
-  'init':         { script: 'harness-hash.sh',  args: ['--init'] },
-  'list':         { script: 'harness-hash.sh',  args: ['--list'] },
-  'escape-scan':  { script: 'escape-scan.sh',   args: [] },
-  'arch':         { script: 'arch-check.sh',    args: [] },
-  'bias':         { script: 'bias-count.sh',    args: [] },
-  'gherkin-lint': { script: 'gherkin-lint.sh',  args: [] },
-  'crap':         { script: 'crap-score.py',    args: [] },
+  'verify':        { script: 'harness-hash.sh',  args: ['--verify'] },
+  'init':          { script: 'harness-hash.sh',  args: ['--init'] },
+  'list':          { script: 'harness-hash.sh',  args: ['--list'] },
+  'escape-scan':   { script: 'escape-scan.sh',   args: [] },
+  'arch':          { script: 'arch-check.sh',    args: [] },
+  'bias':          { script: 'bias-count.sh',    args: [] },
+  'gherkin-lint':  { script: 'gherkin-lint.sh',  args: [] },
+  'crap':          { script: 'crap-score.py',    args: [] },
+  'emit-evidence': { script: 'emit-evidence.sh', args: [] },
 };
 
 function usage() {
@@ -39,6 +40,15 @@ Commands:
   bias                     Count test-bias patterns (tautology, smoke-only, etc.)
   gherkin-lint             Advisory Gherkin quality check
   crap [args...]           CRAP complexity × coverage scorer (multi-language)
+  emit-evidence            Wrap a gate-result JSON envelope in an in-toto
+                           Statement v1 (predicate https://evals.intentsolutions.io/gate-result/v1)
+                           Read JSON on stdin: <gate> --json | audit-harness emit-evidence
+
+Evidence Bundle (v0.3.0+):
+  All gates support --json to emit machine-readable gate-result envelopes
+  suitable for piping to emit-evidence. See SEMVER.md for compatibility rules
+  and intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/SPEC.md for the
+  envelope schema.
 
 Options:
   --version, -v            Print version
