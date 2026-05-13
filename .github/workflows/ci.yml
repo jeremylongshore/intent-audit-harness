@@ -22,7 +22,7 @@ jobs:
         node-version: [18, 20, 22]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node ${{ matrix.node-version }}
         uses: actions/setup-node@v4
@@ -81,7 +81,7 @@ jobs:
     name: shellcheck (script lint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: shellcheck
         run: |
           sudo apt-get update && sudo apt-get install -y shellcheck
@@ -92,7 +92,7 @@ jobs:
     name: python -m py_compile (script lint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -104,7 +104,7 @@ jobs:
     name: backward-compat regression suite (v0.3.0+)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
