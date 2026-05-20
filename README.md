@@ -139,7 +139,9 @@ Most scripts are language-agnostic (shell + regex). CRAP has per-language backen
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+Apache 2.0 — see [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
+
+**Note:** versions `0.x` shipped under the MIT license. Starting with `v1.0.0`, the project is licensed under Apache 2.0. Existing `0.x` releases on npm remain available under their original MIT terms; new releases (`>= 1.0.0`) are Apache 2.0.
 
 ## Related
 
