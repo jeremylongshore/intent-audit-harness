@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.0.1] - 2026-05-20
+
+### Fixed — NOTICE in published tarball
+
+- Added `NOTICE` to `package.json#files` so the file ships in the npm tarball alongside `LICENSE`. Per Apache 2.0 § 4, derivatives must carry the NOTICE file's attribution text if one exists in the source. `v1.0.0` shipped the relicense to Apache 2.0 but the tarball only carried `LICENSE` — this corrects that omission.
+
+No code, behavior, CLI, or dependency changes — packaging-only patch.
+
 ## [v1.0.0] - 2026-05-19
 
 ### Changed — License (BREAKING)
