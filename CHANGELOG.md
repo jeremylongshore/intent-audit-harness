@@ -1,5 +1,16 @@
 # Changelog
 
+## [v1.0.0] - 2026-05-19
+
+### Changed — License (BREAKING)
+
+- **Relicensed from MIT to Apache 2.0.** Deliberate alignment with the rest of the Intent Eval Platform ecosystem (`intent-eval-lab`, `intent-eval-core`) so every repo ships under a single OSI-approved license with explicit patent-grant language.
+- Existing `0.x` releases on npm remain available under their original MIT terms (npm tarballs are immutable). All releases `>= 1.0.0` are Apache 2.0.
+- Added `NOTICE` file per Apache 2.0 best practice with copyright attribution and license summary.
+- README license section updated to reflect the change with a backward-compat note.
+
+No code, CLI surface, behavior, or runtime dependency changes in this release — license-only bump cut as MAJOR for legal clarity and consumer review signaling.
+
 ## [v0.3.0] - 2026-05-12
 
 ### Added — Evidence Bundle emission (Milestone 2 of the build journey)
