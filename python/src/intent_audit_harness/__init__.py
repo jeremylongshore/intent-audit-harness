@@ -7,4 +7,4 @@ The Python package mirrors the CLI surface of the Node package
 ``@intentsolutions/audit-harness`` so commands are identical across languages.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.2"

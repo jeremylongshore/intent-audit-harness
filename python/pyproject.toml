@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "intent-audit-harness"
-version = "0.1.0"
+version = "1.0.2"
 description = "Deterministic test-enforcement harness — escape-scan, hash-pinning, CRAP, architecture checks, bias detection, Gherkin lint. Python-native wrapper around the @intentsolutions/audit-harness toolkit."
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 authors = [
   { name = "Jeremy Longshore", email = "jeremy@intentsolutions.io" },
 ]
@@ -28,7 +28,7 @@ keywords = [
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: Apache Software License",
   "Operating System :: POSIX",
   "Operating System :: MacOS",
   "Programming Language :: Python :: 3",
@@ -55,4 +55,6 @@ include = [
   "/src",
   "/README.md",
   "/pyproject.toml",
+  "/LICENSE",
+  "/NOTICE",
 ]
