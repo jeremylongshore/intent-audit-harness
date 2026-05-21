@@ -1,20 +1,25 @@
 # Changelog
 
-## [Unreleased]
+## [v1.0.2] - 2026-05-21
 
-### Chore — Polyglot manifest alignment (IEP Convergence Debt Plan Priority 3)
+### Chore — Polyglot manifest alignment + Apache-2.0 NOTICE inclusion in distributions (IEP Convergence Debt Plan Priority 3)
 
-Aligned all polyglot manifests to the canonical `package.json` (npm) version + Apache-2.0 license, and added a CI gate that fails any future drift. No CLI surface or runtime behavior changes — pure metadata alignment.
+Aligned all polyglot manifests (`package.json` + `version.txt` + `python/pyproject.toml` + `python/src/intent_audit_harness/__init__.py` + `rust/Cargo.toml` + `rust/Cargo.lock`) at version `1.0.2`. Bumped from npm `v1.0.1` → `v1.0.2` (rather than aligning the PyPI/crates.io wrappers to npm's `v1.0.1`) so all four registries publish lockstep from this release forward — preserves the immutability of the already-shipped npm `v1.0.1` tarball. Added a CI gate that fails any future drift. Folded NOTICE file inclusion into Python sdist + Rust crate distributions per Apache-2.0 § 4. No CLI surface or runtime behavior changes — pure metadata + packaging alignment.
 
-- `version.txt`: `0.2.0` → `1.0.1` (matches `package.json`)
-- `python/pyproject.toml`: version `0.1.0` → `1.0.1`; license `MIT` → `Apache-2.0`; PyPI classifier updated to "License :: OSI Approved :: Apache Software License"
-- `python/src/intent_audit_harness/__init__.py`: `__version__` `0.1.0` → `1.0.1`
-- `rust/Cargo.toml`: version `0.1.0` → `1.0.1`; license `MIT` → `Apache-2.0`
+- `package.json`: version `1.0.1` → `1.0.2`
+- `version.txt`: `0.2.0` → `1.0.2`
+- `python/pyproject.toml`: version `0.1.0` → `1.0.2`; license `MIT` → `Apache-2.0`; PyPI classifier updated to "License :: OSI Approved :: Apache Software License"; `[tool.hatch.build.targets.sdist].include` adds `/LICENSE` + `/NOTICE` per Apache-2.0 § 4
+- `python/src/intent_audit_harness/__init__.py`: `__version__` `0.1.0` → `1.0.2`
+- `rust/Cargo.toml`: version `0.1.0` → `1.0.2`; license `MIT` → `Apache-2.0`; `include` adds `NOTICE` per Apache-2.0 § 4
+- `rust/Cargo.lock`: package entry version `1.0.1` → `1.0.2` (file is gitignored but the working-tree state is consistent for cargo builds)
 - `.github/workflows/ci.yml`: NEW `version-canonical-check` job — fails if any of the 5 tracked version locations diverge from `package.json`, or if any non-npm manifest carries a non-`Apache-2.0` license. The gate also includes a robustness check for `rust/Cargo.lock` (currently gitignored; no-ops gracefully when the file isn't present in CI checkout).
 
 Closes beads (pending PR merge): `iah-version-drift` (bd_000-projects-uoz3), `iah-license-drift` (bd_000-projects-ck2e), `iah-version-canonical-check` (bd_000-projects-hd5y). AAR at `000-docs/004-AA-AACR-polyglot-version-license-alignment-2026-05-21.md`.
 
-Note for downstream PyPI / crates.io consumers: this is the first published `v1.0.1` on PyPI + crates.io (the prior `0.1.0` published on those registries pre-dates the npm `v1.0.0` Apache-2.0 relicense). The version-history gap is intentional — the polyglot wrappers were on a separate sequence from the npm canonical until this alignment. From `v1.0.1` forward all four registries publish lockstep.
+Notes for downstream consumers:
+
+- **npm** users: `v1.0.2` is purely metadata + packaging — no observable behavior change vs. `v1.0.1`. Upgrade at your convenience.
+- **PyPI + crates.io** users: this is the first published `v1.0.2` and the first published Apache-2.0 release on these registries. The prior published `0.1.0` artifacts pre-date the `v1.0.0` Apache-2.0 relicense and remain available under their original MIT terms (registry tarballs are immutable). From `v1.0.2` forward all four registries publish lockstep at the same SemVer.
 
 ## [v1.0.1] - 2026-05-20
 

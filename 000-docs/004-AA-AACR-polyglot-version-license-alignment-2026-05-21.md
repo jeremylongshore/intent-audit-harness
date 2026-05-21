@@ -31,7 +31,9 @@ Six independent version locations, three different version numbers, two differen
 
 ## 3. State after this PR
 
-All five committed locations now report `version = 1.0.1` and (where applicable) `license = Apache-2.0`. The CI gate `version-canonical-check` runs on every PR + push to main + nightly self-check and fails on any divergence. The gate also opportunistically checks `rust/Cargo.lock` — currently gitignored, so the check no-ops gracefully on the CI checkout; if the lockfile is ever committed (Rust convention for binary crates) the gate will already enforce alignment.
+All five committed locations now report `version = 1.0.2` and (where applicable) `license = Apache-2.0`. The npm canonical was bumped `1.0.1 → 1.0.2` as part of this PR (rather than holding the polyglot wrappers at `1.0.1`) — this preserves the immutability of the already-published npm `v1.0.1` tarball and ships all four registries lockstep at `v1.0.2` from this release forward. The CI gate `version-canonical-check` runs on every PR + push to main + nightly self-check and fails on any divergence. The gate also opportunistically checks `rust/Cargo.lock` — currently gitignored, so the check no-ops gracefully on the CI checkout; if the lockfile is ever committed (Rust convention for binary crates) the gate will already enforce alignment.
+
+**Apache-2.0 NOTICE compliance**: the existing `NOTICE` file at the repo root was already wired into the npm tarball via `package.json#files` (added in `v1.0.1`). This PR extends NOTICE inclusion to the other distribution channels: `python/pyproject.toml#[tool.hatch.build.targets.sdist].include` adds `/LICENSE` + `/NOTICE`; `rust/Cargo.toml#include` adds `NOTICE`. Apache-2.0 § 4 requires NOTICE files in redistributed derivatives — these edits close the compliance gap for PyPI + crates.io consumers.
 
 ### CI gate behavior
 
@@ -46,7 +48,7 @@ npm version patch   # or minor, major
 # 2. Mirror to the polyglot manifests
 new_version=$(node -p "require('./package.json').version")
 sed -i "1s/.*/${new_version}/" version.txt
-sed -i "s/^version = \".*\"/version = \"${new_version}\"/" python/pyproject.toml
+sed -i "/^\[project\]/,/^\[/ s/^version = \".*\"/version = \"${new_version}\"/" python/pyproject.toml
 sed -i "s/^__version__ = \".*\"/__version__ = \"${new_version}\"/" python/src/intent_audit_harness/__init__.py
 sed -i "/^\[package\]/,/^\[/ s/^version = \".*\"/version = \"${new_version}\"/" rust/Cargo.toml
 # Cargo.lock auto-updates on next `cargo build`; for clean lockfile bumps:
