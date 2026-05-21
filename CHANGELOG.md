@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### Chore — Polyglot manifest alignment (IEP Convergence Debt Plan Priority 3)
+
+Aligned all polyglot manifests to the canonical `package.json` (npm) version + Apache-2.0 license, and added a CI gate that fails any future drift. No CLI surface or runtime behavior changes — pure metadata alignment.
+
+- `version.txt`: `0.2.0` → `1.0.1` (matches `package.json`)
+- `python/pyproject.toml`: version `0.1.0` → `1.0.1`; license `MIT` → `Apache-2.0`; PyPI classifier updated to "License :: OSI Approved :: Apache Software License"
+- `python/src/intent_audit_harness/__init__.py`: `__version__` `0.1.0` → `1.0.1`
+- `rust/Cargo.toml`: version `0.1.0` → `1.0.1`; license `MIT` → `Apache-2.0`
+- `.github/workflows/ci.yml`: NEW `version-canonical-check` job — fails if any of the 5 tracked version locations diverge from `package.json`, or if any non-npm manifest carries a non-`Apache-2.0` license. The gate also includes a robustness check for `rust/Cargo.lock` (currently gitignored; no-ops gracefully when the file isn't present in CI checkout).
+
+Closes beads (pending PR merge): `iah-version-drift` (bd_000-projects-uoz3), `iah-license-drift` (bd_000-projects-ck2e), `iah-version-canonical-check` (bd_000-projects-hd5y). AAR at `000-docs/004-AA-AACR-polyglot-version-license-alignment-2026-05-21.md`.
+
+Note for downstream PyPI / crates.io consumers: this is the first published `v1.0.1` on PyPI + crates.io (the prior `0.1.0` published on those registries pre-dates the npm `v1.0.0` Apache-2.0 relicense). The version-history gap is intentional — the polyglot wrappers were on a separate sequence from the npm canonical until this alignment. From `v1.0.1` forward all four registries publish lockstep.
+
 ## [v1.0.1] - 2026-05-20
 
 ### Fixed — NOTICE in published tarball

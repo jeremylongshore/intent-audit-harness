@@ -100,6 +100,109 @@ jobs:
         run: |
           find scripts -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
 
+  version-canonical-check:
+    name: Manifest version + license alignment
+    # Per IEP Convergence Debt Plan Priority 3 (iah-version-canonical-check,
+    # iah-version-drift, iah-license-drift). The npm package.json is the
+    # canonical source of truth for version + license; the other three
+    # polyglot manifests (version.txt, python/pyproject.toml, rust/Cargo.toml)
+    # MUST match exactly. CI fails if any drift is detected.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify all 4 manifests carry the same version and Apache-2.0 license
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 1. Extract canonical version from npm package.json
+          canonical_version=$(node -p "require('./package.json').version")
+          canonical_license=$(node -p "require('./package.json').license")
+          echo "Canonical (npm package.json): version=${canonical_version}, license=${canonical_license}"
+
+          if [[ "${canonical_license}" != "Apache-2.0" ]]; then
+            echo "::error file=package.json::canonical license MUST be Apache-2.0; got '${canonical_license}'"
+            exit 1
+          fi
+
+          fail=0
+
+          # 2. version.txt
+          if [[ -f version.txt ]]; then
+            vt=$(head -n 1 version.txt | tr -d '[:space:]')
+            if [[ "${vt}" != "${canonical_version}" ]]; then
+              echo "::error file=version.txt::version drift — version.txt='${vt}' canonical='${canonical_version}'"
+              fail=1
+            fi
+          else
+            echo "::warning::version.txt not present (acceptable if intentionally deleted)"
+          fi
+
+          # 3. python/pyproject.toml
+          if [[ -f python/pyproject.toml ]]; then
+            py_ver=$(grep -E '^version\s*=' python/pyproject.toml | head -n 1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+            py_lic=$(grep -E '^license\s*=' python/pyproject.toml | head -n 1 | sed -E 's/^license\s*=\s*\{\s*text\s*=\s*"([^"]+)".*/\1/')
+            if [[ "${py_ver}" != "${canonical_version}" ]]; then
+              echo "::error file=python/pyproject.toml::version drift — pyproject='${py_ver}' canonical='${canonical_version}'"
+              fail=1
+            fi
+            if [[ "${py_lic}" != "Apache-2.0" ]]; then
+              echo "::error file=python/pyproject.toml::license drift — pyproject='${py_lic}' expected='Apache-2.0'"
+              fail=1
+            fi
+          fi
+
+          # 3a. python/src/intent_audit_harness/__init__.py __version__
+          if [[ -f python/src/intent_audit_harness/__init__.py ]]; then
+            py_init_ver=$(grep -E '^__version__\s*=' python/src/intent_audit_harness/__init__.py | head -n 1 | sed -E 's/^__version__\s*=\s*"([^"]+)".*/\1/')
+            if [[ "${py_init_ver}" != "${canonical_version}" ]]; then
+              echo "::error file=python/src/intent_audit_harness/__init__.py::version drift — __version__='${py_init_ver}' canonical='${canonical_version}'"
+              fail=1
+            fi
+          fi
+
+          # 4. rust/Cargo.toml
+          if [[ -f rust/Cargo.toml ]]; then
+            rs_ver=$(grep -E '^version\s*=' rust/Cargo.toml | head -n 1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+            rs_lic=$(grep -E '^license\s*=' rust/Cargo.toml | head -n 1 | sed -E 's/^license\s*=\s*"([^"]+)".*/\1/')
+            if [[ "${rs_ver}" != "${canonical_version}" ]]; then
+              echo "::error file=rust/Cargo.toml::version drift — Cargo.toml='${rs_ver}' canonical='${canonical_version}'"
+              fail=1
+            fi
+            if [[ "${rs_lic}" != "Apache-2.0" ]]; then
+              echo "::error file=rust/Cargo.toml::license drift — Cargo.toml='${rs_lic}' expected='Apache-2.0'"
+              fail=1
+            fi
+          fi
+
+          # 4a. rust/Cargo.lock package entry
+          if [[ -f rust/Cargo.lock ]]; then
+            rs_lock_ver=$(awk '/^\[\[package\]\]/{p=1; next} p && /^name = "intent-audit-harness"/{getline; if($1=="version"){gsub(/"/,"",$3); print $3; exit}}' rust/Cargo.lock)
+            if [[ -n "${rs_lock_ver}" && "${rs_lock_ver}" != "${canonical_version}" ]]; then
+              echo "::error file=rust/Cargo.lock::version drift — Cargo.lock='${rs_lock_ver}' canonical='${canonical_version}'"
+              fail=1
+            fi
+          fi
+
+          if [[ ${fail} -ne 0 ]]; then
+            echo ""
+            echo "::error::Manifest drift detected. The npm package.json is the canonical source of truth for version + license per IEP Convergence Debt Plan Priority 3. Run \`npm version <bump>\` to bump the canonical version, then mirror to version.txt / pyproject.toml / Cargo.toml / Cargo.lock / __init__.py."
+            exit 1
+          fi
+
+          echo ""
+          echo "All manifests aligned at version=${canonical_version}, license=Apache-2.0."
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Manifest version + license alignment" >> "${GITHUB_STEP_SUMMARY}"
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Verifies that \`version.txt\`, \`python/pyproject.toml\`, \`python/src/intent_audit_harness/__init__.py\`, \`rust/Cargo.toml\`, and \`rust/Cargo.lock\` all agree with the canonical \`package.json\` for both version and Apache-2.0 license." >> "${GITHUB_STEP_SUMMARY}"
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Per IEP Convergence Debt Plan Priority 3: \`iah-version-canonical-check\` + \`iah-version-drift\` + \`iah-license-drift\`." >> "${GITHUB_STEP_SUMMARY}"
+
   regression:
     name: backward-compat regression suite (v0.3.0+)
     runs-on: ubuntu-latest
