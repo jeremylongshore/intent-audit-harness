@@ -38,17 +38,18 @@ jobs:
         # tighten to fail-on-non-zero once verify produces deterministic output
 
       - name: audit-harness list (self-check enumeration)
-        # exit 3 = no .harness-hash manifest (expected — this repo is the
-        # harness itself, not a consumer). Tolerate so the self-check
-        # workflow doesn't false-fail every PR. Same pattern as the verify
-        # step above. See bd issue audit-harness for the long-term fix
-        # (initialize a self-pinning manifest on the repo's own .feature
-        # files + script configs).
-        run: node bin/audit-harness.js list || true
+        # Self-pin landed via iep-P3 iah-self-pin (bd_000-projects-itpl).
+        # .harness-hash is now committed at repo root pinning scripts/*.sh,
+        # scripts/*.py, bin/audit-harness.js, and .harness-hash-extra-patterns
+        # itself. Exit-3 tolerance removed: any future no-manifest condition
+        # is a real CI failure, not the expected baseline state.
+        run: node bin/audit-harness.js list
 
       - name: harness-hash --verify (idempotency check on the hash manifest)
-        # exit 3 = no manifest; same rationale as the list step above.
-        run: bash scripts/harness-hash.sh --verify || true
+        # Hard-fail: any byte change to a pinned policy file without a fresh
+        # --init + commit of the regenerated .harness-hash exits 2 (HARNESS_TAMPERED)
+        # and blocks the PR. Per audit-harness CLAUDE.md design rule 5.
+        run: bash scripts/harness-hash.sh --verify
 
       - name: escape-scan against synthetic threshold-lowering input
         run: |

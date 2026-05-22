@@ -1,5 +1,34 @@
 # Changelog
 
+## [v1.1.0] - 2026-05-22
+
+### Added — Per-repo `.harness-hash-extra-patterns` mechanism + audit-harness self-pin (IEP Convergence Debt Plan Priority 3)
+
+Closes `iah-self-pin` (`bd_000-projects-itpl`, P1). The harness's own policy enforcement surface (scripts/*.sh + scripts/*.py + bin/audit-harness.js) is now hash-pinned at the audit-harness repo root. CI's `audit-harness list` + `harness-hash --verify` self-check steps are flipped from `|| true` exit-3 tolerance to hard-fail: any byte change to a pinned policy file without a fresh `--init` + commit of the regenerated `.harness-hash` exits 2 (HARNESS_TAMPERED) and blocks the PR.
+
+- **`scripts/harness-hash.sh`**: NEW — reads an optional `.harness-hash-extra-patterns` file at the repo root and appends its lines to the default PATTERNS array. Comments (`#`) + blank lines ignored. Backward-compatible: repos without the file get exactly the previous behavior — consumer repos are not affected.
+- **`.harness-hash-extra-patterns`** (NEW, audit-harness repo root): pins `scripts/*.sh`, `scripts/*.py`, `bin/audit-harness.js`, and the extras file itself (preventing silent edits to the self-pinning scope).
+- **`.harness-hash`** (NEW, audit-harness repo root): 9-file manifest produced by `bash scripts/harness-hash.sh --init`. Committed to main.
+- **`.github/workflows/ci.yml`**: `audit-harness list` + `harness-hash --verify` self-check steps drop `|| true` suffixes. Hard-fail in place. Comment block updated.
+
+### Why minor not patch
+
+The `.harness-hash-extra-patterns` mechanism is a new authored feature surface — repos that opt in get a new capability. Per SemVer, minor bump. Existing repos (zero adopters today; this is the first one) are unaffected.
+
+### Why this matters
+
+Before this release, the audit-harness CI workflow could not enforce its own policy. The "harness tests itself" design rule (CLAUDE.md rule 5) was aspirational — `audit-harness list` and `harness-hash --verify` both exited 0 when no manifest existed (intentional tolerance to avoid false-failing every PR). A silent edit to `scripts/escape-scan.sh` (the gate that REFUSES threshold-lowering changes) would pass CI. That's the failure mode this release closes.
+
+### Cross-platform-rollout note
+
+`iep-harness-hash-platform-rollout` (`bd_000-projects-g6zu`) unblocks on this release. The remaining 4 IEP repos (intent-eval-lab, j-rig-binary-eval, intent-rollout-gate — kernel already pinned) can now copy this pattern using their own `.harness-hash-extra-patterns` to pin per-repo policy files (CI workflow definitions, governance docs, vendored harness wrappers).
+
+### Changed — Version bumped to v1.1.0 across all 5 manifests
+
+Per the version-canonical-check CI gate landed in v1.0.2 (PR #35). All 5 committed manifest locations now report `1.1.0`.
+
+AAR: `000-docs/005-AA-AACR-iah-self-pin-iep-P3-2026-05-22.md`.
+
 ## [v1.0.2] - 2026-05-21
 
 ### Chore — Polyglot manifest alignment + Apache-2.0 NOTICE inclusion in distributions (IEP Convergence Debt Plan Priority 3)

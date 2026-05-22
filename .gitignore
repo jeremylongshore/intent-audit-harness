@@ -3,7 +3,15 @@ dist/
 *.tgz
 .DS_Store
 coverage/
-.harness-hash
+
+# NOTE: .harness-hash is INTENTIONALLY tracked, not ignored.
+# Per iep-P3 iah-self-pin (bd_000-projects-itpl) + audit-harness CLAUDE.md
+# design rule 5 ("the harness tests itself"): the manifest IS the policy
+# commitment. CI's `harness-hash --verify` step (hard-fail since v1.1.0)
+# compares working-tree hashes against the committed manifest. If
+# .harness-hash were gitignored, --verify would either compare against a
+# locally-regenerated manifest (no integrity guarantee) or fail with
+# exit-3 (no manifest) — both useless.
 
 # Python wrapper build artifacts
 python/.venv/
