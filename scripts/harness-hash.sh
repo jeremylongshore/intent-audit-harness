@@ -59,6 +59,27 @@ PATTERNS=(
   "stryker.config.js"
 )
 
+# Optional per-repo extra patterns appended from .harness-hash-extra-patterns
+# at the repo root. Used by repos whose policy files don't match the default
+# canonical patterns above — e.g., the audit-harness repo itself pins its own
+# scripts (scripts/*.sh + scripts/*.py + bin/audit-harness.js), which are the
+# policy enforcement surface but aren't covered by the consumer-facing
+# defaults. Lines beginning with `#` are comments; blank lines are ignored.
+# This mechanism is additive — repos without the file get exactly the
+# default behavior, so consumer repos are not affected.
+EXTRA_PATTERNS_FILE="${ROOT}/.harness-hash-extra-patterns"
+if [[ -f "${EXTRA_PATTERNS_FILE}" ]]; then
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    # strip inline comments
+    line="${line%%#*}"
+    # trim leading + trailing whitespace
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "${line}" ]] && continue
+    PATTERNS+=("${line}")
+  done < "${EXTRA_PATTERNS_FILE}"
+fi
+
 collect_files() {
   local out=()
   shopt -s nullglob globstar

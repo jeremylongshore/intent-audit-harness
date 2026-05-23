@@ -1,0 +1,25 @@
+# Self-pin patterns for the audit-harness repo itself.
+#
+# Per IEP Convergence Debt Plan Priority 3 (iah-self-pin / bd_000-projects-itpl).
+# The default harness-hash patterns target consumer-repo artifacts (.feature
+# files, architecture rule configs, coverage threshold configs) — none of which
+# exist in audit-harness's own tree because audit-harness IS the policy enforcer.
+# This file extends the pin scope to cover audit-harness's policy enforcement
+# surface: the deterministic scripts that gate every consumer repo.
+#
+# Any byte change to a pinned file requires re-running `bash scripts/harness-hash.sh --init`
+# and committing the regenerated .harness-hash. The CI gate at .github/workflows/ci.yml
+# (no longer tolerant — see iep-P3 iah-self-pin) refuses the diff otherwise.
+
+# Deterministic gate scripts (the policy)
+scripts/*.sh
+scripts/*.py
+
+# CLI dispatcher (thin per design rule 1; pinned so the dispatcher's command
+# routing can't drift silently from the scripts it dispatches to)
+bin/audit-harness.js
+
+# This pin-extra-patterns file itself — preventing silent edits to the
+# self-pinning scope. Bootstrapping note: the first --init that runs with this
+# file in place will hash it into the manifest; subsequent edits require re-init.
+.harness-hash-extra-patterns
