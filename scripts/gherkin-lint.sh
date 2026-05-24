@@ -48,7 +48,10 @@ WARN_COUNT=0
 ERROR_COUNT=0
 
 warn() { echo "WARN  $1:$2 $3"; WARN_COUNT=$((WARN_COUNT + 1)); }
-err()  { echo "ERROR $1:$2 $3"; ERROR_COUNT=$((ERROR_COUNT + 1)); }
+# err() helper removed v1.1.2 — was symmetric with warn() but had zero call
+# sites. ERROR_COUNT is incremented directly by the gherkin-lint subprocess
+# branch (line ~57). If a future strict-mode rule needs inline error emission,
+# re-add the helper at that time.
 
 # 1. Prefer official gherkin-lint if available
 if command -v gherkin-lint >/dev/null 2>&1; then
