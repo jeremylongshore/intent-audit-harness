@@ -58,6 +58,27 @@ CTO call: **delete all 3, no grandfathering.** Rationale:
 
 - **Shellcheck version is 0.9.0 on Ubuntu 22.04 runners.** Newer shellcheck releases (0.10.x+) surface additional rules; if the CI runner image upgrades shellcheck before we re-verify, new findings could appear. Mitigation: keep `shellcheck --version` printed in the CI step (currently implicit; could add `shellcheck --version` as a first sub-step for future audit-trail clarity).
 - **PATTERN_COUNTS feature deferral.** If a future consumer asks for per-pattern JSON breakdown, the deleted code is in `git log v1.1.1..v1.1.2 -- scripts/bias-count.sh` — re-add in a feature PR with proper wiring to the JSON output, don't reanimate as-is.
+- **Pre-existing print-every-line behavior in gherkin-lint.sh's third awk** (`prev_blank = 1` as top-level expression → always-true pattern → default `$0` print). Cosmetic noise in script output; not a counter bug. Filed as deferred scope; would be a one-line move into the right pattern-action shape.
+
+## 5a. Gemini-surfaced bug discovery — gherkin-lint.sh awk subprocess counter undercount
+
+Initial PR scope was "delete 3 dead-code findings + flip CI gate." Gemini's PR #38 review flagged that the comment I added at the `err()` removal site (claiming `ERROR_COUNT` is incremented by the gherkin-lint subprocess branch) was misleading because the awk-fallback path printed errors without incrementing the counter. Per the IEP Convergence Debt Plan's verify-before-claim discipline (ratified in DR 022), this prompted a fresh look at the actual code path rather than a comment patch.
+
+Direct verification confirmed Gemini's claim AND broadened it: all 4 awk subprocesses in the fallback path emitted `WARN`/`ERROR` lines without bumping the parent shell counters (lines 71, 74, 85, 91, 109 in the v1.1.1 source). The script reported "0 errors" while printing errors; the exit code stayed 0. This is **exactly the silent-failure class the linter exists to detect in OTHER projects** — a fitting irony to find in our own enforcement code.
+
+Fix scope (added to this PR):
+- New `process_awk_output()` helper at top of the script: captures awk output, counts `WARN `/`ERROR ` lines via inline awk (`'/^WARN /{c++} END{print c+0}'` — set-euo-pipefail safe), increments parent counters, re-prints
+- All 4 awk subprocess invocations now flow through the helper
+- Deliberate-failure test (feature file with `Scenario: ...\n  And ...`) confirms exit 1 + correct count
+- Clean-feature test confirms exit 0 + correct count
+
+**Why this fix landed in the same PR vs deferred:**
+- Same script we were already cleaning up
+- Same class of bug (counter undercount) as the one we just fixed in bd this session (silent throttle suppression)
+- The "no shortcuts" discipline applies — punting a Gemini-surfaced bug to a follow-up bead would have been precisely the kind of trade-off the discipline rejects
+- Fix is small (one helper function + 4 callsite wraps), self-contained, doesn't expand PR scope into a different topic
+
+This is the second time in 24h the verify-before-claim discipline produced a substantive deeper finding from a surface-level review comment (the first was DR 022's beads-throttle-vs-git-add inversion).
 
 ## 6. Follow-ups filed
 

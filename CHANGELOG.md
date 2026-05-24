@@ -12,7 +12,15 @@ Closes `iah-shellcheck-hard-fail` (`bd_000-projects-4asc`, P1). The shellcheck j
 
 - **`scripts/bias-count.sh`**: `declare -A PATTERN_COUNTS` plus the per-call `PATTERN_COUNTS["$label"]=$count` assignment in `count_pattern()`. SC2034: the associative array was populated but never read. Per-pattern counts are still printed inline (line 61) and are aggregated into `TOTAL_BIAS` for the JSON output `bias_total` metadata field; the per-pattern breakdown was apparently intended for a richer JSON shape that was never wired. Restoring it would be a feature, not a fix; filed as deferred scope if a consumer asks.
 - **`scripts/emit-evidence.sh`**: `INPUT_HASH_HEX="$(echo "$STATEMENT" | python3 -c ...)"` (formerly line 238). SC2034: computed but never read. Vestige from an earlier cosign integration; the surrounding `BLOB_FILE` construction relies on `ARTIFACT_NAME` only.
-- **`scripts/gherkin-lint.sh`**: `err()` helper function. SC2317: zero call sites in the file (verified via `grep -n "\berr\b"` — only the definition matches). The helper was defined symmetrically with `warn()` but never wired up to the awk rubric or the subprocess-fallback path. Replaced with a comment documenting the removal + the path to re-add if a future strict-mode rule needs inline error emission.
+- **`scripts/gherkin-lint.sh`**: `err()` helper function. SC2317: zero call sites in the file (verified via `grep -n "\berr\b"` — only the definition matches). The helper was defined symmetrically with `warn()` but never wired up to the awk rubric or the subprocess-fallback path. Replaced with `process_awk_output()` helper (see Fixed section below).
+
+### Fixed — gherkin-lint.sh awk subprocess undercount (silent-failure class bug; Gemini PR #38 review)
+
+While processing the SC2317 cleanup above, Gemini's PR #38 review surfaced a deeper bug: the gherkin-lint.sh awk-fallback path printed `WARN`/`ERROR` lines via `awk printf` but those subprocesses never incremented the parent shell's `WARN_COUNT`/`ERROR_COUNT` counters. The summary line said "0 warnings, 0 errors" while errors were actively being printed; the exit code stayed 0 regardless. Exactly the silent-failure class the linter exists to surface in OTHER projects.
+
+- **New `process_awk_output()` helper**: wraps each awk subprocess, captures its output, counts `WARN ` / `ERROR ` lines via inline awk (`'/^WARN /{c++} END{print c+0}'` — set-euo-pipefail safe, no `|| true` needed), increments the bash counters, then re-prints. 4 awk blocks now feed through it.
+- **Verification**: deliberate-failure test against a feature with `Scenario: ... \n And ...` produces exit code 1 + summary `0 warning(s), 1 error(s)` (was: exit 0 + `0 warning(s), 0 error(s)` while still printing the ERROR line). Clean feature still exits 0.
+- **Separate-scope finding**: the third awk script contains a stray top-level `prev_blank = 1` that awk treats as an always-true pattern, triggering its default print-every-line action. That's a pre-existing cosmetic issue (extra noise in script output) but not a counter bug — filed as deferred scope.
 
 ### Changed — Version bumped to v1.1.2 across all 5 manifests
 
