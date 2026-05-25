@@ -1,0 +1,36 @@
+# ruff.toml — audit-harness Python lint configuration
+#
+# Per IEP Convergence Debt Plan Priority 6 Phase A2 (iah-ruff,
+# bd_000-projects-x9bs). Pinned ruleset; ratchet up gradually as the
+# codebase warrants.
+#
+# CI hard-fails on any ruff finding (.github/workflows/ci.yml ruff job).
+
+line-length = 120          # modern Python default; PEP-8's 79 is too narrow for our naming
+target-version = "py38"    # match python/pyproject.toml requires-python = ">=3.8"
+
+# Lint scope:
+#   - scripts/*.py            (the canonical Python deterministic gates)
+#   - python/src/intent_audit_harness/{__init__,__main__,cli}.py   (the wrapper surface)
+#
+# Excluded:
+#   - python/.venv/                                  (vendored deps; not own code)
+#   - python/src/intent_audit_harness/scripts/       (bundled-content mirror of
+#       scripts/*; stale-sync issue tracked by iah-python-wrapper-scripts-sync.
+#       Once that bead ships build-time sync, this exclusion can drop.)
+#   - rust/scripts/                                  (same bundled-content
+#       pattern for the Rust wrapper; same follow-up bead covers it)
+extend-exclude = [
+  "python/.venv/",
+  "python/src/intent_audit_harness/scripts/",
+  "rust/scripts/",
+]
+
+[lint]
+# Per bead spec + Gemini PR #39 review: pyflakes (F) catches dead imports +
+# unused variables; pycodestyle errors (E) catches syntax-level issues;
+# flake8-bugbear (B) catches Python-specific bugs (mutable default args,
+# unreliable exception handling, etc.) — added in v1.1.3 after empirical
+# check confirmed zero new findings on our codebase. Ratchet up further
+# (I import order, UP pyupgrade, etc.) in a future ratchet bead.
+select = ["B", "E", "F"]

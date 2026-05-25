@@ -9,7 +9,6 @@ filesystem path via ``importlib.resources`` and invoke ``bash``/``python3``.
 """
 from __future__ import annotations
 
-import os
 import shutil
 import stat
 import subprocess
