@@ -37,12 +37,12 @@ class MethodScore:
     kind: str  # "src" or "test"
 
 
-# Directories to skip during candidate discovery + during the --json input-hash
-# walk. Single source of truth shared by score_python's candidate scan AND
-# main's --json input-hash collector. Pre-v1.1.4 these were two separate sets
-# (`ignore` in score_python, `prune` in main) with DIVERGENT contents — `ignore`
-# had "reports" but lacked .next/.nuxt/.cache; `prune` had the modern web-framework
-# dirs but lacked "reports". Union per Gemini PR #71 review.
+# Directories to skip during candidate discovery AND the --json input-hash
+# walk. Single source of truth — both call sites MUST use this set so a repo
+# with `reports/` (or `.next/`, `.nuxt/`, `.cache/`) gets identical treatment
+# in both the candidate scan and the input-hash computation. Adding a dir
+# here removes it from BOTH passes; that's the invariant this constant exists
+# to preserve.
 EXCLUDED_DIRS = {
     ".git", ".venv", "venv", "node_modules", "__pycache__",
     "dist", "build", "target", ".tox", ".mypy_cache", ".pytest_cache",

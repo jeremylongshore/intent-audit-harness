@@ -50,13 +50,10 @@ ERROR_COUNT=0
 warn() { echo "WARN  $1:$2 $3"; WARN_COUNT=$((WARN_COUNT + 1)); }
 
 # process_awk_output — funnel awk-printed WARN/ERROR lines through the bash
-# counters so the summary + exit code reflect awk-fallback findings too.
-# v1.1.2 BUG (now fixed): the awk blocks below printed WARN/ERROR lines but
-# ran in subprocesses so the parent-shell counters never updated. v1.1.2
-# (PR #38) added this helper with 2 awk passes per call (one for WARN, one
-# for ERROR). v1.1.4 (per Gemini PR #39 review) collapses to a single awk
-# pass that counts both at once via read-into-tuple — halves the subprocess
-# fork count. Cleanly handles no-match case under set -euo pipefail.
+# counters so the summary + exit code reflect awk-fallback findings (the
+# subprocesses below can't otherwise touch the parent-shell counters).
+# Single-pass awk counts both at once; no-match handled cleanly under
+# set -euo pipefail via the `+0` numeric coercions.
 process_awk_output() {
   local out="$1"
   [ -z "$out" ] && return 0
@@ -114,10 +111,6 @@ else
     fi
 
     # "And" at scenario start (grammar error)
-    # Note: prev_blank tracking was removed v1.1.4 — the bare `prev_blank = 1`
-    # at the top of this script was an always-true awk pattern that triggered
-    # the default { print } action, flooding stdout with every feature-file
-    # line. prev_blank was never USED anywhere; safe to delete both touches.
     process_awk_output "$(awk -v file="$feature" '
       /^[[:space:]]*Scenario/ { in_scenario = 1; step_count = 0; next }
       /^[[:space:]]*(Given|When|Then|And|But)/ {
