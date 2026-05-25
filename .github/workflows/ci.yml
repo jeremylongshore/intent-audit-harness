@@ -84,10 +84,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: shellcheck
+        # Hard-fail per iah-shellcheck-hard-fail (bd_000-projects-4asc) +
+        # IEP Convergence Debt Plan Priority 6 Phase A1. The previous
+        # `|| true` tolerance suffix is removed: any shellcheck warning or
+        # error blocks the PR. Precondition met by v1.1.1 (PR #37 script
+        # robustness fixes) + v1.1.2 dead-code cleanup (PR for this bead).
         run: |
           sudo apt-get update && sudo apt-get install -y shellcheck
-          shellcheck scripts/*.sh || true
-          # tighten to exit-on-warning once known issues are addressed
+          shellcheck scripts/*.sh
 
   python-syntax:
     name: python -m py_compile (script lint)
