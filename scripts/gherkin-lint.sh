@@ -51,17 +51,17 @@ warn() { echo "WARN  $1:$2 $3"; WARN_COUNT=$((WARN_COUNT + 1)); }
 
 # process_awk_output — funnel awk-printed WARN/ERROR lines through the bash
 # counters so the summary + exit code reflect awk-fallback findings too.
-# Pre-v1.1.2 BUG: the awk blocks below printed WARN/ERROR lines but ran in
-# subprocesses so the parent-shell counters never updated; the summary said
-# "0 errors" while printing errors and the exit code stayed 0. Fixed here per
-# Gemini PR #38 review. (`awk '/^WARN /{c++} END{print c+0}'` cleanly handles
-# the no-match case under set -euo pipefail without needing `|| true`.)
+# v1.1.2 BUG (now fixed): the awk blocks below printed WARN/ERROR lines but
+# ran in subprocesses so the parent-shell counters never updated. v1.1.2
+# (PR #38) added this helper with 2 awk passes per call (one for WARN, one
+# for ERROR). v1.1.4 (per Gemini PR #39 review) collapses to a single awk
+# pass that counts both at once via read-into-tuple — halves the subprocess
+# fork count. Cleanly handles no-match case under set -euo pipefail.
 process_awk_output() {
   local out="$1"
   [ -z "$out" ] && return 0
-  local w e
-  w=$(printf '%s\n' "$out" | awk '/^WARN /{c++} END{print c+0}')
-  e=$(printf '%s\n' "$out" | awk '/^ERROR /{c++} END{print c+0}')
+  local w=0 e=0
+  read -r w e < <(awk '/^WARN /{w++} /^ERROR /{e++} END {print w+0, e+0}' <<< "$out")
   WARN_COUNT=$((WARN_COUNT + w))
   ERROR_COUNT=$((ERROR_COUNT + e))
   printf '%s\n' "$out"
@@ -114,9 +114,11 @@ else
     fi
 
     # "And" at scenario start (grammar error)
+    # Note: prev_blank tracking was removed v1.1.4 — the bare `prev_blank = 1`
+    # at the top of this script was an always-true awk pattern that triggered
+    # the default { print } action, flooding stdout with every feature-file
+    # line. prev_blank was never USED anywhere; safe to delete both touches.
     process_awk_output "$(awk -v file="$feature" '
-      prev_blank = 1
-      /^[[:space:]]*$/ { prev_blank = 1; next }
       /^[[:space:]]*Scenario/ { in_scenario = 1; step_count = 0; next }
       /^[[:space:]]*(Given|When|Then|And|But)/ {
         if (in_scenario && step_count == 0 && /^[[:space:]]*And/) {

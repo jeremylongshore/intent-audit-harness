@@ -81,16 +81,26 @@ jobs:
   shellcheck:
     name: shellcheck (script lint)
     runs-on: ubuntu-latest
+    # Hard-fail per iah-shellcheck-hard-fail (bd_000-projects-4asc) + IEP
+    # Convergence Debt Plan Priority 6 Phase A1. Version-pinned per
+    # iah-shellcheck-version-pin (bd_000-projects-v1ds, v1.1.4 bundle) so
+    # a future shellcheck release can't surface new rules silently against
+    # already-merged code. To bump: edit SHELLCHECK_VERSION below + run
+    # `shellcheck scripts/*.sh` locally to confirm nothing new fires +
+    # commit as part of an explicit PR. Stable releases at
+    # https://github.com/koalaman/shellcheck/releases
+    env:
+      SHELLCHECK_VERSION: "v0.10.0"
     steps:
       - uses: actions/checkout@v6
-      - name: shellcheck
-        # Hard-fail per iah-shellcheck-hard-fail (bd_000-projects-4asc) +
-        # IEP Convergence Debt Plan Priority 6 Phase A1. The previous
-        # `|| true` tolerance suffix is removed: any shellcheck warning or
-        # error blocks the PR. Precondition met by v1.1.1 (PR #37 script
-        # robustness fixes) + v1.1.2 dead-code cleanup (PR for this bead).
+      - name: Install pinned shellcheck
         run: |
-          sudo apt-get update && sudo apt-get install -y shellcheck
+          curl -sSL "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+            | tar -xJ -C /tmp
+          sudo install -m 0755 "/tmp/shellcheck-${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck
+      - name: shellcheck
+        run: |
+          shellcheck --version
           shellcheck scripts/*.sh
 
   ruff:
