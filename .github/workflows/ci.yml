@@ -93,6 +93,27 @@ jobs:
           sudo apt-get update && sudo apt-get install -y shellcheck
           shellcheck scripts/*.sh
 
+  ruff:
+    name: ruff (Python lint)
+    runs-on: ubuntu-latest
+    # Hard-fail per iah-ruff (bd_000-projects-x9bs) + IEP Convergence Debt
+    # Plan Priority 6 Phase A2. Permissive E + F base ruleset; ratchet up
+    # later. Version-pinned per iah-shellcheck-version-pin lesson so a future
+    # ruff release can't surface new rules silently against already-merged
+    # code. To bump: edit the pinned version below + run `ruff check` locally
+    # to confirm nothing new fires + commit as part of an explicit PR.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install ruff (pinned)
+        run: pip install 'ruff==0.15.4'
+      - name: ruff check
+        run: |
+          ruff --version
+          ruff check
+
   python-syntax:
     name: python -m py_compile (script lint)
     runs-on: ubuntu-latest
