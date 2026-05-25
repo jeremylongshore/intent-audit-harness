@@ -46,6 +46,16 @@ Filed `iah-python-wrapper-scripts-sync` as separate follow-up bead. Either (a) b
 
 This is exactly the kind of latent issue a lint-gate rollout surfaces — the reconnaissance discipline (Phase A1 + A2) finds problems beyond the immediate scope. Logged for follow-up; not in this PR.
 
+## 4a. Gemini PR #39 review — 2 substantive findings, both adopted verbatim
+
+Gemini surfaced two code-quality findings on the initial push; both were addressed in a fix-up commit before merge:
+
+1. **Add `B` (flake8-bugbear) to the ruleset.** Initial config used `select = ["E", "F"]` per bead spec. Gemini noted bugbear catches Python-specific bugs (mutable default args, unreliable exception handling) and recommended adopting from the outset. Empirical check via `ruff check --select B,E,F` confirmed zero new findings on our codebase. Adopted: `select = ["B", "E", "F"]`. The ratchet-later principle still applies for I (import order), UP (pyupgrade), etc.
+
+2. **Move local `import hashlib` to module-level (PEP 8 alignment).** The initial fix removed `, os` from the local `import hashlib, os` re-import to eliminate the shadow, but kept `import hashlib` local with a bandaid comment ("# local; os is module-level"). Gemini correctly noted PEP 8 prefers all imports at module top; the comment was a workaround marker for a fix that should have been done properly. Adopted: moved `hashlib` to module-level imports alongside the other stdlib imports; removed the local re-import + the comment entirely.
+
+Both fixes preserve correctness (verified via re-run `ruff check` → All checks passed; `python3 -m py_compile` → exit 0) and produce cleaner code than the initial commit. This is the third Gemini-surfaced quality fix in three consecutive audit-harness PRs this week (#37 bias-count extension alignment, #38 awk subprocess counter bug, #39 bugbear + PEP-8 imports) — the review loop is producing consistent value.
+
 ## 5. What worked
 
 - **Reconnaissance-before-claim caught the bundled-content sprawl** — would have been very noisy CI failures if I'd just enabled ruff with default scope.

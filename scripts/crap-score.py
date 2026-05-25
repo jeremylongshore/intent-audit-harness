@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import shutil
@@ -384,7 +385,6 @@ def main() -> int:
         (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
 
     if args.json:
-        import hashlib  # local; os is module-level
         side = os.environ.get("AUDIT_HARNESS_SIDE", "ci")
         # input_hash: SHA256 over all production+test source-file contents under root, sorted.
         # Use os.walk with directory pruning instead of rglob — large vendored trees

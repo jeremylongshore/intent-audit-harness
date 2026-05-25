@@ -6,14 +6,14 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ### Added — Ruff CI gate against own-code Python (IEP Convergence Debt Plan Priority 6 Phase A2)
 
-Closes `iah-ruff` (`bd_000-projects-x9bs`, P1). New `.github/workflows/ci.yml` job `ruff (Python lint)` runs `ruff check` (version-pinned to 0.15.4 per the iah-shellcheck-version-pin lesson) against the own-code Python surface. Permissive base ruleset `select = ["E", "F"]` per bead spec — pyflakes (F) for dead imports + unused variables; pycodestyle errors (E) for syntax-level issues. Line length set to 120 (modern Python convention). Ratchet up gradually.
+Closes `iah-ruff` (`bd_000-projects-x9bs`, P1). New `.github/workflows/ci.yml` job `ruff (Python lint)` runs `ruff check` (version-pinned to 0.15.4 per the iah-shellcheck-version-pin lesson) against the own-code Python surface. Ruleset `select = ["B", "E", "F"]` — pyflakes (F) for dead imports + unused variables; pycodestyle errors (E) for syntax-level issues; **flake8-bugbear (B) for Python-specific bugs** (mutable default args, unreliable exception handling — added per Gemini PR #39 review after empirical confirmation that zero new findings fire on our codebase). Line length set to 120 (modern Python convention). Further ratchet (I import-order, UP pyupgrade, etc.) deferred to a future ratchet bead.
 
 - New `ruff.toml` at repo root: lint scope = `scripts/*.py` + `python/src/intent_audit_harness/{__init__,__main__,cli}.py`; excludes `python/.venv/` + `python/src/intent_audit_harness/scripts/` + `rust/scripts/` (the last two are bundled-content mirrors of `scripts/*` — stale-sync tracked separately, see below).
 - Version pinned via `pip install 'ruff==0.15.4'`; CI prints `ruff --version` for audit trail.
 
 ### Removed — 3 ruff-surfaced dead-code findings
 
-- **`scripts/crap-score.py`**: redundant local `import hashlib, os` inside the `if args.json:` block was shadowing the module-level `import os`, causing ruff F401 against the top-level (which IS used by the same block). Changed local import to `import hashlib` only — eliminates the shadow, module-level `os` now correctly resolves.
+- **`scripts/crap-score.py`**: redundant local `import hashlib, os` inside the `if args.json:` block was shadowing the module-level `import os`, causing ruff F401 against the top-level (which IS used by the same block). **Per Gemini PR #39 review (PEP 8 alignment)**, moved `hashlib` to module-level imports alongside the other stdlib imports; removed the local re-import entirely. The bandaid-comment explaining the local import is also gone.
 - **`scripts/crap-score.py`**: dead local variable `metrics = rec.get("metrics", {}).get("cyclomatic", {})` in `score_rust()` (line 266; F841). Assigned but never read. The actual cyclomatic value is fetched freshly inside the loop on line 268.
 - **`python/src/intent_audit_harness/cli.py`**: dead `import os` at line 12 (F401). Zero `os.*` usages in the file.
 

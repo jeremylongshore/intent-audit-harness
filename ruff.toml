@@ -27,7 +27,10 @@ extend-exclude = [
 ]
 
 [lint]
-# Permissive base per bead spec: pyflakes (F) catches dead imports + unused
-# variables; pycodestyle errors (E) catches syntax-level issues. No style
-# nits (no W, no I, no plugin rules) until the team explicitly opts in.
-select = ["E", "F"]
+# Per bead spec + Gemini PR #39 review: pyflakes (F) catches dead imports +
+# unused variables; pycodestyle errors (E) catches syntax-level issues;
+# flake8-bugbear (B) catches Python-specific bugs (mutable default args,
+# unreliable exception handling, etc.) — added in v1.1.3 after empirical
+# check confirmed zero new findings on our codebase. Ratchet up further
+# (I import order, UP pyupgrade, etc.) in a future ratchet bead.
+select = ["B", "E", "F"]
