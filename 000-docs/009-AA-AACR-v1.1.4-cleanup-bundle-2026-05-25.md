@@ -95,3 +95,57 @@ Note: pinning to v0.10.0 (newer than local 0.9.0) means CI might surface finding
 - Bead still open + deferred: 65k4 (iah-python-wrapper-scripts-sync) — separate scope
 
 — end AAR —
+
+---
+
+## Appendix — 2026-05-26 Release-Sweep Step 5 Verification
+
+Run as part of the cross-repo release-sweep ceremony (Step 5 audit-harness VERIFY-ONLY, no version bump). Companion to in-flight `intent-eval-lab#74` (CHANGELOG tidy), merged `intent-eval-lab#73` (panel-review AAR), merged + published `intent-eval-core@0.1.1`, merged `j-rig-skill-binary-eval#76` (release CI fix).
+
+### Phase 0 — PR sweep
+
+- ✅ `gh pr list` — 0 open PRs
+- ✅ Scaffolding present (`SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`)
+- ✅ Working tree clean
+- ✅ On `main`, in sync with origin
+
+### Phase 1 — version consistency
+
+- ✅ git tag `v1.1.4` at HEAD
+- ✅ `package.json#version` = `1.1.4`
+- ✅ All 5 polyglot manifests at v1.1.4 per `version-canonical-check` CI gate (verified by v1.1.4 release earlier this session)
+
+### Phase 2.6 BLOCKING gate
+
+- ✅ SemVer regex: all `## [vX.Y.Z]` headers match
+- ✅ Monotonic descent: v1.1.4 > v1.1.3 > v1.1.2 > v1.1.1 > v1.1.0
+- ✅ Dated headers (` - 2026-05-25`, `2026-05-24`, etc.)
+- ✅ Section headers (`### Fixed`, `### Changed`, `### Why patch, not minor`, `### Verification`)
+- ✅ 102 bullet items across populated sections
+
+### Phase 3 — secrets / posture
+
+- ✅ No source-tree edits this session beyond this appendix
+- ✅ Existing sigstore-provenance discipline intact (release artifacts signed when published)
+
+### Discovery — npm-publish gap (NEW bead filed)
+
+`@intentsolutions/audit-harness` npm-published version is **v0.1.0** (the initial release). v1.1.0 through v1.1.4 are git-only — there is no `release.yml` in this repo, so tag pushes don't trigger an npm publish.
+
+**Impact**:
+- `intent-eval-core/package.json` pins `^0.1.0` — gets v0.1.0, NOT v1.x (semver-incompatible)
+- All `intent-eval-core` CI runs that invoke `audit-harness verify` / `audit-harness arch` execute v0.1.0 behavior, missing every v1.x improvement (gherkin-lint, crap-score exclusion fix, shellcheck pin, prev_blank noise fix, single-awk-pass optimization)
+- `intent-eval-lab` uses **vendored** `.audit-harness/` at v1.1.4 via `install.sh` — so lab is current, core is way behind
+- The audit-harness CHANGELOG describes work as "Closes `<bead>`" but that work is not yet distributed to npm-consuming downstream
+
+**Filed as bead**: `iah-npm-publish-gap — git v1.1.4 vs npm v0.1.0 — no release.yml in audit-harness` (P1). Out-of-scope for this verify-only step; flagged for the next focused audit-harness session.
+
+### Phase 7.5 — gist
+
+- audit-harness has no public gist (per release-sweep CTO call: defer to follow-up `iep-gist-coverage` bead — quality-over-speed; each landing-page gist deserves bespoke `/appaudit` treatment, not mass auto-generation)
+
+### Verdict
+
+State of audit-harness at v1.1.4 is **internally healthy** (git tag + CHANGELOG + manifest sync + scaffolding all consistent). The **distribution layer is broken** — downstream npm consumers are stuck at v0.1.0 and the iah-npm-publish-gap bead captures the work to fix. Step 5 VERIFY-ONLY exits clean against the local repository state; the publish-pipeline gap is a SEPARATE workstream tracked by the new bead.
+
+— end appendix —
