@@ -136,7 +136,7 @@ Run as part of the cross-repo release-sweep ceremony (Step 5 audit-harness VERIF
 - `intent-eval-core/package.json` pins `^0.1.0` — gets v0.1.0, NOT v1.x (semver-incompatible)
 - All `intent-eval-core` CI runs that invoke `audit-harness verify` / `audit-harness arch` execute v0.1.0 behavior, missing every v1.x improvement (gherkin-lint, crap-score exclusion fix, shellcheck pin, prev_blank noise fix, single-awk-pass optimization)
 - `intent-eval-lab` uses **vendored** `.audit-harness/` at v1.1.4 via `install.sh` — so lab is current, core is way behind
-- The audit-harness CHANGELOG describes work as "Closes <bead>" but that work is not yet distributed to npm-consuming downstream
+- The audit-harness CHANGELOG describes work as "Closes `<bead>`" but that work is not yet distributed to npm-consuming downstream
 
 **Filed as bead**: `iah-npm-publish-gap — git v1.1.4 vs npm v0.1.0 — no release.yml in audit-harness` (P1). Out-of-scope for this verify-only step; flagged for the next focused audit-harness session.
 
