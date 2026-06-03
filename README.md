@@ -1,5 +1,7 @@
 # @intentsolutions/audit-harness
 
+Part of the **[Intent Eval Platform](https://github.com/intent-solutions-io/intent-eval-platform)** — the umbrella mapping the six repos that converge via a shared Evidence Bundle schema.
+
 Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `implement-tests` Claude Code skills — but usable standalone in any repo that wants hash-pinned, escape-scanned, AI-proof quality gates.
 
 ## What it is
