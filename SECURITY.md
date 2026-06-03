@@ -11,7 +11,7 @@
 
 **Please do NOT open public issues for security concerns.**
 
-Email **security@intentsolutions.io** with:
+Email **<security@intentsolutions.io>** with:
 
 - Type of issue (e.g., escape-scan bypass, manifest forgery, code execution via crafted policy file, dependency vulnerability)
 - Full paths of related source files
@@ -49,7 +49,7 @@ audit-harness sits in CI as a quality gate. Its security posture must consider:
 
 ## Disclosure Process
 
-1. **Report** — You email the details to security@intentsolutions.io
+1. **Report** — You email the details to <security@intentsolutions.io>
 2. **Triage** — We assess severity and impact
 3. **Fix** — We develop and test a patch
 4. **Notify** — We inform affected users (consumer repos via the npm/PyPI/crates advisory feeds + a CHANGELOG entry tagged `SECURITY`)
@@ -78,6 +78,6 @@ We appreciate responsible disclosure. Reporters who follow this policy will rece
 
 ## Contact
 
-- **Security reports**: security@intentsolutions.io
-- **General inquiries**: jeremy@intentsolutions.io
+- **Security reports**: <security@intentsolutions.io>
+- **General inquiries**: <jeremy@intentsolutions.io>
 - **Response time**: 24 hours for initial acknowledgment

@@ -46,6 +46,7 @@ This repo is the **deterministic-gates layer** of the three-repo convergence vis
 - The skills stay updated via their own version bumps. This package versions independently.
 
 When updating this package, also check:
+
 - `~/.claude/skills/audit-tests/scripts/` — contains mirror copies; sync if signature-breaking changes land here
 - `~/.claude/skills/audit-tests/SKILL.md` — references specific commands; update if CLI surface changes
 - `~/.claude/skills/implement-tests/references/install-playbook-*.md` — reference `pnpm exec audit-harness ...`; update accordingly
@@ -77,7 +78,6 @@ git push --follow-tags
 - New commands → minor bump
 - Bug fixes / doc updates → patch bump
 
-
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
 
@@ -108,17 +108,20 @@ bd close <id>         # Complete work
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
+
    ```bash
    git pull --rebase
    bd dolt push
    git push
    git status  # MUST show "up to date with origin"
    ```
+
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
+
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push

@@ -16,7 +16,7 @@ assignees: ''
 
 ## Proposed CLI surface
 
-```
+```text
 audit-harness <new-subcommand-or-flag> [args...]
 ```
 

@@ -1,10 +1,10 @@
-# Upgrade Landscape — audit-harness in the Three-Repo Convergence
+# Upgrade Landscape — audit-harness in the Three-repo Convergence
 
 | Field | Value |
 |---|---|
 | **Date** | 2026-05-10 |
 | **Author** | Jeremy Longshore |
-| **Status** | Draft v1.0 — Part 2 research deliverable (Workstream A) |
+| **Status** | Draft v1.0 — Part 2 research deliverable (research workstream A) |
 | **Source plan** | Author's local working source (private to Intent Solutions workspace; not part of this repository). Public-facing companion docs in `intent-eval-lab/000-docs/003-PP-PLAN-phase-b-scope-refinement.md` (synthesis) + `intent-eval-lab/000-docs/004-AT-DECR-isedc-council-record-2026-05-10.md` (Decision Record). |
 | **Companion specs** | `000-docs/001-DR-DESIGN-evidence-bundle-envelope-design-notes.md` (AH-4) · `intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/` (IEL-4) |
 | **Scope** | Landscape mapping — NOT implementation guidance, NOT a refactor plan |
@@ -43,7 +43,7 @@ Grounding the rest of this document in what's actually on disk today (verified f
 - No L3 mutation-testing dispatch (Stryker/PIT/mutmut/cargo-mutants config can be hash-pinned, but the harness does not run them or score the kill-rate).
 - No MCP/agent-specific conformance gates (the j-rig/intent-eval-lab side cares about agent behavior; the harness has no hooks for it yet).
 
-The Phase-A envelope design (`001-DR-DESIGN-…`) already commits to JSON Schema 2020-12, semver `schema_version`, hash-pinnable `policy_hash` + `input_hash`, idempotent emission, no-PII. The convergence question is: **which prior-art envelope do we sit on top of, and which OSS scoring patterns do we borrow for the gates that don't exist yet?**
+The Phase-A envelope design (`001-DR-DESIGN-…`) already commits to JSON Schema 2020-12, SemVer `schema_version`, hash-pinnable `policy_hash` + `input_hash`, idempotent emission, no-PII. The convergence question is: **which prior-art envelope do we sit on top of, and which OSS scoring patterns do we borrow for the gates that don't exist yet?**
 
 ---
 
@@ -69,24 +69,24 @@ Targeted papers that anchor the design choices below. All retrieved via Semantic
 
 Ten-plus tools the harness should be benchmarked against, with explicit license and borrowability notes. Sorted by capability layer.
 
-| Tool | License | Layer / Role | Borrowability for audit-harness | Primary URL |
+| Tool | License | Layer / Role | borrowability for audit-harness | Primary URL |
 |---|---|---|---|---|
 | **SonarQube** Community Edition | LGPL v3 | Multi-layer SAST + quality-gate engine | **Quality Gate concept** (named, versioned threshold bundles, pass/fail at the bundle, not the rule) is the closest industry analog to what `tests/TESTING.md` is becoming. Borrow the quality-gate-as-named-entity pattern. | [sonarsource.com/products/sonarqube](https://www.sonarsource.com/products/sonarqube/) |
-| **Semgrep OSS** | LGPL 2.1 | L2 SAST + secrets + SCA | YAML rule format + Semgrep Registry pattern for community rules. Borrow: rule hash-pinning is already in their CI playbook (we pin Stryker/dep-cruiser configs — extend to Semgrep rules). | [semgrep.dev](https://semgrep.dev/) |
+| **Semgrep OSS** | LGPL 2.1 | L2 SAST + secrets + SCA | YAML rule format + Semgrep Registry pattern for community rules. Borrow: rule hash-pinning is already in their CI playbook (we pin Stryker/dep-cruiser configs — extend to Semgrep rules). | [Semgrep](https://semgrep.dev/) |
 | **OpenSSF Scorecard** | Apache 2.0 | Cross-layer repo health | **Risk-stratified score weighting** (critical=10, high=7.5, medium=5, low=2.5) is directly portable to the Evidence Bundle. JSON output via `--format=json`; REST API at `api.scorecard.dev`. | [github.com/ossf/scorecard](https://github.com/ossf/scorecard) |
-| **PIT (PITest)** | Apache 2.0 (tool) | L3 mutation testing (JVM) | **Incremental mutation** (changed-code-only mode) is the answer to Sánchez et al.'s "performance is the #1 barrier" finding. Borrow the incremental-analysis CI pattern even though we won't bundle PIT. | [pitest.org](https://pitest.org/) |
-| **Stryker** (JS/.NET/Scala) | Apache 2.0 | L3 mutation testing | Org-level pattern: **language-specific implementations + shared visualization layer** ("Mutation Testing Elements"). Our equivalent: per-language scorers (radon, c8, gocyclo…) feeding a single CRAP envelope. Stryker config (`stryker.conf.json`) is already in the harness hash-pin list — good. | [stryker-mutator.io](https://stryker-mutator.io/) |
+| **PIT (PITest)** | Apache 2.0 (tool) | L3 mutation testing (JVM) | **Incremental mutation** (changed-code-only mode) is the answer to Sánchez et al.'s "performance is the #1 barrier" finding. Borrow the incremental-analysis CI pattern even though we won't bundle PIT. | [PITest](https://pitest.org/) |
+| **Stryker** (JS/.NET/Scala) | Apache 2.0 | L3 mutation testing | Org-level pattern: **language-specific implementations + shared visualization layer** ("Mutation Testing Elements"). Our equivalent: per-language scorers (radon, c8, gocyclo…) feeding a single CRAP envelope. Stryker config (`stryker.conf.json`) is already in the harness hash-pin list — good. | [Stryker](https://stryker-mutator.io/) |
 | **mutmut** | MIT | L3 mutation testing (Python) | Drop-in for Python mutation-kill-rate gate when the harness adds `audit-harness mutation` (future AH-?). Mention as the reference Python implementation. | [github.com/boxed/mutmut](https://github.com/boxed/mutmut) |
 | **cargo-mutants** | MIT/Apache-2.0 | L3 mutation testing (Rust) | Reference Rust implementation. Same role as mutmut for the Rust audit-harness binary in `rust/`. | [github.com/sourcefrog/cargo-mutants](https://github.com/sourcefrog/cargo-mutants) |
 | **in-toto** | Apache 2.0 (CNCF graduated) | Attestation framework | **Statement format** (`_type` + `subject` + `predicateType` + `predicate`) is the canonical envelope shape. The Evidence Bundle row should BE an in-toto Statement with our own `predicateType`, not a parallel format. **Highest-value borrow on this list.** | [in-toto.io](https://in-toto.io/) · [github.com/in-toto/attestation](https://github.com/in-toto/attestation) |
 | **SLSA v1.0** | CC-BY-4.0 (spec) | Build provenance attestation | Direct precedent for what a versioned predicate looks like: `predicateType: https://slsa.dev/provenance/v1` resolves to the latest minor — exact pattern Phase-A envelope design needs for `audit-harness:gate-result/v1`. | [slsa.dev/spec/v1.0/provenance](https://slsa.dev/spec/v1.0/provenance) |
-| **Sigstore (Cosign + Fulcio + Rekor)** | Apache 2.0 | Signing + transparency log | Keyless OIDC-bound signing of in-toto attestations + Rekor transparency log. **Cosign can sign in-toto attestations directly** via `cosign attest`. Borrow: emit Evidence Bundles as cosign-attestable artifacts even if v1 doesn't sign them yet. | [docs.sigstore.dev](https://docs.sigstore.dev/) |
+| **Sigstore (Cosign + Fulcio + Rekor)** | Apache 2.0 | Signing + transparency log | keyless OIDC-bound signing of in-toto attestations + Rekor transparency log. **Cosign can sign in-toto attestations directly** via `cosign attest`. Borrow: emit Evidence Bundles as Cosign-attestable artifacts even if v1 doesn't sign them yet. | [Sigstore docs](https://docs.sigstore.dev/) |
 | **GUAC** | Apache 2.0 (OpenSSF incubating) | Attestation aggregation graph | Ingests in-toto + SLSA + SBOM + Scorecard into a GraphQL-queryable graph. **If we adopt in-toto envelopes, GUAC ingestion is free.** Architectural argument: don't build a custom aggregator — emit standard envelopes, let GUAC compose. | [github.com/guacsec/guac](https://github.com/guacsec/guac) |
-| **SCAI** (Software Supply Chain Attribute Integrity) | Open spec | in-toto predicate type | The closest existing predicate type to what we're emitting. The Evidence Bundle row is *attribute integrity for test artifacts* — same conceptual frame Melara defined for binaries. | [arxiv.org/abs/2210.05813](https://arxiv.org/abs/2210.05813) |
+| **SCAI** (Software Supply Chain Attribute Integrity) | Open spec | in-toto predicate type | The closest existing predicate type to what we're emitting. The Evidence Bundle row is *attribute integrity for test artifacts* — same conceptual frame Melara defined for binaries. | [arXiv:2210.05813](https://arxiv.org/abs/2210.05813) |
 | **AVID** (AI Vulnerability Database) | Open knowledge base | AI-failure taxonomy | Separation of **what failed (DB)** from **how it's classified (taxonomy)** is the right shape for cataloging escape-scan REFUSE patterns at scale. Borrow the taxonomy-vs-evidence split for the failure-shape catalog the Intentional Mapping work will need. | [avidml.org](https://avidml.org/) |
 | **Qodo PR-Agent** (formerly CodiumAI) | AGPL-3.0 | L? AI code review | Open-source AI-reviewer with PR compression strategy. Borrow: the **review/improve/ask** tool decomposition pattern when the harness gets an AI-judge layer. Not core to v1. | [github.com/Qodo-AI/pr-agent](https://github.com/Qodo-AI/pr-agent) |
-| **CodeRabbit / Greptile** | Proprietary SaaS | AI code review | Competitive set for *evaluating* AI reviewers, not models to borrow from. Mention only as the SWRBench (paper #4) target population. | [coderabbit.ai](https://coderabbit.ai) · [greptile.com](https://greptile.com) |
-| **Codacy / CodeClimate** | Proprietary SaaS (free tier) | Multi-layer dashboards | Established quality-dashboard incumbents. Borrow: the **single repo health score** UX pattern. NOT the closed scoring engines. | [codacy.com](https://codacy.com) · [codeclimate.com](https://codeclimate.com) |
+| **CodeRabbit / Greptile** | Proprietary SaaS | AI code review | Competitive set for *evaluating* AI reviewers, not models to borrow from. Mention only as the SWRBench (paper #4) target population. | [coderabbit.ai](https://coderabbit.ai) · [Greptile](https://greptile.com) |
+| **Codacy / CodeClimate** | Proprietary SaaS (free tier) | Multi-layer dashboards | Established quality-dashboard incumbents. Borrow: the **single repo health score** UX pattern. NOT the closed scoring engines. | [Codacy](https://codacy.com) · [codeclimate.com](https://codeclimate.com) |
 
 ---
 
@@ -94,52 +94,52 @@ Ten-plus tools the harness should be benchmarked against, with explicit license 
 
 Categorized URLs. ≥15 unique sources, all directly relevant to upgrade decisions.
 
-**Mutation testing**
+### Mutation testing
 
-1. PIT — https://pitest.org/
-2. Stryker — https://stryker-mutator.io/
-3. mutmut (Python) — https://github.com/boxed/mutmut
-4. cargo-mutants (Rust) — https://github.com/sourcefrog/cargo-mutants
-5. Jia & Harman survey — https://www.semanticscholar.org/paper/d7c38286734419b52de4262c9802ebdfcf4b9447
-6. Sánchez et al. OSS practitioner survey — https://www.semanticscholar.org/paper/dd96541648125a3eab01f2bdc5e80d24f10de6ec
+1. PIT — <https://pitest.org/>
+2. Stryker — <https://stryker-mutator.io/>
+3. mutmut (Python) — <https://github.com/boxed/mutmut>
+4. cargo-mutants (Rust) — <https://github.com/sourcefrog/cargo-mutants>
+5. Jia & Harman survey — <https://www.semanticscholar.org/paper/d7c38286734419b52de4262c9802ebdfcf4b9447>
+6. Sánchez et al. OSS practitioner survey — <https://www.semanticscholar.org/paper/dd96541648125a3eab01f2bdc5e80d24f10de6ec>
 
-**Attestation, provenance, supply chain**
+### Attestation, provenance, supply chain
 
-7. in-toto framework — https://in-toto.io/
-8. in-toto attestation spec — https://github.com/in-toto/attestation
-9. in-toto Statement v1 spec — https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md
-10. SLSA v1.0 provenance — https://slsa.dev/spec/v1.0/provenance
-11. SCAI predicate (Melara, arXiv 2210.05813) — https://arxiv.org/abs/2210.05813
-12. DSSE (Dead Simple Signing Envelope) — https://github.com/secure-systems-lab/dsse
+1. in-toto framework — <https://in-toto.io/>
+2. in-toto attestation spec — <https://github.com/in-toto/attestation>
+3. in-toto Statement v1 spec — <https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md>
+4. SLSA v1.0 provenance — <https://slsa.dev/spec/v1.0/provenance>
+5. SCAI predicate (Melara, arXiv 2210.05813) — <https://arxiv.org/abs/2210.05813>
+6. DSSE (Dead Simple Signing Envelope) — <https://github.com/secure-systems-lab/dsse>
 
-**Transparency log + signing**
+### Transparency log + signing
 
-13. Sigstore docs — https://docs.sigstore.dev/
-14. Cosign overview — https://docs.sigstore.dev/cosign/signing/overview/
-15. Rekor transparency log — https://docs.sigstore.dev/logging/overview/
+1. Sigstore docs — <https://docs.sigstore.dev/>
+2. Cosign overview — <https://docs.sigstore.dev/cosign/signing/overview/>
+3. Rekor transparency log — <https://docs.sigstore.dev/logging/overview/>
 
-**Supply-chain composition**
+### Supply-chain composition
 
-16. GUAC — https://github.com/guacsec/guac
-17. OpenSSF Scorecard — https://github.com/ossf/scorecard
-18. Scorecard checks reference — https://github.com/ossf/scorecard/blob/main/docs/checks.md
+1. GUAC — <https://github.com/guacsec/guac>
+2. OpenSSF Scorecard — <https://github.com/ossf/scorecard>
+3. Scorecard checks reference — <https://github.com/ossf/scorecard/blob/main/docs/checks.md>
 
-**AI-test review + LLM eval**
+### AI-test review + LLM eval
 
-19. SWRBench (Zeng et al., arXiv 2509.01494) — https://arxiv.org/abs/2509.01494
-20. CWEval (Peng et al., arXiv 2501.08200) — https://arxiv.org/abs/2501.08200
-21. AI-code detection (Suh et al., ICSE 2025) — https://www.semanticscholar.org/paper/e41ceafe77d394b650430ff144cd87811fcc27f4
-22. AVID — https://avidml.org/
+1. SWRBench (Zeng et al., arXiv 2509.01494) — <https://arxiv.org/abs/2509.01494>
+2. CWEval (Peng et al., arXiv 2501.08200) — <https://arxiv.org/abs/2501.08200>
+3. AI-code detection (Suh et al., ICSE 2025) — <https://www.semanticscholar.org/paper/e41ceafe77d394b650430ff144cd87811fcc27f4>
+4. AVID — <https://avidml.org/>
 
-**Static analysis & quality-gate prior art**
+### Static analysis & quality-gate prior art
 
-23. SonarQube quality gates — https://www.sonarsource.com/products/sonarqube/
-24. Semgrep — https://semgrep.dev/
-25. Qodo PR-Agent — https://github.com/Qodo-AI/pr-agent
+1. SonarQube quality gates — <https://www.sonarsource.com/products/sonarqube/>
+2. Semgrep — <https://semgrep.dev/>
+3. Qodo PR-Agent — <https://github.com/Qodo-AI/pr-agent>
 
-**CRAP metric origin (non-academic, industry-original)**
+### CRAP metric origin (non-academic, industry-original)
 
-26. Savoia, A. "Will your tests destroy your code?" (Crap4j origin) — https://www.artima.com/weblogs/viewpost.jsp?thread=210575
+1. Savoia, A. "Will your tests destroy your code?" (Crap4j origin) — <https://www.artima.com/weblogs/viewpost.jsp?thread=210575>
 
 ---
 
@@ -171,7 +171,7 @@ The Evidence Bundle is the substrate the three repos share. Each row below asks:
 
 ---
 
-## 7. Borrowable patterns — concrete adoption candidates
+## 7. Patterns worth borrowing — concrete adoption candidates
 
 Patterns with named source and direct mapping to a convergence bead.
 

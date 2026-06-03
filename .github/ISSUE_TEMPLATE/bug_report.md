@@ -13,6 +13,7 @@ assignees: ''
 ## Reproduction
 
 **Environment:**
+
 - audit-harness version: <!-- e.g., 0.1.0 -->
 - Node version: <!-- e.g., 20.x -->
 - OS: <!-- e.g., Ubuntu 24.04, macOS 14, Windows 11 -->
@@ -20,7 +21,7 @@ assignees: ''
 
 **Command + flags that reproduces:**
 
-```
+```text
 audit-harness <subcommand> <flags>
 ```
 

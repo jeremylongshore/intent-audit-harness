@@ -36,7 +36,7 @@ Pre-claim ruff run against own-code Python (`scripts/crap-score.py` + `python/sr
 | `.github/workflows/ci.yml` | New `ruff` CI job: pinned `ruff==0.15.4` via pip install, prints `ruff --version` for audit trail, runs `ruff check` (hard-fail). |
 | 5 manifests | All bumped 1.1.2 → 1.1.3 per canonical-check gate. |
 | `CHANGELOG.md` | New v1.1.3 entry per Keep-a-Changelog 1.1.0 format. |
-| `.harness-hash` | Regenerated via `--init`. 1 of 9 pinned-file hashes changes (scripts/crap-score.py). |
+| `.harness-hash` | Regenerated via `--init`. 1 of 9 pinned-file hashes changes (`scripts/crap-score.py`). |
 
 ## 4. Bundled-content discovery + follow-up bead
 
@@ -52,7 +52,7 @@ Gemini surfaced two code-quality findings on the initial push; both were address
 
 1. **Add `B` (flake8-bugbear) to the ruleset.** Initial config used `select = ["E", "F"]` per bead spec. Gemini noted bugbear catches Python-specific bugs (mutable default args, unreliable exception handling) and recommended adopting from the outset. Empirical check via `ruff check --select B,E,F` confirmed zero new findings on our codebase. Adopted: `select = ["B", "E", "F"]`. The ratchet-later principle still applies for I (import order), UP (pyupgrade), etc.
 
-2. **Move local `import hashlib` to module-level (PEP 8 alignment).** The initial fix removed `, os` from the local `import hashlib, os` re-import to eliminate the shadow, but kept `import hashlib` local with a bandaid comment ("# local; os is module-level"). Gemini correctly noted PEP 8 prefers all imports at module top; the comment was a workaround marker for a fix that should have been done properly. Adopted: moved `hashlib` to module-level imports alongside the other stdlib imports; removed the local re-import + the comment entirely.
+2. **Move local `import hashlib` to module-level (PEP 8 alignment).** The initial fix removed `, os` from the local `import hashlib, os` re-import to eliminate the shadow, but kept `import hashlib` local with a band-aid comment ("# local; os is module-level"). Gemini correctly noted PEP 8 prefers all imports at module top; the comment was a workaround marker for a fix that should have been done properly. Adopted: moved `hashlib` to module-level imports alongside the other stdlib imports; removed the local re-import + the comment entirely.
 
 Both fixes preserve correctness (verified via re-run `ruff check` → All checks passed; `python3 -m py_compile` → exit 0) and produce cleaner code than the initial commit. This is the third Gemini-surfaced quality fix in three consecutive audit-harness PRs this week (#37 bias-count extension alignment, #38 awk subprocess counter bug, #39 bugbear + PEP-8 imports) — the review loop is producing consistent value.
 

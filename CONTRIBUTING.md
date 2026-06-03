@@ -44,9 +44,11 @@ node bin/audit-harness.js verify        # verify against pinned hashes
 
 1. Fork the repository
 2. Create a feature branch from `main`:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
+
 3. Make your changes — keep additive when possible (the harness has a stable CLI surface across 5+ language ecosystems)
 4. Write or update tests in `test/` if behavior changes
 5. Verify locally: `npm test` (when test suite exists) + `node bin/audit-harness.js list` should still exit 0
@@ -93,7 +95,7 @@ python3 scripts/crap-score.py --help
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>(<scope>): <subject>
 
 [optional body]
@@ -103,6 +105,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`
 
 **Examples:**
+
 - `feat(crap): support .NET via dotnet-coverage`
 - `fix(escape-scan): handle whitespace in renamed files`
 - `docs(readme): clarify install.sh polyglot vendor flow`
@@ -123,7 +126,7 @@ The package is MIT-licensed. By contributing, you agree to license your contribu
 
 - **Questions**: [GitHub Discussions](https://github.com/jeremylongshore/audit-harness/discussions)
 - **Bugs**: [Issue Tracker](https://github.com/jeremylongshore/audit-harness/issues)
-- **Email**: jeremy@intentsolutions.io
+- **Email**: <jeremy@intentsolutions.io>
 
 ## License
 

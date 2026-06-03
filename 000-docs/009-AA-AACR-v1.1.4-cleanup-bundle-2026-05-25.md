@@ -6,7 +6,7 @@
 | **Date** | 2026-05-25 |
 | **Author** | Jeremy Longshore |
 | **Plan** | IEP Convergence Debt Plan Priority 3 (audit-harness hardening) + Priority 6 follow-ups |
-| **Beads closed** | `iah-gherkin-prev-blank-noise` (o9q1), `iah-gherkin-single-awk-opt` (vawm), `iah-crap-score-exclusion-dedup` (niv8), `iah-shellcheck-version-pin` (v1ds) |
+| **Beads closed** | `iah-gherkin-prev-blank-noise` (`o9q1`), `iah-gherkin-single-awk-opt` (`vawm`), `iah-crap-score-exclusion-dedup` (`niv8`), `iah-shellcheck-version-pin` (`v1ds`) |
 | **Release** | v1.1.4 (patch) |
 
 ## 1. Context
@@ -17,21 +17,21 @@ This v1.1.4 bundle addresses 4 deferred items in one focused release. Pure clean
 
 ## 2. What changed
 
-### 2.1 `scripts/gherkin-lint.sh` — `prev_blank` print-every-line noise (o9q1, Gemini #71)
+### 2.1 `scripts/gherkin-lint.sh` — `prev_blank` print-every-line noise (`o9q1`, Gemini #71)
 
-Pre-fix state: the third awk block (And-at-scenario-start checker) opened with a bare `prev_blank = 1` expression at the top of the awk script. Awk interprets bare top-level expressions as patterns; the expression evaluates to `1` (truthy) on every line; a pattern without an explicit action gets awk's default `{ print }` action; result was every line of every feature file printed to stdout alongside the intentional ERROR printf.
+Pre-fix state: the third awk block (And-at-scenario-start checker) opened with a bare `prev_blank = 1` expression at the top of the awk script. The awk language interprets bare top-level expressions as patterns; the expression evaluates to `1` (truthy) on every line; a pattern without an explicit action gets awk's default `{ print }` action; result was every line of every feature file printed to stdout alongside the intentional ERROR printf.
 
 Verified `prev_blank` had ZERO USES anywhere in the awk script (via `grep -n prev_blank` against the original file). Both touches (top-level + blank-line pattern assignment) deleted entirely.
 
 Verified post-fix: deliberate-failure test from v1.1.2 AAR (feature with `Scenario: ... \n And ...`) produces ONLY the ERROR line, no feature-content noise. Compared bytes vs pre-fix output to confirm noise reduction.
 
-### 2.2 `scripts/gherkin-lint.sh` — `process_awk_output()` single awk pass (vawm, Gemini #39)
+### 2.2 `scripts/gherkin-lint.sh` — `process_awk_output()` single awk pass (`vawm`, Gemini #39)
 
-v1.1.2 (PR #38) introduced `process_awk_output()` helper with 2 separate awk subprocesses per call — one counting `^WARN ` lines, one counting `^ERROR ` lines. 4 callsites × 2 subprocesses = 8 awk processes per feature file. Gemini PR #39 suggested collapsing to a single awk pass with `read -r w e < <(awk '...' <<< "$out")` syntax that handles both counters at once.
+v1.1.2 (PR #38) introduced `process_awk_output()` helper with 2 separate awk subprocesses per call — one counting `^WARN` lines, one counting `^ERROR` lines. 4 callsites × 2 subprocesses = 8 awk processes per feature file. Gemini PR #39 suggested collapsing to a single awk pass with `read -r w e < <(awk '...' <<< "$out")` syntax that handles both counters at once.
 
 Adopted verbatim. Verified with mixed-finding test: 2 WARNs + 1 ERROR in one feature produces summary `2 warning(s), 1 error(s)` and exit 1 (correct).
 
-### 2.3 `scripts/crap-score.py` — `EXCLUDED_DIRS` constant deduplication (niv8, Gemini #71)
+### 2.3 `scripts/crap-score.py` — `EXCLUDED_DIRS` constant deduplication (`niv8`, Gemini #71)
 
 Pre-fix state: TWO separate sets of directory-exclusion strings with overlapping intent but DIVERGENT contents:
 
@@ -52,7 +52,7 @@ prune = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build"
 
 Fixed by extracting module-level `EXCLUDED_DIRS = { union-of-both }` and referencing from both call sites. Set contents documented in the constant's docstring along with the asymmetry rationale so a future reader knows WHY.
 
-### 2.4 `.github/workflows/ci.yml` — shellcheck version pin (v1ds)
+### 2.4 `.github/workflows/ci.yml` — shellcheck version pin (`v1ds`)
 
 v1.1.2 (Phase A1) installed shellcheck via `apt-get install -y shellcheck` — pulls whatever Ubuntu's runner image ships (currently 0.9.0). v1.1.3 (Phase A2) proactively pinned ruff to 0.15.4 per the iah-shellcheck-version-pin lesson (filed during Phase A1 AAR). v1.1.4 brings shellcheck up to parity.
 
@@ -91,7 +91,7 @@ Note: pinning to v0.10.0 (newer than local 0.9.0) means CI might surface finding
   - 006: v1.1.1 script robustness (PR #37, Gemini #67 source-driven fixes)
   - 007: v1.1.2 shellcheck hard-fail + dead-code + awk-counter bug fix (PR #38, Phase A1)
   - 008: v1.1.3 ruff CI gate + dead-code (PR #39, Phase A2 + Gemini bugbear+PEP-8)
-- Beads closed by this PR: o9q1, vawm, niv8, v1ds
+- Beads closed by this PR: `o9q1`, `vawm`, `niv8`, `v1ds`
 - Bead still open + deferred: 65k4 (iah-python-wrapper-scripts-sync) — separate scope
 
 — end AAR —
@@ -119,7 +119,7 @@ Run as part of the cross-repo release-sweep ceremony (Step 5 audit-harness VERIF
 
 - ✅ SemVer regex: all `## [vX.Y.Z]` headers match
 - ✅ Monotonic descent: v1.1.4 > v1.1.3 > v1.1.2 > v1.1.1 > v1.1.0
-- ✅ Dated headers (` - 2026-05-25`, `2026-05-24`, etc.)
+- ✅ Dated headers (`- 2026-05-25`, `2026-05-24`, etc.)
 - ✅ Section headers (`### Fixed`, `### Changed`, `### Why patch, not minor`, `### Verification`)
 - ✅ 102 bullet items across populated sections
 
@@ -133,6 +133,7 @@ Run as part of the cross-repo release-sweep ceremony (Step 5 audit-harness VERIF
 `@intentsolutions/audit-harness` npm-published version is **v0.1.0** (the initial release). v1.1.0 through v1.1.4 are git-only — there is no `release.yml` in this repo, so tag pushes don't trigger an npm publish.
 
 **Impact**:
+
 - `intent-eval-core/package.json` pins `^0.1.0` — gets v0.1.0, NOT v1.x (semver-incompatible)
 - All `intent-eval-core` CI runs that invoke `audit-harness verify` / `audit-harness arch` execute v0.1.0 behavior, missing every v1.x improvement (gherkin-lint, crap-score exclusion fix, shellcheck pin, prev_blank noise fix, single-awk-pass optimization)
 - `intent-eval-lab` uses **vendored** `.audit-harness/` at v1.1.4 via `install.sh` — so lab is current, core is way behind

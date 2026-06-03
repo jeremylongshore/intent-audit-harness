@@ -16,6 +16,5 @@
   "ignores": [
     ".audit-harness/**",
     "node_modules/**"
-    "node_modules/**"
   ]
 }

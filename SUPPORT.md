@@ -28,5 +28,5 @@ This is a sole-maintainer OSS project — response times are best-effort and may
 
 ## Contact
 
-- **Email**: jeremy@intentsolutions.io
+- **Email**: <jeremy@intentsolutions.io>
 - **GitHub**: [@jeremylongshore](https://github.com/jeremylongshore)

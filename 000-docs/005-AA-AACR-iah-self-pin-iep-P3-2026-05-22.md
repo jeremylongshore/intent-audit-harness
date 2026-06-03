@@ -30,10 +30,10 @@ Per `audit-harness/CLAUDE.md` design rule 5: "The harness tests itself." That ru
 
 ## 3. Why minor not patch
 
-The `.harness-hash-extra-patterns` mechanism is a new authored feature surface. Repos that opt in get a new capability (additional pin patterns beyond the canonical defaults). Per SemVer:
+The `.harness-hash-extra-patterns` mechanism is a new authored feature surface. Repositories that opt in get a new capability (additional pin patterns beyond the canonical defaults). Per SemVer:
 
 - **Adding** new capability without removing or breaking existing behavior → minor bump.
-- Repos that don't create `.harness-hash-extra-patterns` get exactly the previous behavior (the file-existence check no-ops gracefully).
+- Repositories that don't create `.harness-hash-extra-patterns` get exactly the previous behavior (the file-existence check no-ops gracefully).
 - audit-harness is the **first adopter** of the mechanism — the dogfood.
 
 Patch would have understated the change. Major would have overstated it (no breaking change for any consumer).

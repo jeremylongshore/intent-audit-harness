@@ -1,4 +1,5 @@
 # @intentsolutions/audit-harness: Operator-Grade System Analysis
+
 *Generated: 2026-05-20*
 *Version: v1.0.1 (commit `483945a`)*
 
@@ -14,7 +15,7 @@ How it works mechanically: `bin/audit-harness.js` (`bin/audit-harness.js:15-25`)
 
 Current state: at `v1.0.1` the package is operationally healthy. CI passes on Node 18/20/22 (`.github/workflows/ci.yml:21-22`); a 4-section, 11-check backward-compat regression suite (`tests/regression/run-regression.sh`) protects the `--json` + `emit-evidence` additions from drift; SemVer commitments are codified (`SEMVER.md:30-55`); the license is Apache 2.0 with a NOTICE file shipped in the tarball (the v1.0.1 fix). The repo has 4 git tags shipped, 19 commits on `main`, and zero runtime dependencies in the Node dispatcher. The harness is *self-aware enough* to be tested against synthetic diffs in CI (`.github/workflows/ci.yml:53-78`) but is *not yet self-pinning* — the `verify` and `list` self-check steps tolerate exit-3 ("no manifest") because the repo does not yet initialize a manifest against its own scripts.
 
-The biggest risk is supply-chain attribution. The harness sits in CI as the *last* gate before a merge — a forged `verify` output, a tampered tarball, or a downgraded predicate URI could silently disable test enforcement across every consumer repo simultaneously. The current mitigations (dependabot weekly, CODEOWNERS lock on `/scripts` and `/bin`, SemVer commit doc, security@ contact) are good policy hygiene but lack technical depth: no cosign provenance on the npm publish workflow, no Rekor entry for tagged releases, and the `emit-evidence` `--sign` path is gated behind an unverified DNSSEC + CAA precondition on `evals.intentsolutions.io` (see `scripts/emit-evidence.sh:39-43` and the CISO binding referenced there). Secondary risks: a three-way version drift between `package.json` (`1.0.1`), `python/pyproject.toml` (`0.1.0`), `rust/Cargo.toml` (`0.1.0`), and `version.txt` (`0.2.0`) means a consumer asking "what version am I running?" gets four different answers depending on install path; and the bash + python polyglot pattern is portable but increases the surface area of `set -euo pipefail` discipline that has historically been the source of subtle non-determinism in the test corpus.
+The biggest risk is supply-chain attribution. The harness sits in CI as the *last* gate before a merge — a forged `verify` output, a tampered tarball, or a downgraded predicate URI could silently disable test enforcement across every consumer repo simultaneously. The current mitigations (dependabot weekly, CODEOWNERS lock on `/scripts` and `/bin`, SemVer commit doc, security@ contact) are good policy hygiene but lack technical depth: no Cosign provenance on the npm publish workflow, no Rekor entry for tagged releases, and the `emit-evidence` `--sign` path is gated behind an unverified DNSSEC + CAA precondition on `evals.intentsolutions.io` (see `scripts/emit-evidence.sh:39-43` and the CISO binding referenced there). Secondary risks: a three-way version drift between `package.json` (`1.0.1`), `python/pyproject.toml` (`0.1.0`), `rust/Cargo.toml` (`0.1.0`), and `version.txt` (`0.2.0`) means a consumer asking "what version am I running?" gets four different answers depending on install path; and the bash + python polyglot pattern is portable but increases the surface area of `set -euo pipefail` discipline that has historically been the source of subtle non-determinism in the test corpus.
 
 ---
 
@@ -26,9 +27,9 @@ The harness implements eight deterministic test-quality gates accessible through
 
 Implementation status: stable. All eight gates are implemented and exercised by CI on three Node versions. The `--json` + `emit-evidence` Milestone 2 work landed in `v0.3.0`; the license relicense to Apache 2.0 landed in `v1.0.0`; the tarball-NOTICE fix landed in `v1.0.1`. The 1,808 lines of code (`scripts/*` + `bin/audit-harness.js` + `tests/regression/run-regression.sh` per `wc -l`) are tracked, reviewed under CODEOWNERS, and packaged for three ecosystems. Polyglot wrappers (`python/`, `rust/`) re-implement the dispatcher in their respective host languages and re-bundle the *same* scripts via package data (Python) or `include_bytes!` (Rust). The convergence-layer feature — Evidence Bundle emission — is implemented and tested but BLOCKED from production signing until the DNSSEC + CAA precondition on `evals.intentsolutions.io` is met (per `scripts/emit-evidence.sh:39-43` and ISEDC Session 1 binding referenced in `CHANGELOG.md:55-58`).
 
-Technology foundation: Node 18+ for the dispatcher; bash for six of seven scripts; python3 for `crap-score.py` and `emit-evidence.sh`'s JSON marshaling sub-call (`scripts/emit-evidence.sh:123-169`); cosign (operator-installed) for the optional sign step; jsonschema (Python) for CI-time schema validation of emitted envelopes (`.github/workflows/ci.yml:113`). Zero npm runtime dependencies in the Node package — `package.json:39-49` lists only a `test` script and a `prepublishOnly` smoke check; the engines field pins Node 18+. The architecture-check dispatcher (`scripts/arch-check.sh`) shells out to the *consumer repo's* installed checker (dependency-cruiser, import-linter, deptrac, arch-go, or ArchUnit via gradle) but does not install any of them.
+Technology foundation: Node 18+ for the dispatcher; bash for six of seven scripts; python3 for `crap-score.py` and `emit-evidence.sh`'s JSON marshaling sub-call (`scripts/emit-evidence.sh:123-169`); Cosign (operator-installed) for the optional sign step; jsonschema (Python) for CI-time schema validation of emitted envelopes (`.github/workflows/ci.yml:113`). Zero npm runtime dependencies in the Node package — `package.json:39-49` lists only a `test` script and a `prepublishOnly` smoke check; the engines field pins Node 18+. The architecture-check dispatcher (`scripts/arch-check.sh`) shells out to the *consumer repo's* installed checker (dependency-cruiser, import-linter, deptrac, arch-go, or ArchUnit via Gradle) but does not install any of them.
 
-Key risks: (1) supply-chain integrity — the npm publish workflow does not yet emit sigstore provenance or push a Rekor entry for tagged releases, so a tampered tarball cannot be deterministically rejected by consumers; (2) version drift across the four installation surfaces — `package.json` (`1.0.1`), `version.txt` (`0.2.0`), `python/pyproject.toml` (`0.1.0`), `rust/Cargo.toml` (`0.1.0`) — currently disagree, which means `--version` answers differ by install path; (3) the harness does not yet self-pin — CI tolerates exit-3 ("no manifest") on `verify` and `list` (`.github/workflows/ci.yml:36-51`), so a forged change to a script in this repo would not be caught by this repo's own harness; (4) the `emit-evidence --sign --rekor-url` codepath is operator discipline, not enforced by the script — it will happily push to Rekor against a predicate URI whose DNS posture has not been verified.
+Key risks: (1) supply-chain integrity — the npm publish workflow does not yet emit Sigstore provenance or push a Rekor entry for tagged releases, so a tampered tarball cannot be deterministically rejected by consumers; (2) version drift across the four installation surfaces — `package.json` (`1.0.1`), `version.txt` (`0.2.0`), `python/pyproject.toml` (`0.1.0`), `rust/Cargo.toml` (`0.1.0`) — currently disagree, which means `--version` answers differ by install path; (3) the harness does not yet self-pin — CI tolerates exit-3 ("no manifest") on `verify` and `list` (`.github/workflows/ci.yml:36-51`), so a forged change to a script in this repo would not be caught by this repo's own harness; (4) the `emit-evidence --sign --rekor-url` codepath is operator discipline, not enforced by the script — it will happily push to Rekor against a predicate URI whose DNS posture has not been verified.
 
 ### Operational Status
 
@@ -47,13 +48,13 @@ Key risks: (1) supply-chain integrity — the npm publish workflow does not yet 
 | Dispatcher language | Node.js | `>=18` (engines field) | Cross-platform CLI shell, `child_process.spawn` to scripts |
 | Script language (majority) | Bash | 5+ (assumed; no explicit pin) | Six of seven gate scripts (`harness-hash`, `escape-scan`, `arch-check`, `bias-count`, `gherkin-lint`, `emit-evidence`) |
 | Script language (CRAP) | Python | 3.10+ per `CONTRIBUTING.md:12`, but `python/pyproject.toml:8` says `>=3.8`; CI uses 3.12 | `crap-score.py` + JSON marshaling inside `emit-evidence.sh` |
-| Optional signing | cosign | Latest (operator-installed) | `emit-evidence --sign` — Fulcio OIDC keyless or `--key` keyref |
-| Optional transparency log | Rekor (sigstore) | sigstore default | `--rekor-url` push of signed DSSE envelope |
+| Optional signing | Cosign | Latest (operator-installed) | `emit-evidence --sign` — Fulcio OIDC keyless or `--key` key reference |
+| Optional transparency log | Rekor (Sigstore) | Sigstore default | `--rekor-url` push of signed DSSE envelope |
 | CI orchestration | GitHub Actions | `actions/checkout@v6`, `setup-node@v6`, `setup-python@v6` | `.github/workflows/ci.yml` |
 | Package ecosystems | npm + PyPI (hatchling) + crates.io (cargo) | Each independent | Triple-publish for cross-ecosystem reach |
 | Schema validation | `jsonschema` (Python) | CI-installed only | Regression-suite Section 3 validates emitted envelopes against `gate-result.schema.json` |
 | Architecture checkers (dispatched, not bundled) | dependency-cruiser / import-linter / deptrac / arch-go / ArchUnit (Gradle) | Consumer-installed | `scripts/arch-check.sh` detects which is configured and invokes it |
-| Complexity scorers (dispatched) | radon (Py) / `cr` / complexity-report (JS) / gocyclo (Go) / rust-code-analysis-cli (Rust) | Consumer-installed | `scripts/crap-score.py:99-279` |
+| Complexity scorers (dispatched) | radon (Python) / `cr` / complexity-report (JS) / gocyclo (Go) / rust-code-analysis-cli (Rust) | Consumer-installed | `scripts/crap-score.py:99-279` |
 
 ---
 
@@ -68,13 +69,13 @@ Key risks: (1) supply-chain integrity — the npm publish workflow does not yet 
 | Gate implementation (python) | `crap-score.py`, `emit-evidence.sh`'s embedded `python3 - <<PY` block | ~430 LOC + ~50 in emit-evidence | CRAP complexity-coverage math + JSON marshaling with deterministic key ordering | Python's `json` module is the most ergonomic way to produce canonical JSON with proper escaping; `awk`/`jq` substitutes exist but increase the polyglot surface for negligible benefit |
 | Policy substrate | `tests/TESTING.md` in the *consumer* repo | repo-specific | Carries coverage / mutation thresholds and arch-rule references | "Policy-driven, never hardcoded" per `CLAUDE.md:14` — `escape-scan.sh:78-89` reads `coverage.line`, `coverage.branch`, `mutation.kill_rate` from there at runtime; no hardcoded floor in script source |
 | Pin substrate | `.harness-hash` in consumer repo | SHA-256 manifest | Tamper-evidence on engineer-owned config files | The whole point of the harness — `harness-hash.sh:40-60` pins `.feature`, dep-cruiser configs, ArchUnit tests, Stryker configs, `.c8rc.json`. Any byte-level change without a fresh `--init` triggers REFUSE |
-| Convergence envelope | in-toto Statement v1 + `predicateType https://evals.intentsolutions.io/gate-result/v1` | per intent-eval-lab/specs/evidence-bundle/v0.1.0-draft | Schema for Evidence Bundle gate-result rows | Reuses an open standard (in-toto attestation framework, sigstore precedent); the predicate URI is *frozen* once Rekor sees it per `SEMVER.md:69-77` |
-| Optional signing layer | cosign attest-blob + Rekor | sigstore-current | Detached transparency-log proof | DSSE-wrap a gate-result Statement for downstream verification; gated by operator opt-in to keep zero-deps default |
+| Convergence envelope | in-toto Statement v1 + `predicateType https://evals.intentsolutions.io/gate-result/v1` | per intent-eval-lab/specs/evidence-bundle/v0.1.0-draft | Schema for Evidence Bundle gate-result rows | Reuses an open standard (in-toto attestation framework, Sigstore precedent); the predicate URI is *frozen* once Rekor sees it per `SEMVER.md:69-77` |
+| Optional signing layer | Cosign attest-blob + Rekor | Sigstore-current | Detached transparency-log proof | DSSE-wrap a gate-result Statement for downstream verification; gated by operator opt-in to keep zero-deps default |
 | Optional telemetry | OTel-shaped JSON line on stderr | `agent.rollout.gate.evaluated` event | Best-effort event emission when `AUDIT_HARNESS_OTEL=1` | Per `scripts/emit-evidence.sh:182-187` — emits a structured signal any collector can scrape via stderr capture, but does not import an OTel SDK (keeps zero runtime deps) |
 
 ### System Diagram
 
-```
+```text
                   CONSUMER REPO                                                  AUDIT-HARNESS PACKAGE
 +----------------------------------------------+                  +----------------------------------------------+
 | .husky/pre-commit                            |                  | npm: @intentsolutions/audit-harness@1.0.1    |
@@ -144,7 +145,7 @@ Failure points along this path: step 6 fails if `git` is not in PATH (rare in CI
 
 ### Dependency Graph
 
-```
+```text
 bin/audit-harness.js
   -> scripts/harness-hash.sh   (verify | init | list)
   -> scripts/escape-scan.sh    (escape-scan)
@@ -224,7 +225,7 @@ What happens when each dependency is unavailable:
 
 - **Chosen**: `emit-evidence` wraps every gate-result JSON in an in-toto Statement v1 with `predicateType: https://evals.intentsolutions.io/gate-result/v1` (`scripts/emit-evidence.sh:55-56`, `SEMVER.md:69-77`).
 - **Over**: a bespoke Intent-Solutions-only envelope schema; SLSA provenance v1.0 (`predicateType: https://slsa.dev/provenance/v1`); SCAI predicate (Melara 2022, registered in-toto predicate); plain JSON-with-version-field.
-- **Because**: in-toto Statement v1 is the open standard for attestation envelopes — sigstore tooling natively understands it, Fulcio + Rekor are first-class consumers, and the predicate URI is the namespace for the "what does this attestation say?" question. Choosing in-toto means downstream consumers (j-rig, intent-rollout-gate) can use off-the-shelf cosign/sigstore verifiers instead of bespoke Intent Solutions parsers. The custom predicate URI under `evals.intentsolutions.io` keeps Intent Solutions sovereignty over the schema body while still ridig the open envelope shell.
+- **Because**: in-toto Statement v1 is the open standard for attestation envelopes — sigstore tooling natively understands it, Fulcio + Rekor are first-class consumers, and the predicate URI is the namespace for the "what does this attestation say?" question. Choosing in-toto means downstream consumers (j-rig, intent-rollout-gate) can use off-the-shelf cosign/sigstore verifiers instead of bespoke Intent Solutions parsers. The custom predicate URI under `evals.intentsolutions.io` keeps Intent Solutions sovereignty over the schema body while still keeping the open envelope shell rigid.
 - **Cost**: the predicate URI is *frozen* once Rekor sees a signed Statement against it (`SEMVER.md:73-77`). Any breaking change to the predicate body shape requires minting `gate-result/v2` and running both URIs in parallel. The DNS namespace `evals.intentsolutions.io` becomes a load-bearing identity surface — CISO binding from ISEDC Session 1 (`scripts/emit-evidence.sh:39-43`) blocks the first Rekor push until DNSSEC + CAA records are pinned on that namespace. Operator discipline is required; the script does not enforce the precondition.
 - **Revisit when**: (a) the in-toto spec ships v2 in a way that makes Statement v1 attestations less interoperable; (b) a regulatory regime (FIPS, EU CRA) requires a specific provenance shape that in-toto cannot carry as a predicate body; (c) Intent Solutions takes a position on standards-body filing (becomes a registered in-toto predicate type, per the SCAI precedent).
 
@@ -278,7 +279,7 @@ What happens when each dependency is unavailable:
 
 ### Layout
 
-```
+```text
 audit-harness/
 +-- AGENTS.md                         # bd workflow for AI agents working in this repo
 +-- CHANGELOG.md                      # Keep-a-Changelog format; release notes per tag
@@ -385,7 +386,7 @@ These are the files that, if subtly corrupted, break the security or correctness
 | Git | any recent | system pkg manager | `git --version` |
 | pnpm (optional, for `pnpm exec` consumers) | 8+ | `npm i -g pnpm` | `pnpm --version` |
 | shellcheck (optional, for contributors) | latest | `apt install shellcheck` / `brew install shellcheck` | `shellcheck --version` |
-| cosign (optional, for `emit-evidence --sign`) | latest | https://docs.sigstore.dev/cosign/installation/ | `cosign version` |
+| cosign (optional, for `emit-evidence --sign`) | latest | <https://docs.sigstore.dev/cosign/installation/> | `cosign version` |
 
 ### Zero to Running
 
@@ -408,19 +409,23 @@ This is the path for someone trying to *use* the harness in another repo.
 
 1. From the target repo's root: `pnpm add -D @intentsolutions/audit-harness` (Node) or `pip install intent-audit-harness` (Python) or `cargo install intent-audit-harness` (Rust) or `curl -sSL https://raw.githubusercontent.com/jeremylongshore/audit-harness/main/install.sh | bash` (everything else).
 2. Create `tests/TESTING.md` with at least:
-   ```
+
+   ```yaml
    coverage.line: 80
    coverage.branch: 70
    mutation.kill_rate: 70
    ```
+
 3. `pnpm exec audit-harness init` (or `scripts/audit-harness init` for vendored) — this writes `.harness-hash` pinning every `*.feature`, `.dependency-cruiser.cjs`, `.importlinter`, `stryker.conf.json`, etc. that exists in the repo.
 4. `pnpm exec audit-harness list` — confirm the pinned files match expectations.
 5. Wire pre-commit:
+
    ```sh
    # .husky/pre-commit
    pnpm exec audit-harness escape-scan --staged
    pnpm exec audit-harness verify
    ```
+
 6. Wire CI (see `README.md:64-75` for canonical example).
 7. Test the gate: stage a `coverage.line: 60` change to `tests/TESTING.md` and try to commit. Expect REFUSE.
 
@@ -449,7 +454,7 @@ This is the path for someone trying to *use* the harness in another repo.
 | Run locally (smoke) | `node bin/audit-harness.js --version` | Should print `1.0.1` |
 | Run a gate locally | `bash scripts/<gate>.sh ...` | Direct script invocation bypasses the Node dispatcher |
 | Run regression suite | `bash tests/regression/run-regression.sh` | 11 checks; needs `pip install jsonschema` for Section 3 |
-| Lint scripts | `shellcheck scripts/*.sh` | CI runs this advisory (`|| true`) |
+| Lint scripts | `shellcheck scripts/*.sh` | CI runs this advisory (`\|\| true`) |
 | Python syntax check | `find scripts -name '*.py' -print0 \| xargs -0 -n1 python -m py_compile` | CI runs this as a gate |
 | Bump version (npm) | `npm version patch \| minor \| major` | Updates `package.json` only; *does not* sync `version.txt` / Python / Rust |
 | Publish (npm) | `pnpm publish` | Needs `~/.npmrc` with org-scope token; runs `prepublishOnly` smoke first |
@@ -521,7 +526,7 @@ For PyPI: `pip install` resolves to the latest non-yanked version; use `pip` adm
 
 | Severity | Definition | Response Time | Playbook |
 |----------|------------|---------------|----------|
-| P0 | Escape-scan bypass in the wild (a published version lets a known-pattern through); harness corruption (a tampered tarball is on npm); credential leak in published assets | Immediate | (1) `npm deprecate` the bad versions with a clear reason; (2) cut a hot-fix patch from the last-known-good tag; (3) email security@intentsolutions.io thread; (4) open a SECURITY-labeled CHANGELOG entry on the next release; (5) notify the IEP umbrella issue in `intent-eval-lab` |
+| P0 | Escape-scan bypass in the wild (a published version lets a known-pattern through); harness corruption (a tampered tarball is on npm); credential leak in published assets | Immediate | (1) `npm deprecate` the bad versions with a clear reason; (2) cut a hot-fix patch from the last-known-good tag; (3) email <security@intentsolutions.io> thread; (4) open a SECURITY-labeled CHANGELOG entry on the next release; (5) notify the IEP umbrella issue in `intent-eval-lab` |
 | P1 | Regression in a gate's exit code or output stream on existing input (SemVer break) | 24 hours | (1) Reproduce locally with the failing fixture; (2) bisect from the last passing tag; (3) fix + add a regression case to `tests/regression/run-regression.sh`; (4) hot-fix patch release; (5) update SEMVER.md if the contract was unclear |
 | P2 | New false-positive REFUSE on a legitimate diff; documentation drift; version-string mismatch between ecosystems | 1 week | (1) Add a fixture demonstrating the false positive to `tests/fixtures/`; (2) tighten the regex or fix the parser; (3) regular patch release |
 | P3 | Polish issues; new gate feature requests | Best-effort | Open as a feature_request issue; gated by Phase B per `CLAUDE.md:34-40` |
@@ -613,7 +618,7 @@ Ordered by likelihood × impact.
 | Maintainer (`@jeremylongshore`) | Sole CODEOWNER per `.github/CODEOWNERS` | Admin on repo; npm publish; PyPI publish; crates.io publish | Required (GitHub) |
 | Contributors | Open issues, open PRs | Read; cannot merge without review | n/a |
 | Dependabot bot | Weekly bumps for GitHub Actions + npm | Authored PRs; cannot merge | n/a |
-| Security reporters | Vuln disclosure | Email security@intentsolutions.io | n/a |
+| Security reporters | Vuln disclosure | Email <security@intentsolutions.io> | n/a |
 
 ### Secrets
 
@@ -630,7 +635,7 @@ Ordered by likelihood × impact.
 - Apache 2.0 with explicit patent grant (`LICENSE`)
 - NOTICE file shipped in tarball per Apache 2.0 §4 (post-v1.0.1)
 - Documented threat model and severity table (`SECURITY.md:43-50`)
-- security@intentsolutions.io disclosure channel with 24-hour acknowledgment SLO
+- <security@intentsolutions.io> disclosure channel with 24-hour acknowledgment SLO
 - Zero runtime dependencies in the Node package — minimal supply-chain surface
 - Test corpus that validates the gate's REFUSE behavior against synthetic inputs (`.github/workflows/ci.yml:53-78`, `tests/regression/run-regression.sh`)
 - HTTPS-only release tarball fetch in `install.sh:52-67`
@@ -661,7 +666,7 @@ The package is OSS and runs in adopters' CI / pre-commit environments. Direct co
 | GitHub Actions minutes | covered by GitHub Pro | CI workflow: ~3-5 minutes per PR across 3 Node versions + shellcheck + python-syntax + regression = ~15 runner-min per PR. Public-repo runner minutes are free. |
 | Sigstore (Fulcio + Rekor) | $0 | Free public infrastructure for OSS |
 | GitHub releases hosting | $0 | Tarball serving included |
-| security@intentsolutions.io | covered by Workspace | Email channel |
+| <security@intentsolutions.io> | covered by Workspace | Email channel |
 | Maintainer time | sole-maintainer effort | Best-effort per SUPPORT.md |
 
 Cost-per-consumer-run: trivial. The harness executes in seconds (sub-second for `verify`, ~1-2s for `escape-scan` on a typical diff, ~10-60s for `crap` depending on project size and language scorer). On a typical CI runner this is well under $0.01 per PR per consumer.
@@ -783,18 +788,18 @@ Measurable outcomes:
 
 | Resource | URL |
 |----------|-----|
-| npm package | https://www.npmjs.com/package/@intentsolutions/audit-harness |
-| PyPI package | https://pypi.org/project/intent-audit-harness/ |
-| crates.io package | https://crates.io/crates/intent-audit-harness |
-| GitHub repo | https://github.com/jeremylongshore/audit-harness |
-| Issues | https://github.com/jeremylongshore/audit-harness/issues |
-| Security email | security@intentsolutions.io |
-| Sole maintainer email | jeremy@intentsolutions.io |
-| Predicate URI (frozen post-Rekor) | https://evals.intentsolutions.io/gate-result/v1 |
-| Convergence umbrella issue | https://github.com/jeremylongshore/intent-eval-lab/issues/4 |
-| Evidence Bundle SPEC (canonical) | https://github.com/jeremylongshore/intent-eval-lab/blob/main/specs/evidence-bundle/v0.1.0-draft/SPEC.md |
-| Cosign installation | https://docs.sigstore.dev/cosign/installation/ |
-| in-toto Statement v1 | https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md |
+| npm package | <https://www.npmjs.com/package/@intentsolutions/audit-harness> |
+| PyPI package | <https://pypi.org/project/intent-audit-harness/> |
+| crates.io package | <https://crates.io/crates/intent-audit-harness> |
+| GitHub repo | <https://github.com/jeremylongshore/audit-harness> |
+| Issues | <https://github.com/jeremylongshore/audit-harness/issues> |
+| Security email | <security@intentsolutions.io> |
+| Sole maintainer email | <jeremy@intentsolutions.io> |
+| Predicate URI (frozen post-Rekor) | <https://evals.intentsolutions.io/gate-result/v1> |
+| Convergence umbrella issue | <https://github.com/jeremylongshore/intent-eval-lab/issues/4> |
+| Evidence Bundle SPEC (canonical) | <https://github.com/jeremylongshore/intent-eval-lab/blob/main/specs/evidence-bundle/v0.1.0-draft/SPEC.md> |
+| Cosign installation | <https://docs.sigstore.dev/cosign/installation/> |
+| in-toto Statement v1 | <https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md> |
 
 ### First-Week Checklist
 
@@ -835,19 +840,19 @@ Measurable outcomes:
 
 ### B. Reference Links
 
-- Anthropic Claude Code skills spec: https://docs.anthropic.com/en/docs/claude-code/skills
+- Anthropic Claude Code skills spec: <https://docs.anthropic.com/en/docs/claude-code/skills>
 - Intent Solutions Testing SOP: umbrella `~/000-projects/CLAUDE.md` § "Intent Solutions Testing SOP"
 - Intent Eval Platform umbrella: `~/000-projects/intent-eval-platform/CLAUDE.md`
-- Evidence Bundle SPEC: https://github.com/jeremylongshore/intent-eval-lab/blob/main/specs/evidence-bundle/v0.1.0-draft/SPEC.md
-- Sigstore docs: https://docs.sigstore.dev/
-- Keep a Changelog: https://keepachangelog.com/en/1.1.0/
-- SemVer: https://semver.org/spec/v2.0.0.html
-- in-toto attestation framework: https://github.com/in-toto/attestation
-- SLSA provenance v1.0: https://slsa.dev/spec/v1.0/
+- Evidence Bundle SPEC: <https://github.com/jeremylongshore/intent-eval-lab/blob/main/specs/evidence-bundle/v0.1.0-draft/SPEC.md>
+- Sigstore docs: <https://docs.sigstore.dev/>
+- Keep a Changelog: <https://keepachangelog.com/en/1.1.0/>
+- SemVer: <https://semver.org/spec/v2.0.0.html>
+- in-toto attestation framework: <https://github.com/in-toto/attestation>
+- SLSA provenance v1.0: <https://slsa.dev/spec/v1.0/>
 
 ### C. Troubleshooting Playbooks
 
-**Playbook: a consumer reports "the harness let an obvious threshold-lowering diff through"**
+#### Playbook: a consumer reports "the harness let an obvious threshold-lowering diff through"
 
 1. Reproduce locally with the offending diff: `bash scripts/escape-scan.sh --no-hash <patch-file>`. Expect exit 2.
 2. If exit 0, the gate is broken — file P0.
@@ -856,7 +861,7 @@ Measurable outcomes:
 5. Inspect the patch — does it have a comment chain that pattern-defeats the regex? Add a regression case to `tests/fixtures/`.
 6. Patch the regex; verify against the existing fixtures; add the new fixture; ship a patch release with a SECURITY-tagged CHANGELOG entry.
 
-**Playbook: `audit-harness verify` exits 2 but the engineer believes no pinned file changed**
+#### Playbook: `audit-harness verify` exits 2 but the engineer believes no pinned file changed
 
 1. `audit-harness list` — what's pinned?
 2. `bash scripts/harness-hash.sh --verify` — exit 2 message includes the diff between manifest and current hashes (`harness-hash.sh:134-135`).
@@ -864,7 +869,7 @@ Measurable outcomes:
 4. If the change is intentional: `audit-harness init`; commit both the policy file and `.harness-hash` together.
 5. If the change is *not* intentional: someone (or some tool) modified a pinned file behind the engineer's back. Investigate: `git log -p <file>`, `git blame`, check for CI-job-side mutations.
 
-**Playbook: `emit-evidence --sign --rekor-url` fails**
+#### Playbook: `emit-evidence --sign --rekor-url` fails
 
 1. `cosign version` — installed?
 2. If using `--keyless`: do you have a valid OIDC identity? `cosign sign` against a test artifact first to confirm the OIDC handshake works.
@@ -872,7 +877,7 @@ Measurable outcomes:
 4. Rekor push 5xx: check sigstore status page; retry with backoff. The script exits 3 with a clear message if Rekor push fails (`scripts/emit-evidence.sh:249-252`).
 5. If pushing against a custom Rekor URL: confirm the URL accepts uploads and that DNSSEC + CAA on the *predicate* namespace `evals.intentsolutions.io` is verified (per CISO binding, `scripts/emit-evidence.sh:39-43`).
 
-**Playbook: regression suite fails on Section 1 (text-mode parity)**
+#### Playbook: regression suite fails on Section 1 (text-mode parity)
 
 This is the SemVer-critical fail mode. It means the existing text output has drifted.
 

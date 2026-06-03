@@ -101,7 +101,7 @@ See `audit-tests/references/philosophy.md` in the companion skill for the full r
 
 This harness sits inside a larger framework:
 
-```
+```text
 L7  Acceptance / RTM / Personas / Journeys     ← WHAT are we proving?
 L6  E2E / BDD / Visual regression              ← User-level guarantees
 L5  Perf / Security (SAST/DAST) / A11y / Chaos ← Non-functional
