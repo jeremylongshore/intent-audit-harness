@@ -4,6 +4,7 @@
 **Date**: 2026-05-21
 **Author**: Jeremy Longshore (CTO + beads work; executed by Claude per CEO-mode delegation)
 **Beads closed (pending PR merge)**:
+
 - `iah-version-drift` (`bd_000-projects-uoz3`, P2)
 - `iah-license-drift` (`bd_000-projects-ck2e`, P2)
 - `iah-version-canonical-check` (`bd_000-projects-hd5y`, P2)
@@ -14,7 +15,7 @@
 
 ## 1. What this AAR records
 
-Priority 3 (audit-harness supply-chain hardening) of the IEP Convergence Debt Plan opens with the lowest-risk, highest-leverage fixes: align the four polyglot manifests that disagreed on version + license, and add a CI gate that fails any future drift. Drift was originally flagged in `000-docs/003-AA-AUDT-appaudit-devops-playbook.md` lines 296 / 331 / 335 / 341 — those notes are now resolved.
+Priority 3 (audit-harness supply-chain hardening) of the IEP Convergence Debt Plan opens with the lowest-risk, highest-impact fixes: align the four polyglot manifests that disagreed on version + license, and add a CI gate that fails any future drift. Drift was originally flagged in `000-docs/003-AA-AUDT-appaudit-devops-playbook.md` lines 296 / 331 / 335 / 341 — those notes are now resolved.
 
 ## 2. Drift before this PR
 

@@ -11,23 +11,27 @@ to crates.io — no `~/.cargo/credentials.toml` and no `CARGO_REGISTRY_TOKEN` in
 2. Store it. Pick one:
 
    **Option A (persistent) — `cargo login`:**
+
    ```bash
    cargo login          # interactive; paste token at prompt
    # writes to ~/.cargo/credentials.toml (mode 0600 automatically)
    ```
 
    **Option B — ephemeral env var:**
+
    ```bash
    export CARGO_REGISTRY_TOKEN="cio_..."
    ```
 
    **Option C — pass:**
+
    ```bash
    pass insert crates/api-token
    export CARGO_REGISTRY_TOKEN="$(pass crates/api-token)"
    ```
 
 3. Publish:
+
    ```bash
    cd ~/000-projects/audit-harness/rust
    cargo publish --dry-run     # sanity check (already verified below)
@@ -35,6 +39,7 @@ to crates.io — no `~/.cargo/credentials.toml` and no `CARGO_REGISTRY_TOKEN` in
    ```
 
 4. Verify:
+
    ```bash
    cargo install intent-audit-harness
    audit-harness --version      # → 0.1.0
@@ -42,7 +47,7 @@ to crates.io — no `~/.cargo/credentials.toml` and no `CARGO_REGISTRY_TOKEN` in
 
 ## Pre-flight already done
 
-```
+```console
 $ cargo publish --dry-run --allow-dirty
     Updating crates.io index
    Packaging intent-audit-harness v0.1.0

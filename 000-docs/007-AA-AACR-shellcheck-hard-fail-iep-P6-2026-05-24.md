@@ -1,4 +1,4 @@
-# AAR — Shellcheck Hard-Fail + Dead-Code Cleanup (v1.1.2)
+# AAR — shellcheck Hard-Fail + Dead-Code Cleanup (v1.1.2)
 
 | Field | Value |
 |---|---|
@@ -29,6 +29,7 @@ Pre-claim reconnaissance ran `shellcheck scripts/*.sh` locally against current v
 Initial assumption (per the ISEDC verify-before-claim discipline from DR 022) had been that SC2317 might be a false positive caused by indirect invocation inside the awk subprocess. Direct verification refuted that: `warn()` IS called at line 96 (inside the awk-rubric fallback path); `err()` has zero callers anywhere in the file. All 3 findings are genuine dead code.
 
 CTO call: **delete all 3, no grandfathering.** Rationale:
+
 - Deletion is the honest fix; grandfathering with `# shellcheck disable=` would preserve dead code under a false pretext
 - Zero scope creep — no feature addition disguised as a fix
 - If `err()` is needed later (e.g., strict-mode rule emitting inline errors), it can be re-added in 30 seconds with proper call-site context
@@ -41,7 +42,7 @@ CTO call: **delete all 3, no grandfathering.** Rationale:
 | `scripts/bias-count.sh` | Removed `declare -A PATTERN_COUNTS` (line 52) + `PATTERN_COUNTS["$label"]=$count` assignment (line 60). Inline `printf` per-pattern output preserved (line 61); `TOTAL_BIAS` aggregation preserved (drives JSON `bias_total` metadata). |
 | `scripts/emit-evidence.sh` | Removed `INPUT_HASH_HEX="$(...)"` assignment (line 238). `ARTIFACT_NAME` (line 237) remains — that one IS used by `BLOB_FILE="$TMP/$ARTIFACT_NAME.blob"` on line 244. |
 | `scripts/gherkin-lint.sh` | Removed `err()` function definition. Replaced with a comment documenting the removal + the path to re-add if a future strict-mode rule needs inline error emission. `ERROR_COUNT` continues to be incremented by the gherkin-lint subprocess branch (line ~57). |
-| `.github/workflows/ci.yml` | Shellcheck job: removed `|| true` suffix; replaced the "tighten once known issues are addressed" comment with a binding-rationale comment citing the bead + plan + precondition. Hard-fail in place. |
+| `.github/workflows/ci.yml` | shellcheck job: removed `\|\| true` suffix; replaced the "tighten once known issues are addressed" comment with a binding-rationale comment citing the bead + plan + precondition. Hard-fail in place. |
 | `CHANGELOG.md` | New v1.1.2 entry per Keep-a-Changelog 1.1.0 format. |
 | `package.json` + `version.txt` + `python/pyproject.toml` + `python/src/intent_audit_harness/__init__.py` + `rust/Cargo.toml` | All bumped 1.1.1 → 1.1.2 per the canonical-check CI gate. |
 | `.harness-hash` | Regenerated via `bash scripts/harness-hash.sh --init`. 3 of 9 pinned-file hashes change (the 3 modified scripts). |
@@ -56,7 +57,7 @@ CTO call: **delete all 3, no grandfathering.** Rationale:
 
 ## 5. What didn't work / what to watch
 
-- **Shellcheck version is 0.9.0 on Ubuntu 22.04 runners.** Newer shellcheck releases (0.10.x+) surface additional rules; if the CI runner image upgrades shellcheck before we re-verify, new findings could appear. Mitigation: keep `shellcheck --version` printed in the CI step (currently implicit; could add `shellcheck --version` as a first sub-step for future audit-trail clarity).
+- **shellcheck version is 0.9.0 on Ubuntu 22.04 runners.** Newer shellcheck releases (0.10.x+) surface additional rules; if the CI runner image upgrades shellcheck before we re-verify, new findings could appear. Mitigation: keep `shellcheck --version` printed in the CI step (currently implicit; could add `shellcheck --version` as a first sub-step for future audit-trail clarity).
 - **PATTERN_COUNTS feature deferral.** If a future consumer asks for per-pattern JSON breakdown, the deleted code is in `git log v1.1.1..v1.1.2 -- scripts/bias-count.sh` — re-add in a feature PR with proper wiring to the JSON output, don't reanimate as-is.
 - **Pre-existing print-every-line behavior in gherkin-lint.sh's third awk** (`prev_blank = 1` as top-level expression → always-true pattern → default `$0` print). Cosmetic noise in script output; not a counter bug. Filed as deferred scope; would be a one-line move into the right pattern-action shape.
 
@@ -67,12 +68,14 @@ Initial PR scope was "delete 3 dead-code findings + flip CI gate." Gemini's PR #
 Direct verification confirmed Gemini's claim AND broadened it: all 4 awk subprocesses in the fallback path emitted `WARN`/`ERROR` lines without bumping the parent shell counters (lines 71, 74, 85, 91, 109 in the v1.1.1 source). The script reported "0 errors" while printing errors; the exit code stayed 0. This is **exactly the silent-failure class the linter exists to detect in OTHER projects** — a fitting irony to find in our own enforcement code.
 
 Fix scope (added to this PR):
-- New `process_awk_output()` helper at top of the script: captures awk output, counts `WARN `/`ERROR ` lines via inline awk (`'/^WARN /{c++} END{print c+0}'` — set-euo-pipefail safe), increments parent counters, re-prints
+
+- New `process_awk_output()` helper at top of the script: captures awk output, counts `WARN`/`ERROR` lines via inline awk (`'/^WARN /{c++} END{print c+0}'` — set-euo-pipefail safe), increments parent counters, re-prints
 - All 4 awk subprocess invocations now flow through the helper
 - Deliberate-failure test (feature file with `Scenario: ...\n  And ...`) confirms exit 1 + correct count
 - Clean-feature test confirms exit 0 + correct count
 
 **Why this fix landed in the same PR vs deferred:**
+
 - Same script we were already cleaning up
 - Same class of bug (counter undercount) as the one we just fixed in bd this session (silent throttle suppression)
 - The "no shortcuts" discipline applies — punting a Gemini-surfaced bug to a follow-up bead would have been precisely the kind of trade-off the discipline rejects

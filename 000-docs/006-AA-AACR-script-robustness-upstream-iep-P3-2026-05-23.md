@@ -12,7 +12,7 @@
 
 ## 1. Context
 
-`iep-harness-hash-platform-rollout` (`bd_000-projects-g6zu`) propagates the v1.1.0 self-pin mechanism across the IEP ecosystem. Rollout 1 (`intent-eval-lab` PR #67) vendors the audit-harness scripts snapshot at `846ff6a` into the lab repo. On 2026-05-23 Gemini's automated review of PR #67 surfaced 6 medium-severity issues — none lab-side defects, all upstream-script concerns. Fixing them at the source (audit-harness v1.1.1) before the rollout reaches the remaining 3 consumer repos (j-rig, intent-rollout-gate, kernel already pinned) avoids re-publishing buggy vendored copies that would immediately need replacement.
+`iep-harness-hash-platform-rollout` (`bd_000-projects-g6zu`) propagates the v1.1.0 self-pin mechanism across the IEP ecosystem. The first rollout (`intent-eval-lab` PR #67) vendors the audit-harness scripts snapshot at `846ff6a` into the lab repo. On 2026-05-23 Gemini's automated review of PR #67 surfaced 6 medium-severity issues — none lab-side defects, all upstream-script concerns. Fixing them at the source (audit-harness v1.1.1) before the rollout reaches the remaining 3 consumer repos (j-rig, intent-rollout-gate, kernel already pinned) avoids re-publishing buggy vendored copies that would immediately need replacement.
 
 ## 2. What changed
 
@@ -26,9 +26,11 @@
 | 6 | `scripts/harness-hash.sh` | `sha256sum` is Linux/coreutils-only; broke on macOS | Cross-platform detection: `SHA256_CMD=(sha256sum)` else `SHA256_CMD=(shasum -a 256)`; replaced all sha256sum sites in this script with `"${SHA256_CMD[@]}"` |
 
 Manifest bumps (per the v1.0.2 canonical-check gate):
+
 - `package.json`, `version.txt`, `python/pyproject.toml`, `python/src/intent_audit_harness/__init__.py`, `rust/Cargo.toml` → `1.1.1`
 
 Hash manifest regeneration:
+
 - `.harness-hash` re-initialized via `bash scripts/harness-hash.sh --init`; 4 of 9 pinned-file hashes changed (the 4 modified scripts); 5 unchanged (`bin/audit-harness.js`, 3 unchanged scripts, `.harness-hash-extra-patterns`).
 
 CHANGELOG: top of file gained the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) reference line that should have been present from v1.0.0 onwards. Surfaced by user feedback during this session ("please gosh make sure all the keepachangelogs in all the repos are staying up to date"). The cross-repo CHANGELOG sweep is recorded in a follow-up bead (filed alongside this AAR).

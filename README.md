@@ -1,5 +1,7 @@
 # @intentsolutions/audit-harness
 
+Part of the **[Intent Eval Platform](https://github.com/intent-solutions-io/intent-eval-platform)** — the umbrella mapping the six repos that converge via a shared Evidence Bundle schema.
+
 Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `implement-tests` Claude Code skills — but usable standalone in any repo that wants hash-pinned, escape-scanned, AI-proof quality gates.
 
 ## What it is
@@ -99,7 +101,7 @@ See `audit-tests/references/philosophy.md` in the companion skill for the full r
 
 This harness sits inside a larger framework:
 
-```
+```text
 L7  Acceptance / RTM / Personas / Journeys     ← WHAT are we proving?
 L6  E2E / BDD / Visual regression              ← User-level guarantees
 L5  Perf / Security (SAST/DAST) / A11y / Chaos ← Non-functional

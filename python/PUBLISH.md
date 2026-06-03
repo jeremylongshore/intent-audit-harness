@@ -12,20 +12,24 @@
 2. Store it. Pick one of the options below.
 
    **Option A (preferred) — pass:**
+
    ```bash
    pass insert pypi/api-token
    # paste: pypi-AgEIcHlwaS5vcmcC...
    ```
 
    **Option B — `~/.pypirc`:**
+
    ```ini
    [pypi]
      username = __token__
      password = pypi-AgEIcHlwaS5vcmcC...
    ```
+
    Then `chmod 600 ~/.pypirc`.
 
 3. Upload:
+
    ```bash
    cd ~/000-projects/audit-harness/python
 
@@ -37,6 +41,7 @@
    ```
 
 4. Verify:
+
    ```bash
    pip install --upgrade intent-audit-harness
    audit-harness --version    # → 0.1.0

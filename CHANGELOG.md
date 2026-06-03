@@ -15,6 +15,7 @@ Closes `iah-gherkin-single-awk-opt` (`bd_000-projects-vawm`, P3). v1.1.2 introdu
 ### Fixed — crap-score.py exclusion sets deduplicated via EXCLUDED_DIRS constant (Gemini #71 review)
 
 Closes `iah-crap-score-exclusion-dedup` (`bd_000-projects-niv8`, P2). Pre-v1.1.4, `scripts/crap-score.py` had TWO separate sets with overlapping intent but divergent contents:
+
 - `ignore` set in `score_python()` (line 85): had `"reports"` but lacked `.next`, `.nuxt`, `.cache`
 - `prune` set in `main()` (line 394, added v1.1.1 for `--json` input-hash walk): had `.next`, `.nuxt`, `.cache` but lacked `"reports"`
 
@@ -102,6 +103,7 @@ AAR: `000-docs/008-AA-AACR-ruff-iep-P6-2026-05-24.md`.
 ### What unblocks next
 
 P6 Phase A2 complete. Next-ready P6 work:
+
 - A3: `iah-eslint-dispatcher` (`bd_000-projects-rnpy`) — eslint coverage for `bin/audit-harness.js`
 - B1: `iep-shared-lint-configs` — `.audit-harness-configs/` for vendoring lint configs to consumer repos
 - Plus 2 bundleable Gemini-found fixes from v1.1.2 review: `iah-gherkin-prev-blank-noise` + `iah-gherkin-single-awk-opt`
@@ -122,13 +124,14 @@ Closes `iah-shellcheck-hard-fail` (`bd_000-projects-4asc`, P1). The shellcheck j
 
 While processing the SC2317 cleanup above, Gemini's PR #38 review surfaced a deeper bug: the gherkin-lint.sh awk-fallback path printed `WARN`/`ERROR` lines via `awk printf` but those subprocesses never incremented the parent shell's `WARN_COUNT`/`ERROR_COUNT` counters. The summary line said "0 warnings, 0 errors" while errors were actively being printed; the exit code stayed 0 regardless. Exactly the silent-failure class the linter exists to surface in OTHER projects.
 
-- **New `process_awk_output()` helper**: wraps each awk subprocess, captures its output, counts `WARN ` / `ERROR ` lines via inline awk (`'/^WARN /{c++} END{print c+0}'` — set-euo-pipefail safe, no `|| true` needed), increments the bash counters, then re-prints. 4 awk blocks now feed through it.
+- **New `process_awk_output()` helper**: wraps each awk subprocess, captures its output, counts `WARN` / `ERROR` lines via inline awk (`'/^WARN /{c++} END{print c+0}'` — set-euo-pipefail safe, no `|| true` needed), increments the bash counters, then re-prints. 4 awk blocks now feed through it.
 - **Verification**: deliberate-failure test against a feature with `Scenario: ... \n And ...` produces exit code 1 + summary `0 warning(s), 1 error(s)` (was: exit 0 + `0 warning(s), 0 error(s)` while still printing the ERROR line). Clean feature still exits 0.
 - **Separate-scope finding**: the third awk script contains a stray top-level `prev_blank = 1` that awk treats as an always-true pattern, triggering its default print-every-line action. That's a pre-existing cosmetic issue (extra noise in script output) but not a counter bug — filed as deferred scope.
 
 ### Changed — Version bumped to v1.1.2 across all 5 manifests
 
 Per the version-canonical-check CI gate (v1.0.2 PR #35). All 5 committed manifest locations now report `1.1.2`:
+
 - `package.json`
 - `version.txt`
 - `python/pyproject.toml`
@@ -156,6 +159,7 @@ AAR: `000-docs/007-AA-AACR-shellcheck-hard-fail-iep-P6-2026-05-24.md`.
 ### What this unblocks in the IEP Convergence Debt Plan
 
 P6 Phase A1 closed. Next-ready P6 work:
+
 - A2: `iah-ruff` — add Python ruff CI gate
 - A3: `iah-eslint-dispatcher` — add eslint coverage for `bin/audit-harness.js`
 - A4: `iah-script-robustness-upstream` (already shipped in v1.1.1; nothing more to do)
@@ -176,6 +180,7 @@ Closes `iah-script-robustness-upstream` (`bd_000-projects-qqkq`, P2). Addresses 
 ### Changed — Version bumped to v1.1.1 across all 5 manifests
 
 Per the version-canonical-check CI gate (added in v1.0.2 PR #35). All 5 committed manifest locations now report `1.1.1`:
+
 - `package.json`
 - `version.txt`
 - `python/pyproject.toml`
@@ -317,7 +322,6 @@ No code, CLI surface, behavior, or runtime dependency changes in this release �
 - infra: convergence Phase A.0 + A — bd init, GH templates, CI workflow, design notes (8f30db4)
 - bd init: initialize beads issue tracking (ffc7597)
 - feat: add PyPI and crates.io wrappers for audit-harness (9b97217)
-
 
 All notable changes to `@intentsolutions/audit-harness` are documented here.
 

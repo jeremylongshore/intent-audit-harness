@@ -13,7 +13,7 @@ Define the JSON Schema 2020-12 envelope for a single Evidence Bundle gate-result
 ## Design constraints
 
 1. **Schema-versioned.** Every row carries a `schema_version` field so consumers can reject unknown major versions and warn on unknown minor versions.
-2. **Forward-compatible.** Validators MUST accept unknown fields. New fields can be added in minor versions without breaking adopters.
+2. **Forward-compatible.** A validator MUST accept unknown fields. New fields can be added in minor versions without breaking adopters.
 3. **Hash-pinnable.** Fields like `policy_hash` and `input_hash` make tamper-evidence possible at the row level, independent of envelope signature.
 4. **Idempotent emission.** Same input produces byte-identical row, modulo `timestamp`. This means generators MUST canonicalize JSON output (sorted keys, fixed numeric precision).
 5. **No PII.** Rows MUST NOT carry user-identifying information. The `metadata` object is for machine-readable context (versions, hashes, durations), not human content.
@@ -27,7 +27,7 @@ Define the JSON Schema 2020-12 envelope for a single Evidence Bundle gate-result
 | `gate_id` | string | Stable identifier for the gate. Conventionally `<framework>:<gate-name>` (e.g., `"audit-harness:escape-scan"`, `"audit-harness:crap"`, `"j-rig:eval-spec"`). |
 | `result` | enum | One of: `"pass"`, `"fail"`, `"skip"`, `"error"`. `"skip"` indicates the gate was applicable but intentionally bypassed; `"error"` indicates the gate could not produce a verdict. |
 | `timestamp` | string (ISO 8601) | UTC timestamp of emission. RFC 3339 format. |
-| `schema_version` | string (semver) | Version of THIS schema (envelope contract). Initial value: `"1.0"`. |
+| `schema_version` | string (SemVer) | Version of THIS schema (envelope contract). Initial value: `"1.0"`. |
 
 ### Optional fields
 
@@ -50,7 +50,7 @@ Define the JSON Schema 2020-12 envelope for a single Evidence Bundle gate-result
 
 ## Versioning rules
 
-**`schema_version` semver:**
+**`schema_version` SemVer:**
 
 - **Major bump (1.0 → 2.0):** required field removed or renamed; `result` enum loses a value; semantic meaning of an existing field changes
 - **Minor bump (1.0 → 1.1):** new optional field added; new value added to `result` enum; new recommended `metadata` sub-field documented
@@ -58,9 +58,9 @@ Define the JSON Schema 2020-12 envelope for a single Evidence Bundle gate-result
 
 **Compatibility:**
 
-- Validators MUST accept unknown fields silently (forward-compat for minor bumps)
-- Validators SHOULD warn on unknown major version (`schema_version: "2.x"` when validator only knows `1.x`)
-- Validators MUST reject malformed JSON or missing required fields
+- A validator MUST accept unknown fields silently (forward-compat for minor bumps)
+- A validator SHOULD warn on unknown major version (`schema_version: "2.x"` when validator only knows `1.x`)
+- A validator MUST reject malformed JSON or missing required fields
 
 ## Open questions (Phase B)
 
