@@ -14,7 +14,7 @@ Thank you for your interest in contributing to **audit-harness** — the determi
 ### Development Setup
 
 ```bash
-git clone https://github.com/jeremylongshore/audit-harness.git
+git clone https://github.com/jeremylongshore/intent-audit-harness.git
 cd audit-harness
 npm install        # only dev-deps; the package itself has no runtime deps
 ```
@@ -30,14 +30,14 @@ node bin/audit-harness.js verify        # verify against pinned hashes
 
 ### Reporting Bugs
 
-1. Search [existing issues](https://github.com/jeremylongshore/audit-harness/issues) first
-2. Open a [bug report](https://github.com/jeremylongshore/audit-harness/issues/new?template=bug_report.md)
+1. Search [existing issues](https://github.com/jeremylongshore/intent-audit-harness/issues) first
+2. Open a [bug report](https://github.com/jeremylongshore/intent-audit-harness/issues/new?template=bug_report.md)
 3. Include the harness version (`audit-harness --version`), Node version, OS, reproduction steps, and the failing manifest/script output
 
 ### Suggesting Enhancements
 
-1. Check [existing feature requests](https://github.com/jeremylongshore/audit-harness/issues?q=label%3Aenhancement)
-2. Open a [feature request](https://github.com/jeremylongshore/audit-harness/issues/new?template=feature_request.md)
+1. Check [existing feature requests](https://github.com/jeremylongshore/intent-audit-harness/issues?q=label%3Aenhancement)
+2. Open a [feature request](https://github.com/jeremylongshore/intent-audit-harness/issues/new?template=feature_request.md)
 3. For new subcommands, explain (a) the gate it enforces, (b) why deterministic shell/python is sufficient (no LLM-in-the-loop), (c) how it integrates with `--init` hash-pinning
 
 ### Pull Requests
@@ -124,8 +124,8 @@ The package is MIT-licensed. By contributing, you agree to license your contribu
 
 ## Community
 
-- **Questions**: [GitHub Discussions](https://github.com/jeremylongshore/audit-harness/discussions)
-- **Bugs**: [Issue Tracker](https://github.com/jeremylongshore/audit-harness/issues)
+- **Questions**: [GitHub Discussions](https://github.com/jeremylongshore/intent-audit-harness/discussions)
+- **Bugs**: [Issue Tracker](https://github.com/jeremylongshore/intent-audit-harness/issues)
 - **Email**: <jeremy@intentsolutions.io>
 
 ## License

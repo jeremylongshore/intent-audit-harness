@@ -44,7 +44,7 @@ audit-harness crap src/
 ```
 
 See the root project for the full docs:
-<https://github.com/jeremylongshore/audit-harness>
+<https://github.com/jeremylongshore/intent-audit-harness>
 
 ## License
 
