@@ -1,15 +1,15 @@
 [package]
 name = "intent-audit-harness"
-version = "1.1.4"
+version = "1.1.5"
 edition = "2021"
 rust-version = "1.70"
 authors = ["Jeremy Longshore <jeremy@intentsolutions.io>"]
 description = "Deterministic test-enforcement harness — escape-scan, hash-pinning, CRAP, architecture checks, bias detection, Gherkin lint. Rust-native wrapper around the @intentsolutions/audit-harness toolkit."
 license = "Apache-2.0"
 readme = "README.md"
-homepage = "https://github.com/jeremylongshore/audit-harness"
-repository = "https://github.com/jeremylongshore/audit-harness"
-documentation = "https://github.com/jeremylongshore/audit-harness#readme"
+homepage = "https://github.com/jeremylongshore/intent-audit-harness"
+repository = "https://github.com/jeremylongshore/intent-audit-harness"
+documentation = "https://github.com/jeremylongshore/intent-audit-harness#readme"
 keywords = ["testing", "audit", "coverage", "quality", "ci"]
 categories = ["command-line-utilities", "development-tools::testing"]
 include = [

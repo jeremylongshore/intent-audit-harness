@@ -1,5 +1,9 @@
 # @intentsolutions/audit-harness
 
+[![npm](https://img.shields.io/npm/v/@intentsolutions/audit-harness?color=cb3837&logo=npm)](https://www.npmjs.com/package/@intentsolutions/audit-harness)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Provenance](https://img.shields.io/badge/sigstore-provenance-066da5)](https://www.npmjs.com/package/@intentsolutions/audit-harness)
+
 Part of the **[Intent Eval Platform](https://github.com/intent-solutions-io/intent-eval-platform)** — the umbrella mapping the six repos that converge via a shared Evidence Bundle schema.
 
 Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `implement-tests` Claude Code skills — but usable standalone in any repo that wants hash-pinned, escape-scanned, AI-proof quality gates.
@@ -48,7 +52,7 @@ cargo install intent-audit-harness
 **Any other language** (Go, Ruby, PHP, Java, .NET, shell, etc.) — vendor the scripts:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/jeremylongshore/audit-harness/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/main/install.sh | bash
 ```
 
 ## Quick usage
@@ -147,8 +151,8 @@ Apache 2.0 — see [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
 
 ## Related
 
-- [`audit-tests` Claude Code skill](https://github.com/jeremylongshore/audit-harness#related) — diagnostic pipeline that uses this harness
-- [`implement-tests` Claude Code skill](https://github.com/jeremylongshore/audit-harness#related) — filesystem-mutating installer that installs this harness as part of L1/L3 setup
+- [`audit-tests` Claude Code skill](https://github.com/jeremylongshore/intent-audit-harness#related) — diagnostic pipeline that uses this harness
+- [`implement-tests` Claude Code skill](https://github.com/jeremylongshore/intent-audit-harness#related) — filesystem-mutating installer that installs this harness as part of L1/L3 setup
 
 ## Versioning
 

@@ -6,12 +6,12 @@
 # — anything that isn't Node. (Node repos should use: pnpm add -D @intentsolutions/audit-harness)
 #
 # USAGE:
-#   curl -sSL https://raw.githubusercontent.com/jeremylongshore/audit-harness/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/main/install.sh | bash
 #
 # Pinned to a specific version:
-#   curl -sSL https://raw.githubusercontent.com/jeremylongshore/audit-harness/v0.1.0/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/v1.1.5/install.sh | bash
 #   # or:
-#   AUDIT_HARNESS_VERSION=v0.1.0 curl -sSL .../install.sh | bash
+#   AUDIT_HARNESS_VERSION=v1.1.5 curl -sSL .../install.sh | bash
 #
 # INSTALLS INTO:
 #   .audit-harness/               (scripts + version marker)
@@ -23,8 +23,8 @@
 
 set -euo pipefail
 
-VERSION="${AUDIT_HARNESS_VERSION:-v0.1.0}"
-REPO="jeremylongshore/audit-harness"
+VERSION="${AUDIT_HARNESS_VERSION:-v1.1.5}"
+REPO="jeremylongshore/intent-audit-harness"
 TARGET_DIR=".audit-harness"
 WRAPPER_DIR="scripts"
 WRAPPER_PATH="${WRAPPER_DIR}/audit-harness"
@@ -66,9 +66,12 @@ fi
 echo "  extracting"
 tar -xzf "${TMP_DIR}/audit-harness.tar.gz" -C "${TMP_DIR}"
 
-# GitHub release tarball unpacks as: audit-harness-<version>/
-# (stripped leading 'v' in the dir name)
-UNPACKED_DIR="$(find "${TMP_DIR}" -maxdepth 1 -type d -name 'audit-harness-*' | head -1)"
+# GitHub release tarball unpacks as: <repo>-<version>/ — i.e.
+# intent-audit-harness-<version>/ after the repo rename (stripped leading
+# 'v' in the dir name). The glob is leading-wildcard so it stays tolerant to
+# both the current `intent-audit-harness` repo name and the legacy
+# `audit-harness` name (pre-rename tags).
+UNPACKED_DIR="$(find "${TMP_DIR}" -maxdepth 1 -type d -name '*audit-harness-*' | head -1)"
 if [[ -z "${UNPACKED_DIR}" ]]; then
   echo "✗ could not find unpacked dir in ${TMP_DIR}" >&2
   exit 2
@@ -99,7 +102,7 @@ SCRIPTS="${HARNESS_DIR}/scripts"
 
 if [[ ! -d "${SCRIPTS}" ]]; then
   echo "✗ audit-harness: scripts not found at ${SCRIPTS}" >&2
-  echo "  re-run the installer: curl -sSL https://raw.githubusercontent.com/jeremylongshore/audit-harness/main/install.sh | bash" >&2
+  echo "  re-run the installer: curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/main/install.sh | bash" >&2
   exit 2
 fi
 
