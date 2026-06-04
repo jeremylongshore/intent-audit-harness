@@ -2,6 +2,47 @@
 
 All notable changes are recorded here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.5] - 2026-06-03
+
+### Added — npm release pipeline (closes the publish-pipeline gap)
+
+This is the first release published to npm via CI with Sigstore provenance. Until now the repo had **no release workflow** — npm was stuck at `0.1.0` while the code (and every other manifest) had advanced through `1.0.0` → `1.1.4`, four minors of CHANGELOG-documented work that never reached consumers. `npm install @intentsolutions/audit-harness` resolved to the stale `0.1.0` tarball.
+
+- **`.github/workflows/release.yml`** (NEW): mirrors the provenance approach of `intent-eval-core`'s release workflow, adapted for this zero-dependency polyglot CLI (no pnpm, no lockfile, no TS build, no coverage). Triggers on `push` of a `v*.*.*` tag and on `workflow_dispatch`. Sets `id-token: write` for npm/Sigstore OIDC. Verifies the pushed tag matches `package.json#version` (skipped on manual dispatch since there's no tag), runs the `node bin/audit-harness.js --version` self-check + the repo's `escape-scan.sh --staged` test script (non-blocking on no-staged-diff), then `npm publish --provenance --access public`. The `NPM_TOKEN` repo secret is already configured.
+
+### Fixed — package metadata + install.sh URLs for the `intent-audit-harness` repo rename
+
+The GitHub repo was renamed `audit-harness` → `intent-audit-harness`, but the metadata still pointed at the old path.
+
+- **`package.json`**: `homepage`, `repository.url`, and `bugs.url` repointed from `jeremylongshore/audit-harness` → `jeremylongshore/intent-audit-harness` (these render on npmjs.com).
+- **`python/pyproject.toml` + `rust/Cargo.toml`**: project-URL fields (Homepage / Repository / Issues / Changelog / documentation) repointed to the renamed repo — these render on PyPI and crates.io.
+- **`python/src/intent_audit_harness/__init__.py`**: docstring source-link repointed.
+- **`README.md`**: the `curl … install.sh` line + the two "Related" skill links repointed to the renamed repo.
+- **`install.sh`**: the `REPO=` variable, the usage-comment URLs at the top, and the re-run hint repointed; the default `VERSION` bumped from the stale `v0.1.0` → `v1.1.5`.
+
+### Fixed — install.sh tarball-path glob broke after the rename
+
+The GitHub archive tarball unpacks as `<repo>-<version>/`, which became `intent-audit-harness-1.1.5/` after the rename. The unpack-dir detection used `find … -name 'audit-harness-*'`, and `-name` matches the basename with no implicit leading wildcard, so it matched **nothing** under the new prefix — every vendored install would have failed at "could not find unpacked dir". Changed the glob to `-name '*audit-harness-*'` (leading wildcard), which matches both the current `intent-audit-harness-*` name and legacy `audit-harness-*` tags. Verified against both directory names.
+
+### Added — README badge row
+
+npm-version, License Apache-2.0, and Sigstore-provenance shields under the H1 (mirrors the `intent-eval-core` badge row). The "Part of the Intent Eval Platform" cross-link line is preserved.
+
+### Changed — Version bumped to v1.1.5 across all manifests
+
+Per the `version-canonical-check` CI gate (v1.0.2 PR #35). `package.json` (canonical), `version.txt`, `python/pyproject.toml`, `python/src/intent_audit_harness/__init__.py`, and `rust/Cargo.toml` all report `1.1.5`. (`rust/Cargo.lock` is gitignored; its working-tree entry is aligned for local cargo builds.)
+
+### Why patch, not minor
+
+No new CLI commands, no new flags, no API change, no script behavior change. This is release-engineering + metadata: the publish pipeline that ships the existing `1.1.x` code, plus URL corrections for the repo rename, plus the install.sh glob fix. The pinned policy scripts (`.harness-hash`) are untouched.
+
+### Verification
+
+- `npm pack --dry-run` → tarball contains `bin/`, `scripts/`, `README.md`, `LICENSE`, `NOTICE`, `CHANGELOG.md` per `package.json#files`
+- `node bin/audit-harness.js --version` → `1.1.5`
+- `bash -n install.sh` → exit 0; unpack-dir glob matches `intent-audit-harness-1.1.5` (and legacy `audit-harness-*`)
+- `bash scripts/harness-hash.sh --verify` → OK (no pinned files changed)
+
 ## [v1.1.4] - 2026-05-25
 
 ### Fixed — gherkin-lint.sh prev_blank print-every-line noise (IEP P3, Gemini #71 review chain)

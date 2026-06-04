@@ -1,16 +1,16 @@
 {
   "name": "@intentsolutions/audit-harness",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Deterministic test-enforcement harness — escape-scan, hash-pinning, CRAP, architecture checks, bias detection, Gherkin lint. Companion to the audit-tests and implement-tests Claude Code skills.",
   "license": "Apache-2.0",
   "author": "Jeremy Longshore <jeremy@intentsolutions.io>",
-  "homepage": "https://github.com/jeremylongshore/audit-harness",
+  "homepage": "https://github.com/jeremylongshore/intent-audit-harness",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jeremylongshore/audit-harness.git"
+    "url": "git+https://github.com/jeremylongshore/intent-audit-harness.git"
   },
   "bugs": {
-    "url": "https://github.com/jeremylongshore/audit-harness/issues"
+    "url": "https://github.com/jeremylongshore/intent-audit-harness/issues"
   },
   "keywords": [
     "testing",

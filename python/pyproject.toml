@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "intent-audit-harness"
-version = "1.1.4"
+version = "1.1.5"
 description = "Deterministic test-enforcement harness — escape-scan, hash-pinning, CRAP, architecture checks, bias detection, Gherkin lint. Python-native wrapper around the @intentsolutions/audit-harness toolkit."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -39,10 +39,10 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/jeremylongshore/audit-harness"
-Repository = "https://github.com/jeremylongshore/audit-harness"
-Issues = "https://github.com/jeremylongshore/audit-harness/issues"
-Changelog = "https://github.com/jeremylongshore/audit-harness/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/jeremylongshore/intent-audit-harness"
+Repository = "https://github.com/jeremylongshore/intent-audit-harness"
+Issues = "https://github.com/jeremylongshore/intent-audit-harness/issues"
+Changelog = "https://github.com/jeremylongshore/intent-audit-harness/blob/main/CHANGELOG.md"
 
 [project.scripts]
 audit-harness = "intent_audit_harness.cli:main"
