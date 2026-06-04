@@ -1,7 +1,7 @@
 //! audit-harness — deterministic test-enforcement toolkit (Rust binary).
 //!
 //! Thin dispatcher around the canonical shell/python scripts maintained at
-//! <https://github.com/jeremylongshore/audit-harness>. The scripts are embedded
+//! <https://github.com/jeremylongshore/intent-audit-harness>. The scripts are embedded
 //! into the binary at compile time via `include_bytes!`, extracted into
 //! `$XDG_CACHE_HOME/audit-harness/<version>/scripts/` on first run, and invoked
 //! via `bash` / `python3`.
