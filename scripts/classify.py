@@ -242,7 +242,8 @@ def classify(repo):
             add("mcp", "packages/*:.mcp.json")
 
     # --- embedded (C/C++) ---
-    if has("Makefile", "CMakeLists.txt") and (shallow_glob(repo, "main.c") or _has_ext(repo, (".c", ".cpp", ".cc"))) and not root_pkg:
+    is_c = shallow_glob(repo, "main.c") or _has_ext(repo, (".c", ".cpp", ".cc"))
+    if has("Makefile", "CMakeLists.txt") and is_c and not root_pkg:
         add("embedded", "C/C++ build + sources")
 
     # --- regulated overlay ---
@@ -265,7 +266,7 @@ def has_mcp(sub):
 
 
 def _has_ext(repo, exts):
-    for root, dirs, files in os.walk(repo):
+    for _root, dirs, files in os.walk(repo):
         dirs[:] = [d for d in dirs if d not in ("node_modules", ".git", ".venv")]
         if any(f.endswith(exts) for f in files):
             return True
@@ -279,7 +280,9 @@ def resolve_gates(kinds, registry, regulated, override):
     def merge(gate):
         gid = gate["gate_id"]
         existing = by_id.get(gid)
-        if existing is None or APPLICABILITY_RANK.get(gate["applicability"], 0) > APPLICABILITY_RANK.get(existing["applicability"], 0):
+        new_rank = APPLICABILITY_RANK.get(gate["applicability"], 0)
+        old_rank = APPLICABILITY_RANK.get(existing["applicability"], 0) if existing else -1
+        if existing is None or new_rank > old_rank:
             by_id[gid] = dict(gate)
 
     for gate in registry.get("base", []):
@@ -355,7 +358,8 @@ def main():
         classifications.append({"kind": "unknown", "confidence": "unresolved", "signals": []})
         unresolved.append({
             "kind": "repo-type",
-            "reason": "no deterministic repo-type or artifact signal matched; a human (or /audit-tests) must declare the classification",
+            "reason": ("no deterministic repo-type or artifact signal matched; "
+                       "a human (or /audit-tests) must declare the classification"),
         })
 
     regulated = "regulated" in found
@@ -370,7 +374,8 @@ def main():
     if kill:
         for g in gates:
             g["enforcement"] = "disabled"
-        print("audit-harness: KILL-SWITCH active — all gates disabled (AUDIT_HARNESS_DISABLE / .audit-harness.yml)", file=sys.stderr)
+        print("audit-harness: KILL-SWITCH active — all gates disabled "
+              "(AUDIT_HARNESS_DISABLE / .audit-harness.yml)", file=sys.stderr)
 
     profile = {
         "schema_version": "audit-profile/v1",
