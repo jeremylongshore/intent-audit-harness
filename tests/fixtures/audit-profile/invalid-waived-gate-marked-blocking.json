@@ -1,0 +1,25 @@
+{
+  "schema_version": "audit-profile/v1",
+  "subject": {
+    "name": "broken-fixture",
+    "commit_sha": "abc1234"
+  },
+  "classifier": "audit-harness@1.2.0",
+  "registry_hash": "sha256:b2ea8f9cb89528f7e6aff5ec498478c86e352e693bf3ae4750aaf70c06b9d434",
+  "timestamp": "2026-06-04T00:00:00Z",
+  "classifications": [
+    {
+      "kind": "library",
+      "confidence": "detected"
+    }
+  ],
+  "gates": [
+    {
+      "gate_id": "audit-harness:ci:a11y",
+      "dimension": "testing-depth",
+      "applicability": "waived",
+      "enforcement": "blocking"
+    }
+  ],
+  "unresolved": []
+}
