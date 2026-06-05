@@ -1,0 +1,29 @@
+# .audit-harness.yml — engineer-owned per-repo override + kill-switch
+#
+# Copy to `.audit-harness.yml` at your repo root. Honored by `audit-harness classify`.
+# This is the "inside latch": the engineer (not the AI, not the harness) pins
+# classification and per-gate enforcement. Only the documented subset below is parsed
+# (full YAML is NOT supported); unknown lines are ignored.
+#
+# Provenance of any applied override is recorded in the emitted audit-profile under
+# `overrides` (source + override_hash + kill_switch).
+
+# Kill-switch for this repo. When true (or env AUDIT_HARNESS_DISABLE=1), classify
+# still emits a profile but every gate is forced enforcement=disabled.
+disable: false
+
+# Engineer-declared classification kinds. These are ADDED to whatever classify
+# detects and marked confidence=declared. Use to resolve an `unresolved` repo
+# (e.g. a bespoke app classify can only mark "unknown") or to force a profile.
+# Valid kinds: service api frontend cli library embedded monorepo regulated
+#              skill agent hook mcp plugin marketplace action
+classify_pins:
+  - cli
+
+# Force these gate_ids to enforcement=advisory (never block on them here).
+advisory:
+  - audit-harness:ci:crap-score
+
+# Force these gate_ids to enforcement=disabled (do not run/consider them here).
+disable_gates:
+  - audit-harness:ci:a11y

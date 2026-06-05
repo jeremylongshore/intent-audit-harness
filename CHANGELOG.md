@@ -2,6 +2,21 @@
 
 All notable changes are recorded here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added — `classify` verb + `audit-profile/v1` (PP-PLAN-040 Phase 0 + Phase 1)
+
+The first piece of the "comprehensive audit, on any repo" build: the read-only brain.
+
+- **`audit-profile/v1` schema** (`schemas/audit-profile/v1.schema.json`): closed, versioned, hash-bearing value mirroring `gate-result/v1`. Four invariants: classifications are a UNION (not a winner), `unresolved[]` is the only Claude-refinable surface, `waived ⇒ disabled` (allOf-enforced), `registry_hash` makes a profile reproducible.
+- **Canonical dimension→gate registry** (`schemas/audit-profile/registry.v1.json`): the single datum that answers "which gates apply to repo-type X, in which dimension, at what applicability" — `layer-applicability.md` and `TESTING.md` become projections of it.
+- **`audit-harness classify [repo]`** (`scripts/classify.py`, stdlib-only): read-only repository classifier. Detects the UNION of repo-type + Claude-artifact classifications, resolves the gate set against the registry, records `registry_hash`, and emits an `audit-profile/v1` value to stdout. **Never writes to the repo.**
+- **Safety levers**: `INDETERMINATE` result class (infra failure ≠ policy failure); dispatcher per-command supervision via `AUDIT_HARNESS_TIMEOUT` (kill a hung gate, exit 124); `AUDIT_HARNESS_DISABLE=1` kill-switch (gate commands no-op; classify emits an all-disabled profile); engineer-owned `.audit-harness.yml` override (`classify_pins`, `advisory`, `disable_gates`, `disable`) — see `.audit-harness.example.yml`.
+- **`tests/classify/`**: golden fixture corpus (6 fixtures, authored before the classifier) + suite — golden-matches classifications, schema-validates every profile, exercises the kill-switch, the unknown/unresolved path, and override honoring. Wired into CI (`classify` job).
+- **`schemas/` now ships in the npm package** (`files`) so the registry + schema are available to consumers on any repo.
+
+Scope boundary: no `conform` verb, no gate execution yet (Phase 2+). `classify` is read-only and emits a profile only.
+
 ## [v1.1.5] - 2026-06-03
 
 ### Added — npm release pipeline (closes the publish-pipeline gap)
