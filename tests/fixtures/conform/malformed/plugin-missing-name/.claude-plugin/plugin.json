@@ -1,0 +1,4 @@
+{
+  "version": "1.0.0",
+  "description": "Manifest omits the required `name` — conform/v1 plugin floor violation."
+}

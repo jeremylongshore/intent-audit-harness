@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "demo": {
+      "command": "node",
+      "args": ["server.js"],
+      "env": { "LOG_LEVEL": "info" }
+    },
+    "remote": {
+      "url": "https://mcp.example.com/sse",
+      "type": "sse"
+    }
+  }
+}

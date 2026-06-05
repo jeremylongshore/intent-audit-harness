@@ -277,6 +277,22 @@ jobs:
       - name: Run classify golden suite
         run: bash tests/classify/run-classify-tests.sh
 
+  conform:
+    name: conform golden suite (gate-result/v1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install jsonschema + PyYAML
+        # jsonschema validates every emitted gate-result/v1 row; PyYAML is the
+        # frontmatter parser conform requires for a reliable skill/agent verdict
+        # (absent => conform emits an honest ADVISORY indeterminate, never a guess).
+        run: pip install jsonschema pyyaml
+      - name: Run conform golden suite
+        run: bash tests/conform/run-conform-tests.sh
+
 # Convergence: this workflow is the first CI for audit-harness. The regression job
 # (added v0.3.0 / Milestone 2 of build journey ~/.claude/plans/se-the-council-bubbly-frog.md)
 # enforces backward-compat for the --json + emit-evidence additions. See SEMVER.md.

@@ -1,0 +1,5 @@
+{
+  "name": "demo-plugin",
+  "version": "1.0.0",
+  "description": "A conformant demo plugin manifest used as a conform pass fixture."
+}
