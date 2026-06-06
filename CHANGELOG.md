@@ -4,6 +4,16 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added — `scan` security/hygiene/skill-quality gate-runner (PP-PLAN-040 Phase 4 / E6)
+
+The fourth read-only verb: security + hygiene + skill-quality, by orchestrating standard tools (never reimplementing them).
+
+- **`audit-harness scan [repo]`** (`scripts/scan.py`, stdlib): for every `dimension: security | hygiene | skill-quality` gate in the profile, emits a `gate-result/v1` row. Three strategies: **local** (`hygiene-readme` README presence — deterministic), **shell-out** (every gate carrying a `tool` — gitleaks / osv-scanner / semgrep / syft / markdownlint / lychee — clean exit → PASS, findings → ADVISORY(error), tool absent → ADVISORY indeterminate), **consume** (`skill-behavioral` ingests a j-rig Evidence Bundle verdict via `--jrig-verdict`; the harness never runs behavioral judgment itself — no verdict → indeterminate).
+- Advisory-first; `--strict` (or a blocking gate) turns a finding/gap into `FAIL`. Kill-switch → `[]`. Each row records `metadata.method` (`local-presence` / `shell-out` / `consume-j-rig`).
+- **`tests/scan/`**: golden suite (10 checks) with pinned-profile isolation so shell-out tool availability never makes the suite flaky.
+
+**Security note:** on first run this gate caught — and this release redacts from HEAD — a PyPI publish token that had been pasted as a literal value in `python/PUBLISH.md`. The value remains in git history; it must be rotated at the registry (tracked separately). The doc now carries a placeholder.
+
 ### Added — `audit` testing-depth gate-runner (PP-PLAN-040 Phase 3 / E5)
 
 The third read-only verb: the "finish the pyramid" testing-depth diagnostic.
