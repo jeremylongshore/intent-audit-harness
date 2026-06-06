@@ -293,6 +293,36 @@ jobs:
       - name: Run conform golden suite
         run: bash tests/conform/run-conform-tests.sh
 
+  layer-applicability-drift:
+    name: layer-applicability projection drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify layer-applicability.md is in sync with the registry datum
+        # schemas/audit-profile/layer-applicability.md is a PROJECTION of
+        # registry.v1.json. This gate fails if the committed doc drifts — keeping
+        # the registry the single canonical datum (PP-PLAN-040 c2b).
+        run: python3 scripts/gen-layer-applicability.py --check
+
+  fp-rate:
+    name: gate FP-rate measurement (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install PyYAML (conform frontmatter parser)
+        run: pip install pyyaml
+      - name: Measure conform-gate FP/FN rate over the labeled corpus
+        # Advisory measurement (does not gate the build by default). Promotion of a
+        # gate to enforcement=blocking requires FP-rate <= 5% here, then an
+        # engineer pin in tests/TESTING.md (PP-PLAN-040 c2e; docs/gate-promotion.md).
+        run: python3 scripts/fp-rate.py --max-fp-rate 0.05
+
 # Convergence: this workflow is the first CI for audit-harness. The regression job
 # (added v0.3.0 / Milestone 2 of build journey ~/.claude/plans/se-the-council-bubbly-frog.md)
 # enforces backward-compat for the --json + emit-evidence additions. See SEMVER.md.

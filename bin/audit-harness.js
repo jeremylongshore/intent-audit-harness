@@ -24,6 +24,8 @@ const COMMANDS = {
   'emit-evidence': { script: 'emit-evidence.sh', args: [] },
   'classify':      { script: 'classify.py',      args: [] },
   'conform':       { script: 'conform.py',       args: [] },
+  'fp-rate':       { script: 'fp-rate.py',       args: [] },
+  'gen-layer-applicability': { script: 'gen-layer-applicability.py', args: [] },
 };
 
 // Gate commands that may be no-op'd by the AUDIT_HARNESS_DISABLE kill-switch.
@@ -60,6 +62,15 @@ Commands:
                            turns any conformance violation into FAIL (exit 1).
                            OpenAPI -> spectral, Action -> yamllint (missing tool =
                            INDETERMINATE advisory).
+  fp-rate                  Measure each gate's false-positive / false-negative rate
+                           over a labeled corpus (valid/ should be clean, malformed/
+                           should flag). The metric that gates advisory->blocking
+                           promotion. --max-fp-rate X exits 1 if any gate exceeds X.
+                           See docs/gate-promotion.md.
+  gen-layer-applicability  Project schemas/audit-profile/registry.v1.json into
+                           schemas/audit-profile/layer-applicability.md. --write to
+                           regenerate, --check to fail on drift (CI gate). The doc
+                           is a PROJECTION of the canonical registry datum.
   emit-evidence            Wrap a gate-result JSON envelope in an in-toto
                            Statement v1 (predicate https://evals.intentsolutions.io/gate-result/v1)
                            Read JSON on stdin: <gate> --json | audit-harness emit-evidence
