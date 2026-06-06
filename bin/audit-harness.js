@@ -24,6 +24,7 @@ const COMMANDS = {
   'emit-evidence': { script: 'emit-evidence.sh', args: [] },
   'classify':      { script: 'classify.py',      args: [] },
   'conform':       { script: 'conform.py',       args: [] },
+  'audit':         { script: 'audit.py',         args: [] },
   'fp-rate':       { script: 'fp-rate.py',       args: [] },
   'gen-layer-applicability': { script: 'gen-layer-applicability.py', args: [] },
 };
@@ -62,6 +63,13 @@ Commands:
                            turns any conformance violation into FAIL (exit 1).
                            OpenAPI -> spectral, Action -> yamllint (missing tool =
                            INDETERMINATE advisory).
+  audit [repo]             Read-only testing-depth gate-runner. For each
+                           testing-depth gate in the profile, reports coverage
+                           PRESENCE per pyramid layer (unit/integration/e2e/perf/
+                           fuzz/...) + runs crap-score. Emits gate-result/v1 rows.
+                           --fast (default) presence only; --deep adds crap-score;
+                           --strict turns a gap into FAIL. Does NOT execute the
+                           repo's test suite — execution stays in the repo's CI.
   fp-rate                  Measure each gate's false-positive / false-negative rate
                            over a labeled corpus (valid/ should be clean, malformed/
                            should flag). The metric that gates advisory->blocking

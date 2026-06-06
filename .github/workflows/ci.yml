@@ -293,6 +293,19 @@ jobs:
       - name: Run conform golden suite
         run: bash tests/conform/run-conform-tests.sh
 
+  audit:
+    name: audit golden suite (testing-depth gate-runner)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install jsonschema
+        run: pip install jsonschema
+      - name: Run audit golden suite
+        run: bash tests/audit/run-audit-tests.sh
+
   layer-applicability-drift:
     name: layer-applicability projection drift
     runs-on: ubuntu-latest

@@ -1,0 +1,5 @@
+{
+  "name": "has-tests-fixture",
+  "bin": { "has-tests": "index.js" },
+  "scripts": { "test": "vitest run" }
+}
