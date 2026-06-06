@@ -23,6 +23,7 @@ const COMMANDS = {
   'crap':          { script: 'crap-score.py',    args: [] },
   'emit-evidence': { script: 'emit-evidence.sh', args: [] },
   'classify':      { script: 'classify.py',      args: [] },
+  'conform':       { script: 'conform.py',       args: [] },
 };
 
 // Gate commands that may be no-op'd by the AUDIT_HARNESS_DISABLE kill-switch.
@@ -51,6 +52,14 @@ Commands:
   classify [repo]          Read-only repository classifier. Emits an audit-profile/v1
                            value (JSON, stdout) describing the UNION of detected
                            classifications + the resolved gate set. Never writes.
+  conform [repo]           Read-only conformance gate-runner. Validates each repo
+                           artifact (SKILL.md, .mcp.json, plugin/agent ...) against a
+                           content-addressed schema BUNDLED in this harness version
+                           and emits gate-result/v1 rows (JSON array, stdout). Never
+                           writes, never live-fetches. Advisory by default; --strict
+                           turns any conformance violation into FAIL (exit 1).
+                           OpenAPI -> spectral, Action -> yamllint (missing tool =
+                           INDETERMINATE advisory).
   emit-evidence            Wrap a gate-result JSON envelope in an in-toto
                            Statement v1 (predicate https://evals.intentsolutions.io/gate-result/v1)
                            Read JSON on stdin: <gate> --json | audit-harness emit-evidence

@@ -4,6 +4,19 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added — `conform` verb + bundled content-addressed schemas (PP-PLAN-040 Phase 2)
+
+The second piece of the read-only brain: deterministic conformance, emitting Evidence Bundle rows.
+
+- **`audit-harness conform [repo]`** (`scripts/conform.py`, stdlib + PyYAML): read-only conformance gate-runner. For every `dimension: conformance` gate in the repo's `audit-profile/v1`, it locates the artifact(s) and emits a `gate-result/v1` row (JSON array, stdout). **Never writes, never live-fetches.**
+- **Bundled content-addressed schemas** (`schemas/conform/v1/`): `skillmd-frontmatter`, `mcp-config`, `plugin-manifest`, `agent-frontmatter` — the deterministic *structural floor* (parses + required keys + types), distinct from the IS 100-point rubric / SAK authoring kernel (judgment, stays in `/validate-*`). conform records each schema's sha256 in the row's `policy_hash`, so a row re-verifies against the exact schema version that produced it.
+- **Reproducible-by-design engine.** Bundled JSON-Schemas are checked by an embedded subset validator (complete for the closed bundled schemas) rather than ajv — deliberately, because ajv's availability/version varies per machine and would make signed evidence non-reproducible. Same commit + same harness version produce an identical verdict.
+- **Genuinely-external formats shell out**: OpenAPI to `spectral`, GitHub Action to `yamllint`. Missing tool produces an `ADVISORY` indeterminate (never a false `FAIL`).
+- **Advisory-first.** A conformance violation on an `enforcement: advisory` gate is `ADVISORY` (severity `error`), exit 0 — logged, not blocking. `--strict` (or an engineer-promoted `enforcement: blocking` gate) turns a violation into `FAIL` (exit 1). Missing artifact produces `NOT_APPLICABLE`. Kill-switch (`AUDIT_HARNESS_DISABLE=1` / `.audit-harness.yml`) produces an empty `[]`, exit 0.
+- **`tests/conform/`**: golden suite (31 checks) + pass/fail fixtures (valid + malformed SKILL.md, .mcp.json, plugin manifest, agent) — asserts valid to PASS, malformed to ADVISORY (default) / FAIL (`--strict`), every row validates against `gate-result/v1`, the NOT_APPLICABLE + indeterminate paths, and `policy_hash` == bundled-schema sha256 + reproducible. Wired into CI (`conform` job).
+
+Scope boundary: conformance kinds without a bundled schema (`marketplace`, `hook`) resolve to `ADVISORY` indeterminate — drop a schema into `schemas/conform/v1/` to light them up, no code change. No gate *execution* for testing-depth/security yet (Phase 3+).
+
 ### Added — `classify` verb + `audit-profile/v1` (PP-PLAN-040 Phase 0 + Phase 1)
 
 The first piece of the "comprehensive audit, on any repo" build: the read-only brain.

@@ -14,6 +14,15 @@ The canonical implementation of the test-enforcement scripts used by the `audit-
 4. **Policy-driven, never hardcoded.** Thresholds (coverage floor, CRAP limits, mutation kill rate) read from the target repo's `tests/TESTING.md`. Never hardcode a number in a script.
 5. **The harness tests itself.** Run `bash scripts/escape-scan.sh --staged` on any proposed diff before committing.
 
+## Read-only brain: `classify` + `conform` (PP-PLAN-040)
+
+The "comprehensive audit, on any repo" build (master plan: `intent-eval-lab/000-docs/040-PP-PLAN-audit-trio-comprehensive-2026-06-04.md`) adds two **read-only** verbs that determine and check a repo's audit profile without Claude. Both are stdlib-Python, emit JSON to stdout, and **never write to the repo**:
+
+- **`classify [repo]`** (`scripts/classify.py`) → an `audit-profile/v1` value. Detects the UNION of repo-type + Claude-artifact classifications, resolves the gate set against the canonical `schemas/audit-profile/registry.v1.json` datum, records `registry_hash`. `unresolved[]` is the only surface a Claude inspector may later refine.
+- **`conform [repo]`** (`scripts/conform.py`) → `gate-result/v1` rows. For each `dimension: conformance` gate, validates the artifact against a content-addressed schema **bundled** in `schemas/conform/v1/` (never live-fetched) and records that schema's sha256 in `policy_hash`. Bundled JSON-Schemas are checked by an **embedded subset validator** (not ajv) on purpose: reproducibility of signed evidence beats per-box ajv availability. Genuinely-external formats shell out (OpenAPI→spectral, Action→yamllint); missing tool → ADVISORY indeterminate, never a false FAIL. Advisory-first; `--strict` turns violations into FAIL.
+
+Design boundaries that travel with these verbs: the harness stays **read-only** (no `apply` — provisioning is `/implement-tests`'s job); conform's bundled schemas are the deterministic **structural floor**, distinct from the IS rubric / SAK authoring kernel (judgment, stays in `/validate-*`); new gates ship `enforcement: advisory` until an engineer promotes them in `tests/TESTING.md`. `scripts/classify.py` + `scripts/conform.py` are hash-pinned in `.harness-hash` — edits REFUSE at escape-scan until re-pinned via `audit-harness init`.
+
 ## Three-repo convergence (Phase A complete 2026-05-10)
 
 This repo is the **deterministic-gates layer** of the three-repo convergence vision (`intent-eval-lab` + `audit-harness` + `j-rig-binary-eval`). The convergence sits on a shared **Evidence Bundle** schema authored upstream in `intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/`. This repo emits gate-result rows into that bundle; downstream tools (j-rig, Rollout Gate GHA) consume them.
