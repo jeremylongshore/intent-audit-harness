@@ -4,6 +4,15 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added — `audit` testing-depth gate-runner (PP-PLAN-040 Phase 3 / E5)
+
+The third read-only verb: the "finish the pyramid" testing-depth diagnostic.
+
+- **`audit-harness audit [repo]`** (`scripts/audit.py`, stdlib): for every `dimension: testing-depth` gate in the profile, assesses the gate and emits a `gate-result/v1` row. Two read-only strategies: `crap-score` runs the bundled `crap` scorer (static complexity×coverage); every pyramid layer (unit/integration/e2e/smoke/perf/a11y/contract/migration/property-based/fuzz/sanitizers) gets a per-layer **presence heuristic** (test dirs, framework configs, dependency markers). Layer present → `PASS`; absent → `ADVISORY(warn)` testing-depth gap; not statically assessable → `ADVISORY` indeterminate.
+- **`--fast` (default)** presence heuristics only (<10s); **`--deep`** adds `crap-score`; **`--strict`** turns a gap on a blocking gate into `FAIL`. Kill-switch → `[]`. Each row records `metadata.method` (`crap-static` / `presence-heuristic` / `delegated`) for provenance.
+- **Deliberately does NOT execute the repo's test suite.** Running arbitrary untrusted suites is the repo's own CI's job; the harness reports coverage *presence* and the repo's CI test step produces the execution verdict. `audit` is the diagnostic, not the test runner.
+- **`tests/audit/`**: golden suite (7 checks) + `has-tests`/`no-tests` fixtures — asserts unit→PASS / gap→ADVISORY(default) / gap→FAIL(`--strict`), crap deep-only-in-fast, kill-switch, and gate-result/v1 validity. CI `audit` job.
+
 ### Added — registry projection + FP-rate harness (PP-PLAN-040 Phase 0 completion: c2b + c2e)
 
 Closes the data/safety-spine epic (E2): the registry becomes the single canonical datum and gate promotion gets a measured bar.

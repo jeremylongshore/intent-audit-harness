@@ -1,0 +1,4 @@
+{
+  "name": "no-tests-fixture",
+  "bin": { "no-tests": "index.js" }
+}
