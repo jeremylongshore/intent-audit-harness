@@ -25,6 +25,7 @@ const COMMANDS = {
   'classify':      { script: 'classify.py',      args: [] },
   'conform':       { script: 'conform.py',       args: [] },
   'audit':         { script: 'audit.py',         args: [] },
+  'scan':          { script: 'scan.py',          args: [] },
   'fp-rate':       { script: 'fp-rate.py',       args: [] },
   'gen-layer-applicability': { script: 'gen-layer-applicability.py', args: [] },
 };
@@ -70,6 +71,14 @@ Commands:
                            --fast (default) presence only; --deep adds crap-score;
                            --strict turns a gap into FAIL. Does NOT execute the
                            repo's test suite — execution stays in the repo's CI.
+  scan [repo]              Read-only security/hygiene/skill-quality gate-runner.
+                           hygiene-readme is a local presence check; every tool-
+                           backed gate (gitleaks/osv-scanner/semgrep/syft/
+                           markdownlint/lychee) shells out (clean->PASS, findings->
+                           ADVISORY, tool absent->INDETERMINATE); skill-behavioral
+                           CONSUMES a j-rig verdict (--jrig-verdict PATH), never
+                           reimplementing judgment. Emits gate-result/v1 rows.
+                           Advisory by default; --strict turns findings into FAIL.
   fp-rate                  Measure each gate's false-positive / false-negative rate
                            over a labeled corpus (valid/ should be clean, malformed/
                            should flag). The metric that gates advisory->blocking

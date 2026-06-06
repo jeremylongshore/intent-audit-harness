@@ -306,6 +306,19 @@ jobs:
       - name: Run audit golden suite
         run: bash tests/audit/run-audit-tests.sh
 
+  scan:
+    name: scan golden suite (security/hygiene/skill-quality)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install jsonschema
+        run: pip install jsonschema
+      - name: Run scan golden suite
+        run: bash tests/scan/run-scan-tests.sh
+
   layer-applicability-drift:
     name: layer-applicability projection drift
     runs-on: ubuntu-latest

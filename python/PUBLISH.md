@@ -15,7 +15,7 @@
 
    ```bash
    pass insert pypi/api-token
-   # paste: pypi-AgEIcHlwaS5vcmcC...
+   # paste: pypi-REDACTED-PLACEHOLDER-PUT-YOUR-OWN-TOKEN-HERE...
    ```
 
    **Option B — `~/.pypirc`:**
@@ -23,7 +23,7 @@
    ```ini
    [pypi]
      username = __token__
-     password = pypi-AgEIcHlwaS5vcmcC...
+     password = pypi-REDACTED-PLACEHOLDER-PUT-YOUR-OWN-TOKEN-HERE...
    ```
 
    Then `chmod 600 ~/.pypirc`.
