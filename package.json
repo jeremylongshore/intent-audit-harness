@@ -32,6 +32,7 @@
     "bin",
     "scripts",
     "schemas",
+    "docs",
     "README.md",
     "LICENSE",
     "NOTICE",

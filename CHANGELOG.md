@@ -4,6 +4,14 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added — registry projection + FP-rate harness (PP-PLAN-040 Phase 0 completion: c2b + c2e)
+
+Closes the data/safety-spine epic (E2): the registry becomes the single canonical datum and gate promotion gets a measured bar.
+
+- **`audit-harness gen-layer-applicability`** (`scripts/gen-layer-applicability.py`): projects `schemas/audit-profile/registry.v1.json` into `schemas/audit-profile/layer-applicability.md`. `--write` regenerates; `--check` fails on drift. The doc is now a **projection** of the registry datum, not a hand-maintained parallel source — CI gate `layer-applicability-drift` enforces it (c2b).
+- **`audit-harness fp-rate`** (`scripts/fp-rate.py`): measures each gate's false-positive / false-negative rate over a labeled corpus (`tests/fixtures/conform/{valid,malformed}/`). This is the metric that gates advisory→blocking promotion. `--max-fp-rate X` exits 1 if any gate exceeds the bar; CI runs it advisory at the 5% default bar (c2e).
+- **`docs/gate-promotion.md`**: the dedicated advisory→blocking promotion rule — FP-rate ≤ 5% bar, engineer-pinned in `tests/TESTING.md`, re-pinned manifest. Documents *why* FP-rate (not FN-rate) is the gate and how demotion/kill-switch works. `docs/` now ships in the npm package (`files`).
+
 ### Added — `conform` verb + bundled content-addressed schemas (PP-PLAN-040 Phase 2)
 
 The second piece of the read-only brain: deterministic conformance, emitting Evidence Bundle rows.
