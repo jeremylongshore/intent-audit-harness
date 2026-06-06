@@ -1,0 +1,104 @@
+{
+  "schema_version": "audit-profile/v1",
+  "subject": {
+    "name": "j-rig-binary-eval",
+    "commit_sha": "d3d641d",
+    "root": "."
+  },
+  "classifier": "audit-harness@1.2.0",
+  "registry_hash": "sha256:b2ea8f9cb89528f7e6aff5ec498478c86e352e693bf3ae4750aaf70c06b9d434",
+  "timestamp": "2026-06-04T00:00:00Z",
+  "classifications": [
+    {
+      "kind": "monorepo",
+      "confidence": "detected",
+      "signals": ["pnpm-workspace.yaml"]
+    },
+    {
+      "kind": "library",
+      "confidence": "detected",
+      "signals": ["packages/core/package.json:\"private\":false"]
+    },
+    {
+      "kind": "cli",
+      "confidence": "detected",
+      "signals": ["packages/cli/bin"]
+    },
+    {
+      "kind": "skill",
+      "confidence": "detected",
+      "signals": ["SKILL.md present"]
+    },
+    {
+      "kind": "mcp",
+      "confidence": "detected",
+      "signals": [".mcp.json present"]
+    }
+  ],
+  "dimensions": [
+    "testing-depth",
+    "conformance",
+    "security",
+    "hygiene",
+    "skill-quality"
+  ],
+  "gates": [
+    {
+      "gate_id": "audit-harness:ci:crap-score",
+      "dimension": "testing-depth",
+      "applicability": "required",
+      "enforcement": "blocking",
+      "result_class_default": "PASS"
+    },
+    {
+      "gate_id": "audit-harness:local:conform-skillmd",
+      "dimension": "conformance",
+      "applicability": "required",
+      "enforcement": "advisory",
+      "result_class_default": "PASS",
+      "tool": "validate-skillmd"
+    },
+    {
+      "gate_id": "audit-harness:local:conform-mcp",
+      "dimension": "conformance",
+      "applicability": "required",
+      "enforcement": "advisory",
+      "tool": "validate-mcp"
+    },
+    {
+      "gate_id": "audit-harness:ci:secrets-gitleaks",
+      "dimension": "security",
+      "applicability": "recommended",
+      "enforcement": "advisory",
+      "result_class_default": "INDETERMINATE",
+      "tool": "gitleaks"
+    },
+    {
+      "gate_id": "audit-harness:ci:cve-osv",
+      "dimension": "security",
+      "applicability": "recommended",
+      "enforcement": "advisory",
+      "tool": "osv-scanner"
+    },
+    {
+      "gate_id": "audit-harness:local:hygiene-links",
+      "dimension": "hygiene",
+      "applicability": "recommended",
+      "enforcement": "advisory",
+      "tool": "lychee"
+    },
+    {
+      "gate_id": "audit-harness:server:skill-behavioral",
+      "dimension": "skill-quality",
+      "applicability": "conditional",
+      "enforcement": "advisory"
+    },
+    {
+      "gate_id": "audit-harness:ci:a11y",
+      "dimension": "testing-depth",
+      "applicability": "waived",
+      "enforcement": "disabled"
+    }
+  ],
+  "unresolved": []
+}

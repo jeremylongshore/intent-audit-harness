@@ -22,7 +22,15 @@ const COMMANDS = {
   'gherkin-lint':  { script: 'gherkin-lint.sh',  args: [] },
   'crap':          { script: 'crap-score.py',    args: [] },
   'emit-evidence': { script: 'emit-evidence.sh', args: [] },
+  'classify':      { script: 'classify.py',      args: [] },
 };
+
+// Gate commands that may be no-op'd by the AUDIT_HARNESS_DISABLE kill-switch.
+// classify is intentionally NOT here: it emits a meaningful kill-switched profile
+// itself (every gate enforcement=disabled). verify/init/list always run.
+const KILLABLE_GATES = new Set([
+  'escape-scan', 'arch', 'bias', 'gherkin-lint', 'crap', 'emit-evidence',
+]);
 
 function usage() {
   console.log(`audit-harness — deterministic test-enforcement toolkit
@@ -40,6 +48,9 @@ Commands:
   bias                     Count test-bias patterns (tautology, smoke-only, etc.)
   gherkin-lint             Advisory Gherkin quality check
   crap [args...]           CRAP complexity × coverage scorer (multi-language)
+  classify [repo]          Read-only repository classifier. Emits an audit-profile/v1
+                           value (JSON, stdout) describing the UNION of detected
+                           classifications + the resolved gate set. Never writes.
   emit-evidence            Wrap a gate-result JSON envelope in an in-toto
                            Statement v1 (predicate https://evals.intentsolutions.io/gate-result/v1)
                            Read JSON on stdin: <gate> --json | audit-harness emit-evidence
@@ -49,6 +60,14 @@ Evidence Bundle (v0.3.0+):
   suitable for piping to emit-evidence. See SEMVER.md for compatibility rules
   and intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/SPEC.md for the
   envelope schema.
+
+Safety levers:
+  AUDIT_HARNESS_DISABLE=1  Kill-switch. Gate commands no-op (exit 0, banner);
+                           classify still emits a profile with every gate disabled.
+  AUDIT_HARNESS_TIMEOUT=N  Per-command supervision: kill the gate after N seconds
+                           (exit 124) so a hung gate never blocks the pipeline.
+  .audit-harness.yml       Engineer-owned per-repo override (classify_pins, advisory,
+                           disable_gates, disable) honored by classify.
 
 Options:
   --version, -v            Print version
@@ -87,12 +106,39 @@ if (!existsSync(scriptPath)) {
   process.exit(2);
 }
 
+// Kill-switch: gate commands no-op; classify/verify/init/list still run.
+if (process.env.AUDIT_HARNESS_DISABLE === '1' && KILLABLE_GATES.has(cmd)) {
+  console.error(`audit-harness: KILL-SWITCH active (AUDIT_HARNESS_DISABLE=1) — '${cmd}' skipped`);
+  process.exit(0);
+}
+
 const isPython = entry.script.endsWith('.py');
 const interpreter = isPython ? 'python3' : 'bash';
 const finalArgs = [scriptPath, ...entry.args, ...rest];
 
+// Per-command supervision: a hung gate hits its timeout and is killed (exit 124)
+// rather than blocking the pipeline. 0/unset = no timeout.
+const timeoutSec = Number(process.env.AUDIT_HARNESS_TIMEOUT) || 0;
+
 const child = spawn(interpreter, finalArgs, { stdio: 'inherit' });
+
+let timedOut = false;
+let timer = null;
+if (timeoutSec > 0) {
+  timer = setTimeout(() => {
+    timedOut = true;
+    child.kill('SIGTERM');
+    setTimeout(() => child.kill('SIGKILL'), 2000).unref();
+  }, timeoutSec * 1000);
+  timer.unref();
+}
+
 child.on('exit', (code, signal) => {
+  if (timer) clearTimeout(timer);
+  if (timedOut) {
+    console.error(`audit-harness: ${entry.script} exceeded AUDIT_HARNESS_TIMEOUT=${timeoutSec}s — killed (INDETERMINATE)`);
+    process.exit(124);
+  }
   if (signal) {
     console.error(`audit-harness: ${entry.script} killed by ${signal}`);
     process.exit(128);
@@ -100,6 +146,7 @@ child.on('exit', (code, signal) => {
   process.exit(code ?? 0);
 });
 child.on('error', (err) => {
+  if (timer) clearTimeout(timer);
   console.error(`audit-harness: failed to spawn ${interpreter}: ${err.message}`);
   process.exit(2);
 });
