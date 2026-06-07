@@ -27,6 +27,7 @@ const COMMANDS = {
   'audit':         { script: 'audit.py',         args: [] },
   'scan':          { script: 'scan.py',          args: [] },
   'fp-rate':       { script: 'fp-rate.py',       args: [] },
+  'currency':      { script: 'currency.py',      args: [] },
   'gen-layer-applicability': { script: 'gen-layer-applicability.py', args: [] },
 };
 
@@ -84,6 +85,11 @@ Commands:
                            should flag). The metric that gates advisory->blocking
                            promotion. --max-fp-rate X exits 1 if any gate exceeds X.
                            See docs/gate-promotion.md.
+  currency                 Advisory upstream-currency report. Reads the per-upstream
+                           pin relation (schemas/currency/pins.v1.json) and flags
+                           pins whose checked_at is past their staleness window.
+                           NO exit-code authority (always exit 0), no live-fetch,
+                           no auto-fix — it reports; /sync-testing-harness acts.
   gen-layer-applicability  Project schemas/audit-profile/registry.v1.json into
                            schemas/audit-profile/layer-applicability.md. --write to
                            regenerate, --check to fail on drift (CI gate). The doc

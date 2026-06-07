@@ -1,0 +1,55 @@
+{
+  "pins_version": "currency-pins/v1",
+  "description": "Per-upstream-identity pin relation. Each upstream the harness/skills depend on carries ITS OWN pinned version + the date it was last verified against upstream (checked_at) + a staleness window. The `currency` advisory report reads this datum and flags pins whose checked_at is older than their window — i.e. it makes the PIN'S OWN STALENESS detectable, without ever live-fetching. Currency is advisory-only: it reports + (in /sync-testing-harness) opens PRs; it has no exit-code authority and never auto-fixes. Updating a pin (after a human re-verifies against upstream) is an engineer edit to this file + a fresh checked_at.",
+  "default_staleness_window_days": 90,
+  "pins": [
+    {
+      "identity": "mcp-spec",
+      "pinned_version": "2025-06-18",
+      "source": "https://spec.modelcontextprotocol.io/ (protocol revision)",
+      "checked_at": "2026-06-06",
+      "staleness_window_days": 90,
+      "notes": "MCP protocol spec revision the .mcp.json conform schema targets."
+    },
+    {
+      "identity": "skill-md-schema",
+      "pinned_version": "3.7.0",
+      "source": "claude-code-plugins 000-docs/SCHEMA_CHANGELOG.md",
+      "checked_at": "2026-06-06",
+      "staleness_window_days": 90,
+      "notes": "IS SKILL.md schema the conform skillmd-frontmatter floor tracks (full rubric stays in /validate-skillmd)."
+    },
+    {
+      "identity": "claude-code",
+      "pinned_version": "2.1.152",
+      "source": "https://code.claude.com/docs/en/changelog",
+      "checked_at": "2026-06-06",
+      "staleness_window_days": 60,
+      "notes": "Claude Code release (added disallowed-tools frontmatter at 2.1.152)."
+    },
+    {
+      "identity": "gate-result-predicate",
+      "pinned_version": "v1",
+      "source": "@intentsolutions/core gate-result/v1 (https://evals.intentsolutions.io/gate-result/v1)",
+      "checked_at": "2026-06-06",
+      "staleness_window_days": 180,
+      "notes": "Evidence Bundle predicate every gate emits against. Immutable URI; bump = new version, never overwrite."
+    },
+    {
+      "identity": "anthropic-sdk",
+      "pinned_version": "unverified",
+      "source": "https://github.com/anthropics/anthropic-sdk-python (+ -typescript)",
+      "checked_at": "2026-06-06",
+      "staleness_window_days": 90,
+      "notes": "Anthropic SDK surface referenced by downstream skills; pinned_version=unverified until first deliberate verification."
+    },
+    {
+      "identity": "agentskills-spec",
+      "pinned_version": "1.0.0",
+      "source": "https://agentskills.io/specification",
+      "checked_at": "2026-06-06",
+      "staleness_window_days": 90,
+      "notes": "Open SKILL.md standard (compatibility/metadata/license fields)."
+    }
+  ]
+}
