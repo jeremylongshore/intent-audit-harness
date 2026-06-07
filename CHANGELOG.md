@@ -4,6 +4,14 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added — `currency` advisory upstream-currency report (PP-PLAN-040 Phase 5 / E7)
+
+The fifth verb, and deliberately the weakest: an advisory report with no exit-code authority.
+
+- **`audit-harness currency`** (`scripts/currency.py`, stdlib): reads the per-upstream-identity pin relation (`schemas/currency/pins.v1.json`) and reports which pins are themselves **stale** — `checked_at` older than the pin's staleness window. Each upstream (mcp-spec, skill-md-schema, claude-code, gate-result-predicate, anthropic-sdk, agentskills-spec) carries its own `pinned_version` + `checked_at` + window, so the *pin's own staleness* is detectable (not one opaque scalar).
+- **No exit-code authority (always exit 0), no live-fetch, no auto-fix.** Currency depends on upstream state — non-deterministic and network-bound — so it only reports. `/sync-testing-harness` consumes the report to open advisory bump PRs; it never reddens a build. `--today YYYY-MM-DD` makes reports reproducible.
+- **`tests/currency/`**: golden suite (3 checks) — stale/current/unknown classification, the no-exit-authority guarantee (exit 0 even when all pins are stale), and the shipped relation reporting.
+
 ### Added — `scan` security/hygiene/skill-quality gate-runner (PP-PLAN-040 Phase 4 / E6)
 
 The fourth read-only verb: security + hygiene + skill-quality, by orchestrating standard tools (never reimplementing them).

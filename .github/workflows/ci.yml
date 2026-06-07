@@ -319,6 +319,17 @@ jobs:
       - name: Run scan golden suite
         run: bash tests/scan/run-scan-tests.sh
 
+  currency:
+    name: currency advisory report suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run currency golden suite
+        run: bash tests/currency/run-currency-tests.sh
+
   layer-applicability-drift:
     name: layer-applicability projection drift
     runs-on: ubuntu-latest

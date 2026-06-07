@@ -1,0 +1,9 @@
+{
+  "pins_version": "currency-pins/v1",
+  "default_staleness_window_days": 90,
+  "pins": [
+    { "identity": "old-one",   "pinned_version": "1.0", "checked_at": "2020-01-01", "staleness_window_days": 90, "source": "x" },
+    { "identity": "fresh-one", "pinned_version": "2.0", "checked_at": "2099-01-01", "staleness_window_days": 90, "source": "x" },
+    { "identity": "bad-date",  "pinned_version": "3.0", "checked_at": "not-a-date", "staleness_window_days": 90, "source": "x" }
+  ]
+}
