@@ -34,8 +34,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  # Required for npm provenance (Sigstore OIDC token).
+  contents: write  # create the GitHub Release + upload the dashboard manifest asset
+  # Required for npm provenance + cosign keyless (Sigstore OIDC token).
   id-token: write
 
 jobs:
@@ -79,3 +79,103 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Create the GitHub Release on a tag push so the emit-evidence job below can
+      # attach the dashboard's report-manifest.json to it. (Only meaningful on a
+      # tag; workflow_dispatch has no tag to release.)
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release $tag already exists"
+          else
+            gh release create "$tag" --title "audit-harness $tag" --generate-notes --latest
+          fi
+
+  # ── Emit this repo's own testing evidence for the dashboard (bead nr75.12) ──
+  #
+  # CI-ONLY. @intentsolutions/core is installed with `npm i --no-save` so the
+  # published zero-dependency package surface stays untouched (package.json keeps
+  # empty dependencies + devDependencies). The emitter lives in ci/ (excluded
+  # from package.json#files), so it never ships to npm consumers.
+  #
+  # Runs audit-harness's real deterministic self-gate (harness-hash --verify) →
+  # kernel gate-result/v1 row → kernel EvidenceBundle (ci/emit-evidence.ts,
+  # fail-closed against the @intentsolutions/core schemas pinned to the version
+  # the dashboard verifies with), keyless-signs the canonical bytes with cosign
+  # (Fulcio OIDC + Rekor), assembles report-manifest.json, and uploads it onto
+  # this tag's Release. The dashboard re-verifies OIDC subject + Rekor inclusion +
+  # DSSE + kernel schema at ingest. Only runs on a tag push (the dashboard pins
+  # refs/tags/* — a workflow_dispatch main-ref manifest would not verify).
+  emit-evidence:
+    name: Emit signed gate-result evidence for the dashboard
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # upload the manifest onto the Release
+      id-token: write # cosign keyless (Fulcio OIDC)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      # CI-only kernel install — NEVER written to package.json (zero-dep stays).
+      - name: Install kernel validators (CI-only, --no-save)
+        run: npm i --no-save @intentsolutions/core@0.2.0
+
+      - name: Emit-evidence self-check (kernel-valid + canonical-stable)
+        run: node --experimental-strip-types ci/emit-evidence.ts --self-check
+
+      - name: Emit gate-result/v1 EvidenceBundle(s)
+        run: node --experimental-strip-types ci/emit-evidence.ts --out build/evidence --ref "${GITHUB_REF}"
+
+      - name: Sign each EvidenceBundle (cosign keyless → Rekor)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          signed=0
+          for bundle in build/evidence/bundle-*.json; do
+            case "$bundle" in *.sigstore.json) continue;; esac
+            sig="${bundle%.json}.sigstore.json"
+            echo "::group::cosign sign-blob $bundle"
+            cosign sign-blob --yes --new-bundle-format --bundle "$sig" "$bundle"
+            echo "::endgroup::"
+            signed=$((signed + 1))
+          done
+          if [ "$signed" -eq 0 ]; then
+            echo "::error::no EvidenceBundles were produced to sign"
+            exit 1
+          fi
+          echo "✓ signed $signed bundle(s)"
+
+      - name: Assemble report-manifest.json (fail-closed on shape mismatch)
+        run: node --experimental-strip-types ci/assemble-manifest.ts --dir build/evidence --out build/evidence/report-manifest.json
+
+      - name: Publish report-manifest.json onto the Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF#refs/tags/}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" build/evidence/report-manifest.json --clobber
+          else
+            gh release create "$tag" build/evidence/report-manifest.json \
+              --title "audit-harness $tag" --generate-notes --latest
+          fi
+          echo "✓ report-manifest.json published to release $tag"
