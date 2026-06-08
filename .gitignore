@@ -3,6 +3,8 @@ dist/
 *.tgz
 .DS_Store
 coverage/
+build/
+reports/
 
 # NOTE: .harness-hash is INTENTIONALLY tracked, not ignored.
 # Per iep-P3 iah-self-pin (bd_000-projects-itpl) + audit-harness CLAUDE.md

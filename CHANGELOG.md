@@ -4,6 +4,14 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added — CI-only signed evidence emit for the intent-eval-dashboard (nr75.12)
+
+The dashboard reports hub (labs.intentsolutions.io) ingests a signed `report-manifest.json` of kernel `gate-result/v1` rows per repo. This adds audit-harness's own emit, lighting up its row.
+
+- **`ci/emit-evidence.ts` + `ci/assemble-manifest.ts`** — run the real deterministic self-gate (`harness-hash --verify`), shape it into a kernel `gate-result/v1` + `EvidenceBundle` (fail-closed against `@intentsolutions/core`), cosign-sign the canonical bytes (Fulcio OIDC + Rekor), and assemble the manifest the dashboard re-verifies at ingest.
+- **Zero-dep guarantee preserved.** The emitter lives in `ci/` (excluded from `package.json#files`) and the kernel is installed CI-only via `npm i --no-save` — `dependencies` + `devDependencies` stay empty and the published tarball is unchanged (verified via `npm pack --dry-run`).
+- **`.github/workflows/release.yml`** — adds a GitHub Release on tag push + an `emit-evidence` job (tag-only) that publishes the manifest as a Release asset.
+
 ### Added — `currency` advisory upstream-currency report (PP-PLAN-040 Phase 5 / E7)
 
 The fifth verb, and deliberately the weakest: an advisory report with no exit-code authority.
