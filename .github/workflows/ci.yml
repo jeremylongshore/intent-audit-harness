@@ -330,6 +330,23 @@ jobs:
       - name: Run currency golden suite
         run: bash tests/currency/run-currency-tests.sh
 
+  golden:
+    name: golden-master stdout suite (gherkin-lint + crap-score)
+    runs-on: ubuntu-latest
+    # Pins the raw stdout of the two scorers whose output shape is a
+    # downstream contract (emit-evidence pipeline + dashboards + audit-tests
+    # skill). The per-row schema gate validates the AUGMENTED predicate, not
+    # the raw scorer stdout — this suite catches a silent stdout reshape the
+    # schema gate cannot. CI installs no complexity provider, so the golden
+    # captures crap-score's no-provider envelope shape (deterministic).
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run golden-master suite
+        run: bash tests/golden/run-golden.sh
+
   layer-applicability-drift:
     name: layer-applicability projection drift
     runs-on: ubuntu-latest

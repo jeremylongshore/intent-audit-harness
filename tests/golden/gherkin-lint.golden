@@ -1,0 +1,8 @@
+gherkin-lint: <LINTER-MODE-NORMALIZED>
+WARN  features/bad.feature:4 imperative verb in step (prefer declarative)
+WARN  features/bad.feature:4 CSS selector / xpath in step (prefer business language)
+WARN  features/bad.feature:5 imperative verb in step (prefer declarative)
+WARN  features/bad.feature:0 repeated Given lines without Background block
+ERROR features/bad.feature:4 scenario starts with And (use Given/When/Then)
+
+gherkin-lint summary: 4 warning(s), 1 error(s)
