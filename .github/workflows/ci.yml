@@ -266,6 +266,29 @@ jobs:
       - name: Run regression suite
         run: bash tests/regression/run-regression.sh
 
+  semver:
+    name: SemVer contract suite (CLI/output surface freeze)
+    runs-on: ubuntu-latest
+    # Pins the public CLI / output contract declared in SEMVER.md as live
+    # assertions: the frozen subcommand roster, frozen exit codes, the --json
+    # flag + stdout/stderr stream contract, and the frozen emit-evidence
+    # predicate URI. A MAJOR-worthy change (remove/rename a subcommand, change
+    # an exit code for the same input, drop --json or swap its streams, mutate
+    # the gate-result/v1 predicate URI) shipped as MINOR/PATCH fails here —
+    # forcing a deliberate major bump + a reviewed SEMVER.md/suite update.
+    # Complements (does not duplicate) the regression suite (behavioral parity)
+    # and the golden suite (raw stdout shape).
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run SemVer contract suite
+        run: bash tests/semver/run-semver-tests.sh
+
   classify:
     name: classify golden suite (audit-profile/v1)
     runs-on: ubuntu-latest
