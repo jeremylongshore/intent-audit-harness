@@ -4,6 +4,14 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Changed — `install.sh` vendors NOTICE + the Node dispatcher (iah-install-sh-completeness)
+
+The vendored-install path (non-Node repos) now ships a complete, traceable copy.
+
+- **`NOTICE`** is copied into `.audit-harness/` — Apache-2.0 §4(d) requires the NOTICE file to travel with any distribution, and vendoring is a distribution.
+- **`bin/audit-harness.js`** (the Node CLI dispatcher) and **`package.json`** are copied into `.audit-harness/bin/` + `.audit-harness/` so the canonical dispatcher surface is present and its `--version` (which reads `../package.json`) resolves in the vendored tree.
+- A **`PROVENANCE`** file records the source repo, version, tarball URL, and install timestamp so a vendored tree is traceable back to the exact release it came from.
+
 ### Added — CI-only signed evidence emit for the intent-eval-dashboard (nr75.12)
 
 The dashboard reports hub (labs.intentsolutions.io) ingests a signed `report-manifest.json` of kernel `gate-result/v1` rows per repo. This adds audit-harness's own emit, lighting up its row.
