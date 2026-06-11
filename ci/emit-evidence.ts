@@ -275,10 +275,13 @@ function gitSha(): string {
 
 function harnessPolicyHash(): string {
   try {
-    const h = readFileSync(join(process.cwd(), '.harness-hash'), 'utf8').trim();
-    if (/^[a-f0-9]{64}$/.test(h)) return `sha256:${h}`;
-    // .harness-hash may be a multi-line manifest; hash its full content.
-    return `sha256:${sha256Hex(h)}`;
+    // Hash the raw file bytes so policy_hash === `sha256sum .harness-hash`.
+    // .harness-hash is a multi-line manifest with a trailing newline; an
+    // earlier .trim() stripped that newline, producing a digest that never
+    // matched the canonical `sha256sum .harness-hash` value an auditor would
+    // recompute. Read as a Buffer and hash it directly to stay byte-exact.
+    const raw = readFileSync(join(process.cwd(), '.harness-hash'));
+    return `sha256:${createHash('sha256').update(raw).digest('hex')}`;
   } catch {
     return `sha256:${sha256Hex('no-policy')}`;
   }

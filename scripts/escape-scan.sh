@@ -63,7 +63,15 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 case "$1" in
-  -) DIFF_SRC="/dev/stdin" ;;
+  -)
+    # Buffer stdin into a temp file so the diff can be read multiple times.
+    # /dev/stdin is drained by the first grep, which would leave later reads
+    # (notably the input_hash sha256) seeing an empty stream — emitting the
+    # SHA-256 of "" instead of the real diff hash.
+    DIFF_SRC=$(mktemp)
+    trap 'rm -f "$DIFF_SRC"' EXIT
+    cat > "$DIFF_SRC"
+    ;;
   --staged)
     DIFF_SRC=$(mktemp)
     trap 'rm -f "$DIFF_SRC"' EXIT
