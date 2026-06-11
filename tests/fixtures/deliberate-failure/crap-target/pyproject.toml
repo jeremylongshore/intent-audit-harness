@@ -1,0 +1,7 @@
+# Minimal pyproject so crap-score's auto-detect resolves language=python
+# deterministically for the golden-master suite. This fixture is a CRAP target,
+# not a real package — it carries one source file with a deliberately high
+# cyclomatic complexity so a radon-equipped run produces a non-trivial score.
+[project]
+name = "crap-fixture"
+version = "0.0.0"

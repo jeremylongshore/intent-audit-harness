@@ -4,6 +4,22 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added — golden-master suite for gherkin-lint + crap-score stdout shapes (iah-golden-master)
+
+A fitness function that pins the raw stdout of the two scorers whose output is a downstream contract.
+
+- **`tests/golden/run-golden.sh`** captures `gherkin-lint.sh` (text rubric) and `crap-score.py --json` (gate-result envelope) stdout against a `tests/fixtures/deliberate-failure/` corpus and diffs each against a checked-in golden, failing on any drift. Environment-volatile bytes are normalized out (gherkin-lint's installed-vs-awk-fallback first line; crap-score's absolute `summary_path`) so the golden is byte-stable across machines. CI installs no complexity provider, so the crap golden captures the deterministic no-provider envelope shape.
+- **Why this and not the per-row schema gate:** the schema gate validates the *augmented* predicate that `emit-evidence` produces, not the raw scorer stdout. A silent reshape of the scorer stdout — a renamed field, a dropped WARN line, changed summary wording — is a backward-compat break the schema gate cannot see. This suite is that missing guard.
+- Regenerate intentional changes with `bash tests/golden/run-golden.sh --update` and review the golden diff in the PR. Wired into `.github/workflows/ci.yml` as the `golden` job.
+
+### Changed — `install.sh` vendors NOTICE + the Node dispatcher (iah-install-sh-completeness)
+
+The vendored-install path (non-Node repos) now ships a complete, traceable copy.
+
+- **`NOTICE`** is copied into `.audit-harness/` — Apache-2.0 §4(d) requires the NOTICE file to travel with any distribution, and vendoring is a distribution.
+- **`bin/audit-harness.js`** (the Node CLI dispatcher) and **`package.json`** are copied into `.audit-harness/bin/` + `.audit-harness/` so the canonical dispatcher surface is present and its `--version` (which reads `../package.json`) resolves in the vendored tree.
+- A **`PROVENANCE`** file records the source repo, version, tarball URL, and install timestamp so a vendored tree is traceable back to the exact release it came from.
+
 ### Added — CI-only signed evidence emit for the intent-eval-dashboard (nr75.12)
 
 The dashboard reports hub (labs.intentsolutions.io) ingests a signed `report-manifest.json` of kernel `gate-result/v1` rows per repo. This adds audit-harness's own emit, lighting up its row.

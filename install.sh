@@ -81,11 +81,33 @@ fi
 cp -r "${UNPACKED_DIR}/scripts" "${TARGET_DIR}/scripts"
 cp "${UNPACKED_DIR}/README.md" "${TARGET_DIR}/README.md" 2>/dev/null || true
 cp "${UNPACKED_DIR}/LICENSE" "${TARGET_DIR}/LICENSE" 2>/dev/null || true
+# NOTICE: Apache-2.0 §4(d) requires redistributing the NOTICE file with any
+# distribution of the work. Vendoring is a distribution, so it travels too.
+cp "${UNPACKED_DIR}/NOTICE" "${TARGET_DIR}/NOTICE" 2>/dev/null || true
 cp "${UNPACKED_DIR}/CHANGELOG.md" "${TARGET_DIR}/CHANGELOG.md" 2>/dev/null || true
 echo "${VERSION}" > "${TARGET_DIR}/VERSION"
 
+# bin/audit-harness.js: the Node CLI dispatcher. Vendored alongside the shell
+# wrapper so the canonical dispatcher surface is present (referenced by sister
+# CI + .harness-hash-extra-patterns); the shell wrapper at scripts/audit-harness
+# stays the non-Node entry point. package.json travels too so the dispatcher's
+# `--version` (which reads `../package.json`) resolves in the vendored tree.
+mkdir -p "${TARGET_DIR}/bin"
+cp "${UNPACKED_DIR}/bin/audit-harness.js" "${TARGET_DIR}/bin/audit-harness.js" 2>/dev/null || true
+cp "${UNPACKED_DIR}/package.json" "${TARGET_DIR}/package.json" 2>/dev/null || true
+
+# Record provenance of the vendored copy (source repo + version + install time)
+# so a vendored tree is traceable back to the exact release it came from.
+cat > "${TARGET_DIR}/PROVENANCE" <<PROV_EOF
+source-repo:   ${REPO}
+source-version: ${VERSION}
+source-tarball: ${TARBALL_URL}
+installed-at:  $(date -u +%Y-%m-%dT%H:%M:%SZ)
+PROV_EOF
+
 # Ensure scripts are executable
 chmod +x "${TARGET_DIR}/scripts/"*.sh "${TARGET_DIR}/scripts/"*.py 2>/dev/null || true
+chmod +x "${TARGET_DIR}/bin/audit-harness.js" 2>/dev/null || true
 
 # Write wrapper binary at scripts/audit-harness
 # This mirrors the Node CLI surface so commands are identical cross-language
