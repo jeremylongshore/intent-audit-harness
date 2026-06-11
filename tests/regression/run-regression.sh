@@ -122,13 +122,16 @@ note_pass "harness-hash --verify --json: exit $ec (any of {0,2,3} accepted)"
 echo "▶ Section 3 — gate-result schema validation"
 
 if [[ "$HAVE_JSONSCHEMA" -eq 1 ]]; then
-  # Stage the schema locally if not already
+  # Stage the schema locally if not already. Canonical source is the kernel
+  # (@intentsolutions/core); the old intent-eval-lab v0.1.0-draft path is now a
+  # redirect stub. Fetch the kernel canonical schema (CI normally pre-stages it
+  # before this runner — see .github/workflows/ci.yml "Stage gate-result schema
+  # fixture"; this fetch is the local-run fallback).
   if [[ ! -f "$SCHEMA" ]]; then
-    SPEC_SCHEMA="/home/jeremy/000-projects/intent-eval-platform/intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/schema/gate-result.schema.json"
-    if [[ -f "$SPEC_SCHEMA" ]]; then
-      cp "$SPEC_SCHEMA" "$SCHEMA"
-    else
-      note_fail "gate-result schema not available at $SCHEMA or sibling spec repo; skipping"
+    KERNEL_SCHEMA_URL="https://raw.githubusercontent.com/jeremylongshore/intent-eval-core/main/schemas/v1/gate-result.schema.json"
+    if ! curl -sSL -o "$SCHEMA" "$KERNEL_SCHEMA_URL" 2>/dev/null || [[ ! -s "$SCHEMA" ]]; then
+      note_fail "gate-result schema not available from kernel canonical URL; skipping Section 3"
+      rm -f "$SCHEMA"
       SCHEMA=""
     fi
   fi
