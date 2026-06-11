@@ -122,13 +122,16 @@ note_pass "harness-hash --verify --json: exit $ec (any of {0,2,3} accepted)"
 echo "▶ Section 3 — gate-result schema validation"
 
 if [[ "$HAVE_JSONSCHEMA" -eq 1 ]]; then
-  # Stage the schema locally if not already
+  # Stage the schema locally if not already. Canonical source is the kernel
+  # (@intentsolutions/core); the old intent-eval-lab v0.1.0-draft path is now a
+  # redirect stub. Fetch the kernel canonical schema (CI normally pre-stages it
+  # before this runner — see .github/workflows/ci.yml "Stage gate-result schema
+  # fixture"; this fetch is the local-run fallback).
   if [[ ! -f "$SCHEMA" ]]; then
-    SPEC_SCHEMA="/home/jeremy/000-projects/intent-eval-platform/intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/schema/gate-result.schema.json"
-    if [[ -f "$SPEC_SCHEMA" ]]; then
-      cp "$SPEC_SCHEMA" "$SCHEMA"
-    else
-      note_fail "gate-result schema not available at $SCHEMA or sibling spec repo; skipping"
+    KERNEL_SCHEMA_URL="https://raw.githubusercontent.com/jeremylongshore/intent-eval-core/main/schemas/v1/gate-result.schema.json"
+    if ! curl -sSL -o "$SCHEMA" "$KERNEL_SCHEMA_URL" 2>/dev/null || [[ ! -s "$SCHEMA" ]]; then
+      note_fail "gate-result schema not available from kernel canonical URL; skipping Section 3"
+      rm -f "$SCHEMA"
       SCHEMA=""
     fi
   fi
@@ -191,6 +194,59 @@ if [[ "$ec" -eq 1 ]]; then
   note_pass "emit-evidence: rejects malformed input with exit 1"
 else
   note_fail "emit-evidence: malformed input exited $ec (expected 1)"
+fi
+
+# ---- Section 5: evidence-integrity bugs (bd_000-projects-3kye.1) ----
+#
+# 5a — escape-scan stdin triple-read: feeding a non-empty diff via
+#      `escape-scan - --json` must hash the REAL diff, not the empty stream.
+#      Regression for /dev/stdin being drained by the first grep so the later
+#      input_hash sha256 saw "" (emitting e3b0c442… — sha256 of empty string).
+# 5b — emit-evidence policy_hash newline-trim: harnessPolicyHash() must hash the
+#      raw .harness-hash bytes so policy_hash == `sha256sum .harness-hash`. An
+#      earlier .trim() stripped the trailing newline, producing a digest no
+#      auditor could reproduce.
+
+echo "▶ Section 5 — evidence-integrity (stdin hash + policy_hash byte-exactness)"
+
+EMPTY_SHA256="sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+# 5a — stdin diff must produce the real diff hash, never the empty-string hash
+STDIN_DIFF=$'+++ b/foo.js\n+const x = 1;\n+const y = 2;\n'
+expected_stdin_hash="sha256:$(printf '%s' "$STDIN_DIFF" | sha256sum | awk '{print $1}')"
+got_stdin_json=$(printf '%s' "$STDIN_DIFF" | bash "$SCRIPTS/escape-scan.sh" - --json --no-hash 2>/dev/null)
+got_stdin_hash=$(echo "$got_stdin_json" | python3 -c "import sys, json; print(json.loads(sys.stdin.read())['input_hash'])" 2>/dev/null)
+if [[ "$got_stdin_hash" == "$EMPTY_SHA256" ]]; then
+  note_fail "escape-scan stdin: input_hash is the empty-string hash (stdin drained before sha256)"
+elif [[ "$got_stdin_hash" == "$expected_stdin_hash" ]]; then
+  note_pass "escape-scan stdin: input_hash == real diff hash (stdin no longer triple-read)"
+else
+  note_fail "escape-scan stdin: input_hash $got_stdin_hash != expected $expected_stdin_hash"
+fi
+
+# 5b — emit-evidence policy_hash == `sha256sum .harness-hash` (byte-exact, with newline)
+if [[ -f "$ROOT/.harness-hash" ]]; then
+  canonical_policy_hash="sha256:$(sha256sum "$ROOT/.harness-hash" | awk '{print $1}')"
+  emit_policy_hash=$(cd "$ROOT" && node --input-type=module -e '
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+// Mirrors ci/emit-evidence.ts harnessPolicyHash(): hash the raw file bytes.
+const raw = readFileSync(".harness-hash");
+process.stdout.write("sha256:" + createHash("sha256").update(raw).digest("hex"));
+' 2>/dev/null)
+  if [[ "$emit_policy_hash" == "$canonical_policy_hash" ]]; then
+    note_pass "emit-evidence policy_hash == sha256sum .harness-hash (raw bytes, newline preserved)"
+  else
+    note_fail "emit-evidence policy_hash $emit_policy_hash != sha256sum .harness-hash $canonical_policy_hash"
+  fi
+  # Guard against regression: the buggy .trim()-then-hash form must not reappear.
+  if grep -Eq "readFileSync\(.*\.harness-hash.*'utf8'\)\.trim\(\)" "$ROOT/ci/emit-evidence.ts"; then
+    note_fail "emit-evidence.ts still reads .harness-hash with .trim() (newline-trim bug)"
+  else
+    note_pass "emit-evidence.ts no longer trims .harness-hash before hashing"
+  fi
+else
+  echo "  ⚠ no .harness-hash in this repo; skipping policy_hash byte-exactness check"
 fi
 
 # ---- Summary ----

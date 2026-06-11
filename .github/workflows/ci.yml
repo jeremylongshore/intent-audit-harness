@@ -252,13 +252,15 @@ jobs:
       - name: Stage gate-result schema fixture
         run: |
           mkdir -p tests/fixtures
-          # The schema lives in the sister repo intent-eval-lab; for CI we fetch
-          # the published v0.1.0-draft URL once that's online. Until then, copy
-          # any local sibling clone if available; otherwise the suite skips
-          # Section 3 with a warning and still validates Sections 1, 2, 4.
+          # Canonical gate-result schema now lives in the kernel
+          # (@intentsolutions/core) — the prior intent-eval-lab v0.1.0-draft path
+          # is a redirect stub ($ref to the kernel) since lab PR #65. Fetch the
+          # kernel canonical schema so Section 3 validates against the real
+          # contract; on failure the suite skips Section 3 and still validates
+          # Sections 1, 2, 4.
           if [[ ! -f tests/fixtures/gate-result.schema.json ]]; then
             curl -sSL -o tests/fixtures/gate-result.schema.json \
-              https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/main/specs/evidence-bundle/v0.1.0-draft/schema/gate-result.schema.json \
+              https://raw.githubusercontent.com/jeremylongshore/intent-eval-core/main/schemas/v1/gate-result.schema.json \
               || echo "schema not yet available — Section 3 will be skipped"
           fi
       - name: Run regression suite

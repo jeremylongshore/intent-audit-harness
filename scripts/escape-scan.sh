@@ -28,6 +28,18 @@
 
 set -euo pipefail
 
+# Cross-platform SHA-256: `sha256sum` ships with GNU coreutils (Linux);
+# macOS only has `shasum -a 256`. Both produce identical `<hash>  <file>`
+# output, so downstream awk parsing is unchanged. Mirrors harness-hash.sh.
+if command -v sha256sum >/dev/null 2>&1; then
+  SHA256_CMD=(sha256sum)
+elif command -v shasum >/dev/null 2>&1; then
+  SHA256_CMD=(shasum -a 256)
+else
+  echo "escape-scan: neither sha256sum nor shasum found in PATH" >&2
+  exit 2
+fi
+
 DIFF_SRC=""
 VERIFY_HASH=1
 JSON_OUT=0
@@ -51,7 +63,15 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 case "$1" in
-  -) DIFF_SRC="/dev/stdin" ;;
+  -)
+    # Buffer stdin into a temp file so the diff can be read multiple times.
+    # /dev/stdin is drained by the first grep, which would leave later reads
+    # (notably the input_hash sha256) seeing an empty stream — emitting the
+    # SHA-256 of "" instead of the real diff hash.
+    DIFF_SRC=$(mktemp)
+    trap 'rm -f "$DIFF_SRC"' EXIT
+    cat > "$DIFF_SRC"
+    ;;
   --staged)
     DIFF_SRC=$(mktemp)
     trap 'rm -f "$DIFF_SRC"' EXIT
@@ -198,10 +218,10 @@ if [[ "$JSON_OUT" -eq 1 ]]; then
   elif [[ "$FLAG" -gt 0 ]]; then
     result="ADVISORY"
   fi
-  input_hash=$(sha256sum "$DIFF_SRC" | awk '{print "sha256:"$1}')
+  input_hash=$("${SHA256_CMD[@]}" "$DIFF_SRC" | awk '{print "sha256:"$1}')
   policy_hash="sha256:0000000000000000000000000000000000000000000000000000000000000000"
   if [[ -f "$TESTING_MD" ]]; then
-    policy_hash=$(sha256sum "$TESTING_MD" | awk '{print "sha256:"$1}')
+    policy_hash=$("${SHA256_CMD[@]}" "$TESTING_MD" | awk '{print "sha256:"$1}')
   fi
   printf '{"gate_id":"audit-harness:%s:escape-scan","result":"%s","input_hash":"%s","policy_hash":"%s","metadata":{"refuse":%d,"challenge":%d,"flag":%d,"coverage_line_floor":%d,"coverage_branch_floor":%d,"mutation_floor":%d}' \
     "${AUDIT_HARNESS_SIDE:-ci}" "$result" "$input_hash" "$policy_hash" "$REFUSE" "$CHALLENGE" "$FLAG" \
