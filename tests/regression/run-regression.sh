@@ -266,6 +266,18 @@ else
   note_pass "ci.yml self-check captures escape-scan's own exit code (no if-pipe-through-tee)"
 fi
 
+# 6b — arch-check.sh must use the cross-platform SHA256_CMD pattern (sha256sum
+#      on Linux, shasum -a 256 on macOS) for input_hash/policy_hash, same as
+#      harness-hash.sh / escape-scan.sh / bias-count.sh (f-iah-bash-2). A bare
+#      `sha256sum` call silently zeroes both hashes on macOS.
+#      Match only invocation contexts ($(sha256sum…, | sha256sum, -exec sha256sum)
+#      so the detection block / comments / error message don't false-positive.
+if grep -Eq '(\$\(sha256sum|\|[[:space:]]*sha256sum|-exec[[:space:]]+sha256sum)' "$ROOT/scripts/arch-check.sh"; then
+  note_fail "arch-check.sh calls sha256sum directly (not portable to macOS) — use the SHA256_CMD array pattern"
+else
+  note_pass "arch-check.sh uses the cross-platform SHA256_CMD pattern"
+fi
+
 # ---- Summary ----
 
 echo
