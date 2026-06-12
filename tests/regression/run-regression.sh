@@ -249,15 +249,17 @@ else
   echo "  ⚠ no .harness-hash in this repo; skipping policy_hash byte-exactness check"
 fi
 
-# ---- Section 6: CI self-check exit-code guards (f-iah-bash-1) ----
+# ---- Section 6: review-finding regression guards (2026-06-11) ----
 #
-# 6a — the escape-scan CI self-check must test escape-scan's OWN exit code.
-#      Piping the invocation through `tee` inside the `if` condition makes the
-#      test evaluate tee's exit code (always 0): the REFUSE branch becomes
-#      unreachable and the "did NOT refuse" warning fires unconditionally.
-#      Guard pattern mirrors 5b's grep guard on emit-evidence.ts.
+# 6a — f-iah-bash-1: the escape-scan CI self-check must test escape-scan's OWN
+#      exit code. Piping the invocation through `tee` inside the `if` condition
+#      makes the test evaluate tee's exit code (always 0): the REFUSE branch
+#      becomes unreachable and the "did NOT refuse" warning fires
+#      unconditionally. Guard pattern mirrors 5b's grep guard.
+# 6b — f-iah-bash-2: arch-check.sh SHA-256 portability (below).
+# 6c — f-iah-bash-3: emit-evidence OTEL line JSON-escaping (below).
 
-echo "▶ Section 6 — CI self-check exit-code guard"
+echo "▶ Section 6 — review-finding regression guards"
 
 CI_YML="$ROOT/.github/workflows/ci.yml"
 if grep -Eq 'if bash .*escape-scan\.sh[^|]*\|[[:space:]]*tee' "$CI_YML"; then
@@ -276,6 +278,31 @@ if grep -Eq '(\$\(sha256sum|\|[[:space:]]*sha256sum|-exec[[:space:]]+sha256sum)'
   note_fail "arch-check.sh calls sha256sum directly (not portable to macOS) — use the SHA256_CMD array pattern"
 else
   note_pass "arch-check.sh uses the cross-platform SHA256_CMD pattern"
+fi
+
+# 6c — emit-evidence's [OTEL] stderr line must stay valid JSON when an
+#      attribute value carries a double quote (e.g. AUDIT_HARNESS_SIDE
+#      flowing into gate_id). printf-interpolation broke the JSON structure.
+inj_gate=$(python3 -c "
+import json
+print(json.dumps({
+    'gate_id': 'audit-harness:ci\"injection:crap-score',
+    'result': 'PASS',
+    'input_hash': '$EMPTY_SHA256',
+    'policy_hash': '$EMPTY_SHA256',
+}))
+")
+otel_line=$(printf '%s' "$inj_gate" \
+  | AUDIT_HARNESS_OTEL=1 bash "$SCRIPTS/emit-evidence.sh" 2>&1 >/dev/null \
+  | grep -m1 '^\[OTEL\] ' | sed 's/^\[OTEL\] //')
+if printf '%s' "$otel_line" | python3 -c "
+import sys, json
+d = json.loads(sys.stdin.read())
+assert d['attributes']['gate.id'] == 'audit-harness:ci\"injection:crap-score', d
+" 2>/dev/null; then
+  note_pass "emit-evidence OTEL line: valid JSON with double-quote in gate_id (attributes escaped)"
+else
+  note_fail "emit-evidence OTEL line: NOT valid JSON when gate_id carries a double quote (got: $otel_line)"
 fi
 
 # ---- Summary ----

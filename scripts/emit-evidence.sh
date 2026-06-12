@@ -181,10 +181,30 @@ fi
 # OR an OTEL_EXPORTER_OTLP_ENDPOINT is set. Real exporter wiring is consumer-side;
 # we emit a structured signal that any collector can scrape via stderr capture.
 if [[ "${AUDIT_HARNESS_OTEL:-0}" == "1" ]] || [[ -n "${OTEL_EXPORTER_OTLP_ENDPOINT:-}" ]]; then
-  GATE_ID=$(echo "$GATE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('gate_id',''))" 2>/dev/null || echo "")
-  RESULT=$(echo "$GATE_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('result',''))" 2>/dev/null || echo "")
-  printf '[OTEL] {"name":"agent.rollout.gate.evaluated","attributes":{"gate.id":"%s","gate.result":"%s","gate.runner":"%s","gate.commit_sha":"%s"},"timestamp":"%s"}\n' \
-    "$GATE_ID" "$RESULT" "$RUNNER" "$COMMIT_SHA" "$TIMESTAMP" >&2
+  # Compose the JSON via python so every attribute value is JSON-escaped.
+  # printf-interpolating gate_id/result/runner into a JSON format string
+  # emitted structurally invalid JSON whenever a value carried a double quote
+  # (e.g. AUDIT_HARNESS_SIDE='ci"injection' flowing into gate_id).
+  OTEL_LINE=$(GATE_JSON="$GATE_JSON" RUNNER="$RUNNER" COMMIT_SHA="$COMMIT_SHA" TIMESTAMP="$TIMESTAMP" \
+    python3 - <<'PY' 2>/dev/null || echo ""
+import json, os
+try:
+    gate = json.loads(os.environ["GATE_JSON"])
+except (json.JSONDecodeError, ValueError):
+    gate = {}
+print(json.dumps({
+    "name": "agent.rollout.gate.evaluated",
+    "attributes": {
+        "gate.id": str(gate.get("gate_id", "")),
+        "gate.result": str(gate.get("result", "")),
+        "gate.runner": os.environ["RUNNER"],
+        "gate.commit_sha": os.environ["COMMIT_SHA"],
+    },
+    "timestamp": os.environ["TIMESTAMP"],
+}, separators=(",", ":")))
+PY
+)
+  [[ -n "$OTEL_LINE" ]] && printf '[OTEL] %s\n' "$OTEL_LINE" >&2
 fi
 
 # --- Sign + emit ---
