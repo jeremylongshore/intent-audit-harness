@@ -165,7 +165,15 @@ def score_go(root: Path, kind: str) -> list[MethodScore]:
         print("[crap-score] gocyclo not installed", file=sys.stderr)
         return []
 
-    rc, out, _ = run(["gocyclo", "-ignore", "_test.go" if kind == "src" else ".*\\.go$", "."], root)
+    # For kind="src", ignore *_test.go at the gocyclo level. For kind="test",
+    # do NOT pass -ignore: a pattern like `.*\.go$` matches every analyzable
+    # file (gocyclo only reads .go files), which silenced all test-kind output.
+    # The include-filter below keeps only *_test.go rows for kind="test".
+    gocyclo_cmd = ["gocyclo"]
+    if kind == "src":
+        gocyclo_cmd += ["-ignore", "_test.go"]
+    gocyclo_cmd.append(".")
+    rc, out, _ = run(gocyclo_cmd, root)
     complexity: list[tuple[str, str, int]] = []
     for line in out.splitlines():
         parts = line.strip().split()
@@ -187,11 +195,28 @@ def score_go(root: Path, kind: str) -> list[MethodScore]:
     if not cov_out.is_file() and which_or_none("go"):
         run(["go", "test", "-coverprofile=coverage.out", "-covermode=atomic", "./..."], root)
     if cov_out.is_file() and which_or_none("go"):
+        # `go tool cover -func` reports module-qualified paths
+        # (github.com/user/repo/pkg/file.go) while gocyclo reports repo-relative
+        # paths (pkg/file.go). Strip the module prefix read from go.mod so the
+        # coverage keys join the complexity keys.
+        module_prefix = ""
+        go_mod = root / "go.mod"
+        if go_mod.is_file():
+            try:
+                for mod_line in go_mod.read_text().splitlines():
+                    mod_line = mod_line.strip()
+                    if mod_line.startswith("module ") or mod_line.startswith("module\t"):
+                        module_prefix = mod_line.split(None, 1)[1].strip() + "/"
+                        break
+            except OSError:
+                pass
         rc, out, _ = run(["go", "tool", "cover", "-func=coverage.out"], root)
         for line in out.splitlines():
             parts = line.split()
             if len(parts) >= 3 and parts[-1].endswith("%"):
                 fpath = parts[0].split(":", 1)[0]
+                if module_prefix and fpath.startswith(module_prefix):
+                    fpath = fpath[len(module_prefix):]
                 try:
                     pct = float(parts[-1].rstrip("%"))
                 except ValueError:
@@ -228,6 +253,17 @@ def score_js(root: Path, kind: str) -> list[MethodScore]:
     except json.JSONDecodeError:
         return []
 
+    # c8/istanbul's json-summary reporter keys files by ABSOLUTE path while
+    # complexity-report (run with a repo-relative target) reports repo-relative
+    # paths. Normalize both sides to repo-relative so the coverage join works.
+    def _rel_to_root(p: str) -> str:
+        if os.path.isabs(p):
+            try:
+                return os.path.relpath(p, str(root))
+            except ValueError:
+                return p  # e.g. different drive on Windows — keep as-is
+        return p
+
     cov_path = root / "coverage" / "coverage-summary.json"
     coverage: dict[str, float] = {}
     if cov_path.is_file():
@@ -237,14 +273,14 @@ def score_js(root: Path, kind: str) -> list[MethodScore]:
                 if fpath == "total":
                     continue
                 lines_pct = summary.get("lines", {}).get("pct", 0.0)
-                coverage[fpath] = float(lines_pct)
+                coverage[_rel_to_root(fpath)] = float(lines_pct)
         except (OSError, json.JSONDecodeError):
             pass
 
     scores: list[MethodScore] = []
     for report in data.get("reports", []):
         fpath = report.get("path", "")
-        cov = coverage.get(fpath, 0.0)
+        cov = coverage.get(_rel_to_root(fpath), 0.0)
         for func in report.get("functions", []):
             c = int(func.get("cyclomatic", 1))
             scores.append(
