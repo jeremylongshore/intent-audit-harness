@@ -51,7 +51,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
@@ -127,7 +127,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           # Node >= 22.6 — the emit scripts run under `--experimental-strip-types`
           # (TS without a build step), which Node 20 does NOT support (exit 9).
