@@ -70,12 +70,18 @@ jobs:
           git commit -q -m "baseline" --allow-empty-message
           echo "coverage_floor: 60" > tests/TESTING.md
           git add tests/TESTING.md
-          # Run escape-scan; expect non-zero exit (REFUSE) when policy is being weakened
-          if bash $GITHUB_WORKSPACE/scripts/escape-scan.sh --staged 2>&1 | tee /tmp/escape-scan.log; then
+          # Run escape-scan; expect non-zero exit (REFUSE) when policy is being weakened.
+          # Capture the script's OWN exit code — piping through `tee` inside the
+          # `if` made the test see tee's exit code (always 0), so the REFUSE
+          # branch was unreachable and the warning fired unconditionally.
+          ec=0
+          bash "$GITHUB_WORKSPACE/scripts/escape-scan.sh" --staged > /tmp/escape-scan.log 2>&1 || ec=$?
+          cat /tmp/escape-scan.log
+          if [[ "$ec" -ne 0 ]]; then
+            echo "✓ escape-scan correctly refused (exit $ec)"
+          else
             echo "::warning::escape-scan did NOT refuse on synthetic threshold-lowering input — review scripts/escape-scan.sh"
             # tighten to exit 1 once escape-scan output is deterministic
-          else
-            echo "✓ escape-scan correctly refused"
           fi
 
   shellcheck:
@@ -354,6 +360,22 @@ jobs:
           python-version: '3.12'
       - name: Run currency golden suite
         run: bash tests/currency/run-currency-tests.sh
+
+  crap-score:
+    name: crap-score join-regression suite (stubbed providers)
+    runs-on: ubuntu-latest
+    # Pins the complexity/coverage join behavior of scripts/crap-score.py with
+    # stubbed gocyclo/go/cr providers (review findings f-iah-python-1/2/3):
+    # Go test-kind gocyclo invocation, go.mod module-prefix stripping for the
+    # Go coverage join, and absolute-vs-relative path normalization for the
+    # JS coverage join.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run crap-score join-regression suite
+        run: bash tests/crap-score/run-crap-score-tests.sh
 
   golden:
     name: golden-master stdout suite (gherkin-lint + crap-score)

@@ -249,6 +249,23 @@ else
   echo "  ⚠ no .harness-hash in this repo; skipping policy_hash byte-exactness check"
 fi
 
+# ---- Section 6: CI self-check exit-code guards (f-iah-bash-1) ----
+#
+# 6a — the escape-scan CI self-check must test escape-scan's OWN exit code.
+#      Piping the invocation through `tee` inside the `if` condition makes the
+#      test evaluate tee's exit code (always 0): the REFUSE branch becomes
+#      unreachable and the "did NOT refuse" warning fires unconditionally.
+#      Guard pattern mirrors 5b's grep guard on emit-evidence.ts.
+
+echo "▶ Section 6 — CI self-check exit-code guard"
+
+CI_YML="$ROOT/.github/workflows/ci.yml"
+if grep -Eq 'if bash .*escape-scan\.sh[^|]*\|[[:space:]]*tee' "$CI_YML"; then
+  note_fail "ci.yml self-check pipes escape-scan through tee inside if — exit code tested is tee's, not escape-scan's"
+else
+  note_pass "ci.yml self-check captures escape-scan's own exit code (no if-pipe-through-tee)"
+fi
+
 # ---- Summary ----
 
 echo
