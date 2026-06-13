@@ -89,6 +89,30 @@ The first piece of the "comprehensive audit, on any repo" build: the read-only b
 
 Scope boundary: no `conform` verb, no gate execution yet (Phase 2+). `classify` is read-only and emits a profile only.
 
+## [1.1.8] - 2026-06-18
+
+Ships the iah-E06 production-signing pre-flight gate to downstream consumers.
+
+### Added — DNSSEC + CAA production-signing pre-flight (iah-E06)
+
+Before a production-mode `emit-evidence` run signs canonical bytes, two deterministic pre-flight scripts assert the signing domain is cryptographically sound. Both fail closed: any error, missing record, or unreachable resolver blocks the signing path rather than emitting an unverifiable attestation.
+
+- **`scripts/dnssec-check.sh`** — verifies the signing domain's DNSSEC chain is present and validates.
+- **`scripts/caa-check.sh`** — verifies the domain's CAA records authorize the signing certificate authority.
+- The `emit-evidence` production path gates on both before signing; staging/draft emit is unaffected.
+
+### Fixed — query a trusted validating resolver in the DNSSEC + CAA pre-flight (PR #75)
+
+The pre-flight previously trusted the ambient resolver, which may not validate DNSSEC. Both scripts now query known validating resolvers (`1.1.1.1`, `8.8.8.8`) and require the authenticated-data (AD) flag plus an `RRSIG` on the answer. A resolver that does not set AD, or an answer with no RRSIG, is treated as a validation failure (fail-closed) rather than a pass.
+
+### Changed — Version bumped to 1.1.8 across all manifests
+
+Per the `version-canonical-check` CI gate. `package.json` (canonical), `version.txt`, `python/pyproject.toml`, `python/src/intent_audit_harness/__init__.py`, and `rust/Cargo.toml` all report `1.1.8`.
+
+### Why patch, not minor
+
+The pre-flight scripts shipped to the repo in earlier PRs (#70, #75); this patch propagates them to npm consumers via a version bump. No new public CLI commands or flag changes in this release boundary.
+
 ## [v1.1.5] - 2026-06-03
 
 ### Added — npm release pipeline (closes the publish-pipeline gap)
