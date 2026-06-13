@@ -50,6 +50,22 @@ EXCLUDED_DIRS = {
 }
 
 
+def is_excluded_dir(name: str) -> bool:
+    """Single exclusion predicate shared by the candidate-discovery walk and
+    the --json input-hash walk.
+
+    Both walks MUST agree on which directories they descend into; otherwise the
+    set of files that feed the CRAP score can diverge from the set that feeds
+    the input_hash, and the score/hash desync (a hash that claims to cover
+    files the score never saw, or vice versa). The rule is: skip any dot-dir
+    (e.g. `.idea`, `.svn`, `.git`) OR any explicitly-named build/vendor dir in
+    EXCLUDED_DIRS. Previously discovery dropped all dot-dirs while the hash walk
+    dropped only the named subset, so a dot-dir not in EXCLUDED_DIRS was hashed
+    but never scored.
+    """
+    return name.startswith(".") or name in EXCLUDED_DIRS
+
+
 def crap(complexity: int, coverage_pct: float) -> float:
     cov = max(0.0, min(100.0, coverage_pct)) / 100.0
     return (complexity ** 2) * ((1.0 - cov) ** 3) + complexity
@@ -98,8 +114,7 @@ def score_python(root: Path, kind: str) -> list[MethodScore]:
             scanned = [
                 p.name for p in root.iterdir()
                 if p.is_dir()
-                and not p.name.startswith(".")
-                and p.name not in EXCLUDED_DIRS
+                and not is_excluded_dir(p.name)
                 and p.name not in test_dirs
                 and any(p.rglob("*.py"))
             ]
@@ -439,7 +454,7 @@ def main() -> int:
         exts = (".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".kt", ".cs", ".php", ".rb")
         collected: list[Path] = []
         for dirpath, dirs, files in os.walk(root):
-            dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
+            dirs[:] = [d for d in dirs if not is_excluded_dir(d)]
             for fn in files:
                 if fn.endswith(exts):
                     collected.append(Path(dirpath) / fn)

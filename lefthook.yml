@@ -1,0 +1,40 @@
+# lefthook — fast pre-commit gates for audit-harness (bq42).
+#
+# Mirrors the cheap, staged-only subset of the CI gates so obvious problems are
+# caught locally before a push, without re-running the full CI matrix. The
+# authoritative gate remains CI (.github/workflows/ci.yml); this is a fast local
+# pre-filter, intentionally non-exhaustive.
+#
+# Install the git hooks once after `npm install`:
+#     npx lefthook install
+#
+# No husky setup exists in this repo, so there is nothing to coexist with. If a
+# husky setup is ever added, prefer migrating its hooks here (lefthook and husky
+# both write to .git/hooks and the last installer wins).
+#
+# Each job runs ONLY against the staged files matching its glob, so a commit
+# that touches no .py / .sh / .js files skips the irrelevant gates entirely.
+# `{staged_files}` is empty-safe: lefthook skips a job whose file list is empty
+# after glob filtering.
+
+pre-commit:
+  parallel: true
+  jobs:
+    # The canonical AI-escape gate: refuse a staged diff that lowers a wall.
+    - name: escape-scan
+      run: bash scripts/escape-scan.sh --staged
+
+    # Python lint on staged .py files only (same ruleset as the CI ruff lane).
+    - name: ruff
+      glob: "*.py"
+      run: ruff check {staged_files}
+
+    # Shell lint on staged .sh files only (same tool as the CI shellcheck lane).
+    - name: shellcheck
+      glob: "*.sh"
+      run: shellcheck {staged_files}
+
+    # JS lint on staged bin/*.js files only (same config as the CI eslint lane).
+    - name: eslint
+      glob: "bin/*.js"
+      run: npx eslint {staged_files}

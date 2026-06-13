@@ -177,5 +177,51 @@ class JsCoverageJoinRegression(unittest.TestCase):
         )
 
 
+class DotDirExclusionParity(unittest.TestCase):
+    """yv75: the candidate-discovery walk and the input-hash walk must exclude
+    the SAME directories. A dot-dir that is NOT in EXCLUDED_DIRS (e.g. `.idea`)
+    must be skipped by BOTH walks via the shared is_excluded_dir predicate;
+    otherwise the score and the input_hash desync.
+    """
+
+    def setUp(self):
+        self.mod = load_crap_score()
+
+    def test_shared_predicate_excludes_unnamed_dot_dir(self):
+        # `.idea` is a dot-dir but is NOT in EXCLUDED_DIRS — historically the
+        # discovery walk dropped it (startswith ".") while the hash walk kept
+        # it (not in the named set). The shared predicate must drop it in both.
+        self.assertNotIn(".idea", self.mod.EXCLUDED_DIRS)
+        self.assertTrue(self.mod.is_excluded_dir(".idea"))
+        self.assertTrue(self.mod.is_excluded_dir(".git"))      # dot + named
+        self.assertTrue(self.mod.is_excluded_dir("node_modules"))  # named only
+        self.assertFalse(self.mod.is_excluded_dir("src"))
+        self.assertFalse(self.mod.is_excluded_dir("pkg"))
+
+    def test_input_hash_walk_skips_unnamed_dot_dir(self):
+        # End-to-end: a .py file under an unnamed dot-dir must NOT contribute to
+        # the input_hash, matching the discovery walk that never scores it.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src").mkdir()
+            (root / "src" / "real.py").write_text("def f():\n    return 1\n")
+            (root / ".idea").mkdir()
+            (root / ".idea" / "shadow.py").write_text("def g():\n    return 2\n")
+
+            exts = (".py",)
+            collected = []
+            for dirpath, dirs, files in __import__("os").walk(root):
+                dirs[:] = [d for d in dirs if not self.mod.is_excluded_dir(d)]
+                for fn in files:
+                    if fn.endswith(exts):
+                        collected.append(Path(dirpath) / fn)
+            names = sorted(p.name for p in collected)
+            self.assertEqual(
+                names, ["real.py"],
+                "a .py file under an unnamed dot-dir (.idea) must be excluded "
+                "from the input-hash walk so it matches the discovery walk",
+            )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
