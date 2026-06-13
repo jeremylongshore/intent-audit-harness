@@ -1,0 +1,10 @@
+{
+  "required_gates": [
+    "audit-harness:ci:escape-scan",
+    "audit-harness:ci:crap-score",
+    "audit-harness:ci:arch-check"
+  ],
+  "forbid_decisions": ["fail", "error"],
+  "advisory_blocks": false,
+  "allow_unknown_gates": true
+}

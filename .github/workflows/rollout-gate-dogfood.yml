@@ -1,0 +1,95 @@
+name: Rollout Gate Dogfood
+
+# M6 first-downstream-adopter demonstration: audit-harness self-adopts the
+# intent-rollout-gate Action. This proves the Intent Eval Platform convergence
+# loop end-to-end inside the harness's own CI:
+#
+#   produce  -> audit-harness emits a gate-result/v1 Evidence Bundle row
+#   consume  -> intent-rollout-gate reads the bundle + a rollout policy
+#   decide   -> the Action returns ship (allow) / no-ship (block)
+#   surface  -> the decision is echoed + written to the job summary
+#
+# BOOTSTRAP-PROTECTED / ADVISORY-ONLY:
+#   This workflow demonstrates adoption but must NEVER destabilize audit-harness
+#   CI (the harness gating itself is a bootstrap hazard). Two independent guards
+#   keep it non-blocking:
+#     1. job-level `continue-on-error: true` — a failure here never fails the run
+#     2. the Action runs with `fail-on-block: 'false'` — a block decision reports
+#        only, it does not fail the step.
+#   This workflow is intentionally NOT in branch-protection required checks.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  rollout-gate-dogfood:
+    name: rollout-gate self-adoption (advisory)
+    runs-on: ubuntu-latest
+    # ADVISORY GUARD #1: never fail the CI run on anything in this job.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # ---- PRODUCE -----------------------------------------------------------
+      # Demonstrate that audit-harness emits a real gate-result/v1 row from its
+      # own escape-scan gate. This is the harness's native Evidence Bundle row.
+      # (Best-effort: failure here is tolerated by continue-on-error.)
+      - name: Emit a live audit-harness Evidence Bundle row
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          # Scan an empty diff (clean) so escape-scan returns PASS, then wrap the
+          # JSON gate-result envelope in an in-toto Statement v1.
+          printf '' > /tmp/clean.diff
+          bash scripts/escape-scan.sh --json /tmp/clean.diff \
+            | bash scripts/emit-evidence.sh --output evidence/audit-harness-row.json
+          echo "::group::live audit-harness gate-result row"
+          cat evidence/audit-harness-row.json
+          echo "::endgroup::"
+
+      # ---- CONSUME + DECIDE --------------------------------------------------
+      # Feed a committed, representative Evidence Bundle (kernel gate-result/v1
+      # wire shape, three audit-harness gates all PASS) + a committed rollout
+      # policy through the intent-rollout-gate Action. The committed fixture is
+      # used (not the live row) because the v0.1.0 Action consumes the kernel
+      # gate-result/v1 predicate shape (gate_decision/gate_name/coverage); the
+      # fixture guarantees a deterministic, schema-valid input in CI.
+      #
+      # Pinned to the stable released tag v0.1.0.
+      # TODO: bump to @v0.2.0 once intent-rollout-gate v0.2.0 ships.
+      - name: Consume bundle + policy -> ship/no-ship decision
+        id: gate
+        uses: jeremylongshore/intent-rollout-gate@v0.1.0
+        with:
+          bundle-path: tests/dogfood/bundle.json
+          policy-path: tests/dogfood/policy.json
+          # ADVISORY GUARD #2: report-only. A block decision never fails the step.
+          fail-on-block: 'false'
+
+      # ---- SURFACE -----------------------------------------------------------
+      - name: Surface the rollout decision
+        run: |
+          set -euo pipefail
+          DECISION='${{ steps.gate.outputs.decision }}'
+          REASONS='${{ steps.gate.outputs.reasons }}'
+          echo "rollout decision: ${DECISION:-<none>}"
+          echo "blocking reasons: ${REASONS:-[]}"
+          {
+            echo "## Rollout Gate Dogfood (advisory)"
+            echo ""
+            echo "audit-harness self-adopts \`intent-rollout-gate@v0.1.0\` — M6 first downstream adopter."
+            echo ""
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| decision | \`${DECISION:-<none>}\` |"
+            echo "| reasons | \`${REASONS:-[]}\` |"
+            echo ""
+            echo "This loop is advisory-only and never blocks audit-harness CI."
+          } >> "$GITHUB_STEP_SUMMARY"
