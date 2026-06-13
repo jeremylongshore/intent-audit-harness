@@ -284,3 +284,55 @@ jobs:
           cd rust
           cargo publish
           echo "✓ published Rust wrapper to crates.io"
+
+  # ── Alert on a failed tag-release over the tailnet (bead 59tx) ──
+  #
+  # Fires ONLY when one of the release jobs above fails (`if: failure()`),
+  # joining the tailnet via Tailscale OIDC and pushing a high-priority ntfy
+  # alert to the tailnet-only `prod-deploys` topic. TAG-TRIGGERED ONLY — the
+  # parent workflow runs on `push: tags v*.*.*` / `workflow_dispatch`, so this
+  # job NEVER runs on a PR; it only fires on a future failed tag-release.
+  alert-on-failure:
+    name: alert-on-failure
+    needs: [release, emit-evidence, publish-pypi, publish-crates]
+    if: failure()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write # Tailscale OIDC
+
+    steps:
+      - name: Join tailnet (Tailscale OIDC)
+        uses: tailscale/github-action@v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.TS_OIDC_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
+
+      - name: Wait for tailnet
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            if sudo tailscale ping --c 1 --timeout 2s 100.88.144.55; then
+              echo "tailnet reachable after attempt $i"
+              exit 0
+            fi
+            echo "tailnet not reachable yet (attempt $i); retrying..."
+            sleep 2
+          done
+          echo "::error::tailnet host 100.88.144.55 unreachable after 20 attempts"
+          exit 1
+
+      - name: Notify ntfy
+        env:
+          NTFY_AUTH_TOKEN: ${{ secrets.NTFY_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -m 10 -X POST "http://intentsolutions:8080/prod-deploys" \
+            -H "Title: [audit-harness] Release CI FAILED" \
+            -H "Priority: high" \
+            -H "Tags: prod-deploys,rotating_light" \
+            -H "Authorization: Bearer ${NTFY_AUTH_TOKEN}" \
+            --data "Release CI failed on ${{ github.ref_name }} (sha ${{ github.sha }}). Run: ${run_url}"
