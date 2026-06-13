@@ -35,12 +35,20 @@
 #   1 — input JSON malformed or missing required fields
 #   2 — signing requested but cosign not available
 #   3 — Rekor push requested but failed
+#   4 — production DNSSEC/CAA pre-flight FAILED (fail-closed; nothing was signed)
 #
-# CISO gate (per ISEDC v1 Q1, 2026-05-10): pushing to a public transparency log
-# (Rekor) against the predicate URI https://evals.intentsolutions.io/gate-result/v1
-# is BLOCKED until DNSSEC + CAA records are verified on the namespace. The script
-# does NOT enforce this — that is operator discipline. See bead `iel-4zr` in
-# intent-eval-platform/intent-eval-lab/.beads/.
+# CISO gate (per DR-010 Q5 / ISEDC v1 Q1, 2026-05-10): pushing to a PUBLIC
+# transparency log (Rekor) against the predicate URI
+# https://evals.intentsolutions.io/gate-result/v1 is BLOCKED until DNSSEC + CAA
+# records are verified on the namespace. This script ENFORCES that: when a
+# production Rekor push is requested (--rekor-url / non-empty REKOR_URL), it runs
+# scripts/dnssec-check.sh then scripts/caa-check.sh against the predicate
+# namespace and REFUSES to sign (exit 4) if either fails. The gate is read-only —
+# it anchors nothing and can only make signing MORE conservative.
+#
+# Opt-out (NON-PRODUCTION / staging ONLY): EVIDENCE_SKIP_DNS_PREFLIGHT=1 skips the
+# pre-flight. It is honored ONLY when no production Rekor push is requested; a
+# real Rekor push can NEVER be silently skipped.
 
 set -euo pipefail
 
@@ -59,6 +67,9 @@ RUNNER_VERSION_OVERRIDE=""
 COMMIT_SHA_OVERRIDE=""
 PREDICATE_URI="https://evals.intentsolutions.io/gate-result/v1"
 STATEMENT_TYPE="https://in-toto.io/Statement/v1"
+# The namespace whose DNSSEC + CAA posture gates production attestations. Derived
+# from the predicate URI host; overridable for testing via EVIDENCE_PREDICATE_DOMAIN.
+PREDICATE_DOMAIN="${EVIDENCE_PREDICATE_DOMAIN:-evals.intentsolutions.io}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -235,6 +246,40 @@ fi
 if ! command -v cosign >/dev/null 2>&1; then
   echo "emit-evidence: --sign requested but cosign is not installed (https://docs.sigstore.dev/cosign/installation/)" >&2
   exit 2
+fi
+
+# --- Production DNSSEC + CAA pre-flight gate (CISO binding DR-010 Q5) ----------
+# A "production" signing event is one that pushes a signed Statement to a PUBLIC
+# transparency log (Rekor) — i.e. REKOR_URL is non-empty. Before that irreversible
+# anchor, the predicate namespace MUST be DNSSEC-signed AND CAA-pinned. We run the
+# two read-only checks; if EITHER fails we REFUSE to sign and exit 4.
+#
+# The opt-out EVIDENCE_SKIP_DNS_PREFLIGHT=1 is honored ONLY for non-production
+# (no Rekor push). A real Rekor push can never be silently skipped.
+if [[ -n "$REKOR_URL" ]]; then
+  PREFLIGHT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  if [[ "${EVIDENCE_SKIP_DNS_PREFLIGHT:-0}" == "1" ]]; then
+    echo "emit-evidence: IGNORING EVIDENCE_SKIP_DNS_PREFLIGHT=1 — a Rekor push (REKOR_URL=$REKOR_URL) is a production attestation and CANNOT skip the DNSSEC/CAA pre-flight." >&2
+  fi
+  echo "emit-evidence: production Rekor push requested — running DNSSEC + CAA pre-flight on '$PREDICATE_DOMAIN'" >&2
+
+  if ! bash "$PREFLIGHT_DIR/dnssec-check.sh" "$PREDICATE_DOMAIN" >&2; then
+    echo "emit-evidence: REFUSING TO SIGN — DNSSEC pre-flight FAILED for '$PREDICATE_DOMAIN'." >&2
+    echo "emit-evidence: remediation: pin DNSSEC + CAA on $PREDICATE_DOMAIN before any production attestation." >&2
+    echo "emit-evidence:   see intent-eval-platform/intent-eval-lab/000-docs (DR-010 Q5 CISO binding) + the iah-E06 runbook." >&2
+    exit 4
+  fi
+  if ! bash "$PREFLIGHT_DIR/caa-check.sh" "$PREDICATE_DOMAIN" >&2; then
+    echo "emit-evidence: REFUSING TO SIGN — CAA pre-flight FAILED for '$PREDICATE_DOMAIN'." >&2
+    echo "emit-evidence: remediation: pin DNSSEC + CAA on $PREDICATE_DOMAIN before any production attestation." >&2
+    echo "emit-evidence:   set EXPECTED_CAA_ISSUER to the published CA, then publish a CAA record pinning it." >&2
+    exit 4
+  fi
+  echo "emit-evidence: DNSSEC + CAA pre-flight PASSED for '$PREDICATE_DOMAIN' — proceeding to sign." >&2
+elif [[ "${EVIDENCE_SKIP_DNS_PREFLIGHT:-0}" == "1" ]]; then
+  # Non-production sign (no Rekor push) with the explicit opt-out set: keep
+  # existing staging flows green without running the network-bound checks.
+  echo "emit-evidence: non-production sign (no Rekor push); DNSSEC/CAA pre-flight skipped per EVIDENCE_SKIP_DNS_PREFLIGHT=1." >&2
 fi
 
 # Stage the Statement to a temp file for cosign to consume
