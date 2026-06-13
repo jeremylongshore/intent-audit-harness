@@ -53,6 +53,7 @@ the cost of a silent CI breakage across N adopter repositories.
 | `emit-evidence` | 1 | input malformed | v0.3.0 |
 | `emit-evidence` | 2 | cosign not installed (when --sign) | v0.3.0 |
 | `emit-evidence` | 3 | Rekor push failed | v0.3.0 |
+| `emit-evidence` | 4 | production DNSSEC/CAA pre-flight failed — REFUSE to sign (fail-closed; nothing anchored) | v1.2.0 |
 
 ### Stream contracts
 
@@ -75,6 +76,17 @@ log (Rekor). The path is also reserved exclusively for this predicate per the
 
 Breaking changes to the predicate body would mint a new URI (`gate-result/v2`); both URIs may
 coexist. We will never silently change the body shape under the same URI.
+
+### `emit-evidence` production DNSSEC + CAA pre-flight (v1.2.0)
+
+Per the CISO binding (DR-010 Q5), pushing a signed Statement to a **public** transparency log
+(Rekor) against `evals.intentsolutions.io` requires the namespace to be DNSSEC-signed AND
+CAA-pinned first. When a production Rekor push is requested (`--rekor-url` / non-empty
+`REKOR_URL`), `emit-evidence` runs `scripts/dnssec-check.sh` then `scripts/caa-check.sh` and
+**refuses to sign (exit 4)** if either fails. The gate is read-only — it anchors nothing and can
+only make signing *more* conservative (fail-closed). `EVIDENCE_SKIP_DNS_PREFLIGHT=1` skips it for
+**non-production** flows only (no Rekor push); a production Rekor push can never be silently
+skipped. This is an additive minor surface — non-Rekor and unsigned flows are unaffected.
 
 ## Adopter-facing guarantees
 
