@@ -1,0 +1,89 @@
+[
+  {
+    "_type": "https://in-toto.io/Statement/v1",
+    "subject": [
+      {
+        "name": "audit-harness:ci:escape-scan",
+        "digest": {
+          "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+        }
+      }
+    ],
+    "predicateType": "https://evals.intentsolutions.io/gate-result/v1",
+    "predicate": {
+      "gate_id": "audit-harness:ci:escape-scan",
+      "gate_name": "escape-scan",
+      "gate_version": "1.0.0",
+      "gate_decision": "pass",
+      "gate_reasons": [],
+      "coverage": {
+        "dimensions_evaluated": ["static"],
+        "dimensions_skipped": []
+      },
+      "policy_ref": "sha256:2222222222222222222222222222222222222222222222222222222222222222:tests/TESTING.md",
+      "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "input_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "evaluated_at": "2026-06-13T00:00:00Z",
+      "runner": "audit-harness@1.0.1",
+      "commit_sha": "cccccccccccccccccccccccccccccccccccccccc"
+    }
+  },
+  {
+    "_type": "https://in-toto.io/Statement/v1",
+    "subject": [
+      {
+        "name": "audit-harness:ci:crap-score",
+        "digest": {
+          "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      }
+    ],
+    "predicateType": "https://evals.intentsolutions.io/gate-result/v1",
+    "predicate": {
+      "gate_id": "audit-harness:ci:crap-score",
+      "gate_name": "crap-score",
+      "gate_version": "1.0.0",
+      "gate_decision": "pass",
+      "gate_reasons": [],
+      "coverage": {
+        "dimensions_evaluated": ["static"],
+        "dimensions_skipped": []
+      },
+      "policy_ref": "sha256:2222222222222222222222222222222222222222222222222222222222222222:tests/TESTING.md",
+      "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "input_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "evaluated_at": "2026-06-13T00:00:00Z",
+      "runner": "audit-harness@1.0.1",
+      "commit_sha": "cccccccccccccccccccccccccccccccccccccccc"
+    }
+  },
+  {
+    "_type": "https://in-toto.io/Statement/v1",
+    "subject": [
+      {
+        "name": "audit-harness:ci:arch-check",
+        "digest": {
+          "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+        }
+      }
+    ],
+    "predicateType": "https://evals.intentsolutions.io/gate-result/v1",
+    "predicate": {
+      "gate_id": "audit-harness:ci:arch-check",
+      "gate_name": "arch-check",
+      "gate_version": "1.0.0",
+      "gate_decision": "pass",
+      "gate_reasons": [],
+      "coverage": {
+        "dimensions_evaluated": ["static"],
+        "dimensions_skipped": []
+      },
+      "policy_ref": "sha256:2222222222222222222222222222222222222222222222222222222222222222:tests/TESTING.md",
+      "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "input_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "evaluated_at": "2026-06-13T00:00:00Z",
+      "runner": "audit-harness@1.0.1",
+      "commit_sha": "cccccccccccccccccccccccccccccccccccccccc"
+    }
+  }
+]
