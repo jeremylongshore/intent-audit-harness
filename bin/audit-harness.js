@@ -17,6 +17,7 @@ const COMMANDS = {
   'init':          { script: 'harness-hash.sh',  args: ['--init'] },
   'list':          { script: 'harness-hash.sh',  args: ['--list'] },
   'escape-scan':   { script: 'escape-scan.sh',   args: [] },
+  'cred-gate':     { script: 'cred-gate.sh',     args: [] },
   'arch':          { script: 'arch-check.sh',    args: [] },
   'bias':          { script: 'bias-count.sh',    args: [] },
   'gherkin-lint':  { script: 'gherkin-lint.sh',  args: [] },
@@ -35,7 +36,7 @@ const COMMANDS = {
 // classify is intentionally NOT here: it emits a meaningful kill-switched profile
 // itself (every gate enforcement=disabled). verify/init/list always run.
 const KILLABLE_GATES = new Set([
-  'escape-scan', 'arch', 'bias', 'gherkin-lint', 'crap', 'emit-evidence',
+  'escape-scan', 'cred-gate', 'arch', 'bias', 'gherkin-lint', 'crap', 'emit-evidence',
 ]);
 
 function usage() {
@@ -50,6 +51,15 @@ Commands:
   list                     List currently pinned files
   escape-scan <source>     Scan a diff for escape attempts
                            source: --staged | --range A..B | - (stdin) | path.patch
+  cred-gate [args...]      Provider credential PASS/FAIL gate (iah-E08, CISO
+                           binding DR-010 S1Q5). Reads a candidate artifact (the
+                           JSON about to be signed/emitted) on stdin or --input and
+                           FAILs (exit 1) if a declared secret value leaks verbatim,
+                           a known provider-key shape is embedded, or the artifact
+                           serializes the process environment (env-var spillover).
+                           Offline + read-only. --secret-env NAME (repeatable)
+                           declares a secret by env-var name; --json emits a
+                           gate-result/v1 envelope. See docs/cred-gate.md.
   arch                     Run architecture-rule checks (Wall 7)
   bias                     Count test-bias patterns (tautology, smoke-only, etc.)
   gherkin-lint             Advisory Gherkin quality check

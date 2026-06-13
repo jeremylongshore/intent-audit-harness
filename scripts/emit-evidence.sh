@@ -191,36 +191,102 @@ if [[ -z "$STATEMENT" ]]; then
   exit 1
 fi
 
-# --- OTel event (best-effort no-op if collector absent) ---
-# Fire agent.rollout.gate.evaluated per intent-eval-lab/000-docs/001-DR-RFC-...md.
-# We emit a single OTLP-shaped JSON line to stderr when AUDIT_HARNESS_OTEL=1
-# OR an OTEL_EXPORTER_OTLP_ENDPOINT is set. Real exporter wiring is consumer-side;
-# we emit a structured signal that any collector can scrape via stderr capture.
+# --- OTel events (best-effort no-op if collector absent) ---
+# Two events fire under the agent.rollout.gate.* namespace per the OTel RFC draft
+# intent-eval-lab/000-docs/001-DR-RFC-otel-agent-rollout-gate-signals-draft.md § Events:
+#
+#   1. agent.rollout.gate.evaluated  (iah-E07a) — fired at the start/observation
+#      of a gate evaluation. Carries the raw gate identity + result.
+#   2. agent.rollout.gate.decision   (iah-E07b) — fired at the END of the gate
+#      evaluation. Carries the ship/no-ship terminal decision the gate-result
+#      maps to, plus the reasons array. This is the second OTel event the RFC
+#      enumerates and the one a ship-gate dashboard actually alerts on.
+#
+# ATTRIBUTE-SPELLING AUTHORITY (do NOT redefine here): the canonical attribute
+# names are pinned by the kernel at
+# intent-eval-core/schemas/v1/otel-attributes.yaml — OTel-idiomatic dotted
+# lowercase (e.g. gate.decision). We spell every attribute to match that file;
+# the RFC draft above is the EVENT-NAME authority (agent.rollout.gate.decision)
+# and supplies the closed decision enum {ship, no-ship} + the reasons array.
+#
+# We emit OTLP-shaped JSON lines to stderr when AUDIT_HARNESS_OTEL=1 OR an
+# OTEL_EXPORTER_OTLP_ENDPOINT is set. Real exporter wiring is consumer-side; we
+# emit a structured signal any collector can scrape via stderr capture. The path
+# is fully best-effort: a collector being absent is the no-op default, and a
+# python failure (||) degrades to an empty line that is simply not printed —
+# the gate's own exit status is never affected by OTel emission (iah-E07c).
 if [[ "${AUDIT_HARNESS_OTEL:-0}" == "1" ]] || [[ -n "${OTEL_EXPORTER_OTLP_ENDPOINT:-}" ]]; then
   # Compose the JSON via python so every attribute value is JSON-escaped.
   # printf-interpolating gate_id/result/runner into a JSON format string
   # emitted structurally invalid JSON whenever a value carried a double quote
   # (e.g. AUDIT_HARNESS_SIDE='ci"injection' flowing into gate_id).
-  OTEL_LINE=$(GATE_JSON="$GATE_JSON" RUNNER="$RUNNER" COMMIT_SHA="$COMMIT_SHA" TIMESTAMP="$TIMESTAMP" \
+  OTEL_LINES=$(GATE_JSON="$GATE_JSON" RUNNER="$RUNNER" COMMIT_SHA="$COMMIT_SHA" TIMESTAMP="$TIMESTAMP" \
     python3 - <<'PY' 2>/dev/null || echo ""
 import json, os
 try:
     gate = json.loads(os.environ["GATE_JSON"])
 except (json.JSONDecodeError, ValueError):
     gate = {}
-print(json.dumps({
+
+runner = os.environ["RUNNER"]
+commit_sha = os.environ["COMMIT_SHA"]
+timestamp = os.environ["TIMESTAMP"]
+gate_id = str(gate.get("gate_id", ""))
+gate_result = str(gate.get("result", ""))
+
+# Event 1: agent.rollout.gate.evaluated (iah-E07a, unchanged shape).
+evaluated = {
     "name": "agent.rollout.gate.evaluated",
     "attributes": {
-        "gate.id": str(gate.get("gate_id", "")),
-        "gate.result": str(gate.get("result", "")),
-        "gate.runner": os.environ["RUNNER"],
-        "gate.commit_sha": os.environ["COMMIT_SHA"],
+        "gate.id": gate_id,
+        "gate.result": gate_result,
+        "gate.runner": runner,
+        "gate.commit_sha": commit_sha,
     },
-    "timestamp": os.environ["TIMESTAMP"],
-}, separators=(",", ":")))
+    "timestamp": timestamp,
+}
+
+# Event 2: agent.rollout.gate.decision (iah-E07b). Map the gate-result enum to
+# the RFC's closed {ship, no-ship} decision enum. A single gate emitting its own
+# row maps PASS -> ship and anything else -> no-ship; INDETERMINATE rows are a
+# no-ship from a hard ship-gate's perspective (the gate did not affirm ship).
+# The attribute is spelled gate.decision per the kernel otel-attributes.yaml
+# pin; the RFC supplies the enum + the reasons array.
+result_upper = gate_result.upper()
+decision = "ship" if result_upper == "PASS" else "no-ship"
+reasons = []
+if decision == "ship":
+    reasons.append(f"gate '{gate_id}' returned PASS")
+else:
+    reasons.append(
+        f"gate '{gate_id}' returned {gate_result or 'NO_RESULT'} (not PASS)"
+    )
+fm = gate.get("failure_mode")
+if fm:
+    reasons.append(f"failure_mode: {fm}")
+
+decision_event = {
+    "name": "agent.rollout.gate.decision",
+    "attributes": {
+        "gate.id": gate_id,
+        "gate.decision": decision,
+        "gate.reasons": reasons,
+        "gate.runner": runner,
+        "gate.commit_sha": commit_sha,
+    },
+    "timestamp": timestamp,
+}
+
+for ev in (evaluated, decision_event):
+    print(json.dumps(ev, separators=(",", ":")))
 PY
 )
-  [[ -n "$OTEL_LINE" ]] && printf '[OTEL] %s\n' "$OTEL_LINE" >&2
+  # Print each emitted OTLP line with the [OTEL] marker the collector scrapes.
+  if [[ -n "$OTEL_LINES" ]]; then
+    while IFS= read -r _otel_line; do
+      [[ -n "$_otel_line" ]] && printf '[OTEL] %s\n' "$_otel_line" >&2
+    done <<< "$OTEL_LINES"
+  fi
 fi
 
 # --- Sign + emit ---
