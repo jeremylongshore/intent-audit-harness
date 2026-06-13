@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "intent-audit-harness"
-version = "1.1.7"
+version = "1.1.8"
 description = "Deterministic test-enforcement harness — escape-scan, hash-pinning, CRAP, architecture checks, bias detection, Gherkin lint. Python-native wrapper around the @intentsolutions/audit-harness toolkit."
 readme = "README.md"
 requires-python = ">=3.8"
