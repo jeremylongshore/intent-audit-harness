@@ -7,7 +7,7 @@
  * and language-portable. The CLI just adds discoverability + cross-platform-ish shell resolution.
  */
 const { spawn } = require('node:child_process');
-const { resolve, dirname } = require('node:path');
+const { resolve } = require('node:path');
 const { existsSync } = require('node:fs');
 
 const SCRIPTS = resolve(__dirname, '..', 'scripts');

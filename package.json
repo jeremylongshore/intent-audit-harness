@@ -40,7 +40,14 @@
   ],
   "scripts": {
     "test": "bash scripts/escape-scan.sh --staged || true",
+    "lint": "eslint \"bin/**/*.js\"",
+    "lint:fix": "eslint --fix \"bin/**/*.js\"",
     "prepublishOnly": "node bin/audit-harness.js --version"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "lefthook": "^1.13.6"
   },
   "publishConfig": {
     "access": "public"

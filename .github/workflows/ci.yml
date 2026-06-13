@@ -142,6 +142,36 @@ jobs:
         run: |
           find scripts -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
 
+  eslint:
+    name: eslint (Node dispatcher lint)
+    runs-on: ubuntu-latest
+    # Lints the CommonJS CLI dispatcher under bin/ with the official
+    # @eslint/js "recommended" ruleset (flat config: eslint.config.js).
+    # Correctness floor, not a style enforcer. Per rnpy.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: "Install (devDeps: eslint + @eslint/js)"
+        run: npm install
+      - name: eslint
+        run: npx eslint "bin/**/*.js"
+
+  kernel-shadow-check:
+    name: kernel-shadow-check (no local re-declaration of kernel contracts)
+    runs-on: ubuntu-latest
+    # Advisory detector (873c): flags any file that re-DECLARES a kernel-owned
+    # contract (gate-result/v1 or evidence-bundle JSON Schema $id, or a TS/Python
+    # GateResultV1/EvidenceBundle type definition) instead of referencing
+    # @intentsolutions/core. Runs in advisory mode (exit 0, GitHub annotations)
+    # so the lane is green; a found shadow surfaces as a warning, not a block.
+    # iah-E02 (the architecture question that historically gated this) is closed.
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run kernel-shadow-check (advisory)
+        run: bash scripts/kernel-shadow-check.sh
+
   version-canonical-check:
     name: Manifest version + license alignment
     # Per IEP Convergence Debt Plan Priority 3 (iah-version-canonical-check,

@@ -1,4 +1,10 @@
-# PyPI publish — pending auth
+# PyPI publish — automated, pending token
+
+**Wired in `.github/workflows/release.yml`** (`publish-pypi` job): on every `v*.*.*`
+tag push, the workflow builds the sdist + wheel, runs `twine check`, and uploads to
+PyPI. The job is **guarded** — it no-ops with an explanatory log when the `PYPI_TOKEN`
+repo secret is absent. It **activates automatically once `PYPI_TOKEN` is set** as a
+repository secret; no further code change is needed. It never runs on a PR (tag-only).
 
 **Status:** distribution artifacts built and validated, but **not yet uploaded** to PyPI.
 
