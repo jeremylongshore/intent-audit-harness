@@ -113,5 +113,7 @@ The `cred-gate` CI lane in `.github/workflows/ci.yml` runs
 `tests/cred-gate/run-cred-gate-tests.sh`, which proves the credential-redaction
 fixture (E08a), the env-var spillover fixture (E08b), the `--json` envelope
 round-trip, and — because the same suite also exercises `emit-evidence.sh` — the
-`agent.rollout.gate.decision` OTel event (iah-E07b). Both must pass for the lane
-to be green.
+`gate.decision.emitted` OTel event (iah-E07b), which fires per the NORMATIVE
+runtime event taxonomy (intent-eval-lab `067-AT-SPEC` § 2.2) with the
+`gate.decision` enum `{pass, fail, advisory, error}` and the kernel-pinned
+attribute spelling. Both must pass for the lane to be green.
