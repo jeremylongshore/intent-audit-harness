@@ -192,22 +192,30 @@ if [[ -z "$STATEMENT" ]]; then
 fi
 
 # --- OTel events (best-effort no-op if collector absent) ---
-# Two events fire under the agent.rollout.gate.* namespace per the OTel RFC draft
-# intent-eval-lab/000-docs/001-DR-RFC-otel-agent-rollout-gate-signals-draft.md § Events:
+# The gate-decision event fires per the NORMATIVE runtime event taxonomy
+# intent-eval-lab/000-docs/067-AT-SPEC-runtime-event-taxonomy-2026-06-12.md § 2.2
+# (GOVERNANCE events, `gate.*`):
 #
-#   1. agent.rollout.gate.evaluated  (iah-E07a) — fired at the start/observation
-#      of a gate evaluation. Carries the raw gate identity + result.
-#   2. agent.rollout.gate.decision   (iah-E07b) — fired at the END of the gate
-#      evaluation. Carries the ship/no-ship terminal decision the gate-result
-#      maps to, plus the reasons array. This is the second OTel event the RFC
-#      enumerates and the one a ship-gate dashboard actually alerts on.
+#   1. agent.rollout.gate.evaluated — observability signal fired at the
+#      start/observation of a gate evaluation. NON-NORMATIVE: 067-AT-SPEC closes
+#      the `gate.*` category and does NOT define a gate-evaluated event, so this
+#      carries the legacy raw gate identity + result for collectors that already
+#      scrape it. It is NOT a 067-pinned name and a future taxonomy extension may
+#      retire or rename it; nothing should pin to it. The normative signal is (2).
+#   2. gate.decision.emitted (iah-E07b) — fired at the END of the gate
+#      evaluation. This is the NORMATIVE name from 067-AT-SPEC § 2.2: "a
+#      RolloutGate decision row is emitted under gate-result/v1". Payload per
+#      § 2.2: gate.name (string), gate.decision (enum pass|fail|advisory|error),
+#      gate.policy_ref (string). This is the one a ship-gate dashboard alerts on.
 #
 # ATTRIBUTE-SPELLING AUTHORITY (do NOT redefine here): the canonical attribute
 # names are pinned by the kernel at
 # intent-eval-core/schemas/v1/otel-attributes.yaml — OTel-idiomatic dotted
-# lowercase (e.g. gate.decision). We spell every attribute to match that file;
-# the RFC draft above is the EVENT-NAME authority (agent.rollout.gate.decision)
-# and supplies the closed decision enum {ship, no-ship} + the reasons array.
+# lowercase (e.g. gate.decision). We spell every attribute to match that file.
+# 067-AT-SPEC § 2.2 is the EVENT-NAME authority for gate.decision.emitted and its
+# payload schema; the gate.decision enum {pass, fail, advisory, error} is the
+# closed gate-result/v1 verdict enum (Blueprint B § 7.4 / kernel gate-result
+# schema) — NOT the RolloutGateDecision ship/no_ship vocabulary.
 #
 # We emit OTLP-shaped JSON lines to stderr when AUDIT_HARNESS_OTEL=1 OR an
 # OTEL_EXPORTER_OTLP_ENDPOINT is set. Real exporter wiring is consumer-side; we
@@ -232,44 +240,72 @@ runner = os.environ["RUNNER"]
 commit_sha = os.environ["COMMIT_SHA"]
 timestamp = os.environ["TIMESTAMP"]
 gate_id = str(gate.get("gate_id", ""))
-gate_result = str(gate.get("result", ""))
+# The canonical gate-result/v1 verdict field is gate_decision (lowercase enum,
+# Blueprint B § 7.4); the legacy draft envelope used `result` (UPPERCASE). Read
+# the canonical field first, fall back to the legacy field.
+gate_decision_raw = str(gate.get("gate_decision", gate.get("result", "")))
 
-# Event 1: agent.rollout.gate.evaluated (iah-E07a, unchanged shape).
+# gate.name / gate.policy_ref per 067-AT-SPEC § 2.2 payload schema. The canonical
+# envelope carries gate_name (kebab-case) + policy_ref; fall back to gate_id /
+# policy_hash for legacy draft envelopes that predate Blueprint B § 7.4.
+gate_name = str(gate.get("gate_name", gate_id))
+policy_ref = str(gate.get("policy_ref", gate.get("policy_hash", "")))
+
+# Map the inbound verdict to the closed gate.decision enum {pass, fail,
+# advisory, error} (gate-result/v1 / kernel gate-result schema). This is the
+# 067-AT-SPEC § 2.2 enum — NOT the RolloutGateDecision ship/no_ship vocabulary.
+# Canonical lowercase values pass straight through; legacy UPPERCASE results map
+# down; an unrecognized/missing verdict is `error` (the gate could not affirm a
+# decision — an error condition, not a clean `fail`).
+_DECISION_MAP = {
+    "pass": "pass",
+    "fail": "fail",
+    "advisory": "advisory",
+    "error": "error",
+}
+decision = _DECISION_MAP.get(gate_decision_raw.strip().lower(), "error")
+# An advisory_severity hint on a non-fail/non-error row signals an advisory row
+# even when the legacy `result` field only said PASS.
+if decision in ("pass",) and gate.get("advisory_severity"):
+    decision = "advisory"
+
+reasons = []
+if decision == "pass":
+    reasons.append(f"gate '{gate_id}' decision: pass")
+else:
+    reasons.append(
+        f"gate '{gate_id}' decision: {decision} "
+        f"(verdict={gate_decision_raw or 'NO_VERDICT'})"
+    )
+fm = gate.get("failure_mode")
+if fm:
+    reasons.append(f"failure_mode: {fm}")
+
+# Event 1: agent.rollout.gate.evaluated (NON-NORMATIVE observability signal;
+# unchanged shape — not a 067-AT-SPEC-pinned name, see header note).
 evaluated = {
     "name": "agent.rollout.gate.evaluated",
     "attributes": {
         "gate.id": gate_id,
-        "gate.result": gate_result,
+        "gate.result": gate_decision_raw,
         "gate.runner": runner,
         "gate.commit_sha": commit_sha,
     },
     "timestamp": timestamp,
 }
 
-# Event 2: agent.rollout.gate.decision (iah-E07b). Map the gate-result enum to
-# the RFC's closed {ship, no-ship} decision enum. A single gate emitting its own
-# row maps PASS -> ship and anything else -> no-ship; INDETERMINATE rows are a
-# no-ship from a hard ship-gate's perspective (the gate did not affirm ship).
-# The attribute is spelled gate.decision per the kernel otel-attributes.yaml
-# pin; the RFC supplies the enum + the reasons array.
-result_upper = gate_result.upper()
-decision = "ship" if result_upper == "PASS" else "no-ship"
-reasons = []
-if decision == "ship":
-    reasons.append(f"gate '{gate_id}' returned PASS")
-else:
-    reasons.append(
-        f"gate '{gate_id}' returned {gate_result or 'NO_RESULT'} (not PASS)"
-    )
-fm = gate.get("failure_mode")
-if fm:
-    reasons.append(f"failure_mode: {fm}")
-
+# Event 2: gate.decision.emitted (iah-E07b) — NORMATIVE per 067-AT-SPEC § 2.2.
+# Payload: gate.name (string) + gate.decision (enum pass|fail|advisory|error) +
+# gate.policy_ref (string). The reasons / runner / commit_sha are additive
+# diagnostic attributes carried for dashboards; they do not contradict the
+# § 2.2 required payload.
 decision_event = {
-    "name": "agent.rollout.gate.decision",
+    "name": "gate.decision.emitted",
     "attributes": {
-        "gate.id": gate_id,
+        "gate.name": gate_name,
         "gate.decision": decision,
+        "gate.policy_ref": policy_ref,
+        "gate.id": gate_id,
         "gate.reasons": reasons,
         "gate.runner": runner,
         "gate.commit_sha": commit_sha,

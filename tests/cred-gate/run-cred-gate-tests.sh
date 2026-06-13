@@ -7,10 +7,12 @@
 #                          E08c (the CI gate that runs both — this file IS the
 #                          gate body invoked by .github/workflows/ci.yml).
 #
-#   iah-E07b (OTel)      — the agent.rollout.gate.decision event in
-#                          scripts/emit-evidence.sh fires with the correct
-#                          ship/no-ship mapping and kernel-pinned attribute
-#                          spelling (gate.decision).
+#   iah-E07b (OTel)      — the gate.decision.emitted event in
+#                          scripts/emit-evidence.sh fires per the NORMATIVE
+#                          runtime event taxonomy (intent-eval-lab 067-AT-SPEC
+#                          § 2.2) with the gate.decision enum {pass, fail,
+#                          advisory, error} and kernel-pinned attribute spelling
+#                          (gate.name / gate.decision / gate.policy_ref).
 #
 # It mirrors the repo's existing runner style (tests/dns-preflight, tests/semver):
 #   bash tests/cred-gate/run-cred-gate-tests.sh
@@ -127,39 +129,58 @@ print('ok' if d.get('predicateType','').endswith('/gate-result/v1') else 'bad')
 assert_eq "ok" "$stmt_ok" "cred-gate --json | emit-evidence -> valid in-toto Statement"
 
 # ---------------------------------------------------------------------------
-# Group 4 — iah-E07b: agent.rollout.gate.decision OTel event
+# Group 4 — iah-E07b: gate.decision.emitted OTel event (067-AT-SPEC § 2.2)
 # ---------------------------------------------------------------------------
-echo "== iah-E07b: OTel decision event =="
+echo "== iah-E07b: OTel gate.decision.emitted event =="
 
-# PASS gate -> decision "ship"; the attribute is spelled gate.decision (kernel pin).
-otel_pass=$(echo '{"gate_id":"g1","result":"PASS","input_hash":"sha256:aa","policy_hash":"sha256:bb"}'  | AUDIT_HARNESS_OTEL=1 bash "$EMIT" 2>&1 >/dev/null | grep 'agent.rollout.gate.decision' || true)
-ship_ok=$(printf '%s' "$otel_pass" | sed 's/^\[OTEL\] //' | python3 -c "
+# PASS gate -> gate.decision "pass"; event name is gate.decision.emitted, payload
+# carries gate.name + gate.policy_ref per 067-AT-SPEC § 2.2.
+otel_pass=$(echo '{"gate_id":"g1","gate_name":"escape-scan","result":"PASS","input_hash":"sha256:aa","policy_hash":"sha256:bb","policy_ref":"sha256:bb:tests/TESTING.md"}'  | AUDIT_HARNESS_OTEL=1 bash "$EMIT" 2>&1 >/dev/null | grep '"name":"gate.decision.emitted"' || true)
+pass_ok=$(printf '%s' "$otel_pass" | sed 's/^\[OTEL\] //' | python3 -c "
 import json, sys
 try:
     d = json.load(sys.stdin)
 except Exception:
     print('bad'); sys.exit()
 a = d.get('attributes', {})
-print('ok' if a.get('gate.decision') == 'ship' and 'gate.reasons' in a else 'bad')
+print('ok' if (a.get('gate.decision') == 'pass'
+    and a.get('gate.name') == 'escape-scan'
+    and a.get('gate.policy_ref') == 'sha256:bb:tests/TESTING.md'
+    and 'gate.reasons' in a) else 'bad')
 " 2>/dev/null || echo "bad")
-assert_eq "ok" "$ship_ok" "PASS gate emits gate.decision=ship (kernel-pinned spelling)"
+assert_eq "ok" "$pass_ok" "PASS gate emits gate.decision.emitted with gate.decision=pass + gate.name + gate.policy_ref"
 
-# FAIL gate -> decision "no-ship" with a non-empty reasons array.
-otel_fail=$(echo '{"gate_id":"g2","result":"FAIL","input_hash":"sha256:aa","policy_hash":"sha256:bb","failure_mode":"below_threshold"}'  | AUDIT_HARNESS_OTEL=1 bash "$EMIT" 2>&1 >/dev/null | grep 'agent.rollout.gate.decision' || true)
-noship_ok=$(printf '%s' "$otel_fail" | sed 's/^\[OTEL\] //' | python3 -c "
+# FAIL gate -> gate.decision "fail" with a non-empty reasons array.
+otel_fail=$(echo '{"gate_id":"g2","result":"FAIL","input_hash":"sha256:aa","policy_hash":"sha256:bb","failure_mode":"below_threshold"}'  | AUDIT_HARNESS_OTEL=1 bash "$EMIT" 2>&1 >/dev/null | grep '"name":"gate.decision.emitted"' || true)
+fail_ok=$(printf '%s' "$otel_fail" | sed 's/^\[OTEL\] //' | python3 -c "
 import json, sys
 try:
     d = json.load(sys.stdin)
 except Exception:
     print('bad'); sys.exit()
 a = d.get('attributes', {})
-print('ok' if a.get('gate.decision') == 'no-ship' and len(a.get('gate.reasons', [])) >= 1 else 'bad')
+print('ok' if a.get('gate.decision') == 'fail' and len(a.get('gate.reasons', [])) >= 1 else 'bad')
 " 2>/dev/null || echo "bad")
-assert_eq "ok" "$noship_ok" "FAIL gate emits gate.decision=no-ship + reasons"
+assert_eq "ok" "$fail_ok" "FAIL gate emits gate.decision=fail + reasons"
+
+# Canonical lowercase gate_decision field passes straight through (advisory).
+# Carries `result` too so the (un-migrated) Statement composer still accepts the
+# envelope; the OTel block reads gate_decision first, so advisory wins over result.
+otel_adv=$(echo '{"gate_id":"g5","result":"PASS","gate_decision":"advisory","input_hash":"sha256:aa","policy_hash":"sha256:bb","advisory_severity":"warn"}'  | AUDIT_HARNESS_OTEL=1 bash "$EMIT" 2>&1 >/dev/null | grep '"name":"gate.decision.emitted"' || true)
+adv_ok=$(printf '%s' "$otel_adv" | sed 's/^\[OTEL\] //' | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    print('bad'); sys.exit()
+a = d.get('attributes', {})
+print('ok' if a.get('gate.decision') == 'advisory' else 'bad')
+" 2>/dev/null || echo "bad")
+assert_eq "ok" "$adv_ok" "advisory gate_decision passes through to gate.decision=advisory"
 
 # Both events fire from one evaluation (evaluated + decision).
 both=$(echo '{"gate_id":"g3","result":"PASS","input_hash":"sha256:aa","policy_hash":"sha256:bb"}'  | AUDIT_HARNESS_OTEL=1 bash "$EMIT" 2>&1 >/dev/null | grep -c '\[OTEL\]' || true)
-assert_eq "2" "$both" "exactly two OTel events fire (evaluated + decision)"
+assert_eq "2" "$both" "exactly two OTel events fire (evaluated + gate.decision.emitted)"
 
 # OTel is best-effort: with no collector signal the path is a silent no-op.
 none=$(echo '{"gate_id":"g4","result":"PASS","input_hash":"sha256:aa","policy_hash":"sha256:bb"}'  | bash "$EMIT" 2>&1 >/dev/null | grep -c '\[OTEL\]' || true)
