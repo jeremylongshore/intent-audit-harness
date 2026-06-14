@@ -15,6 +15,7 @@
 #
 # INSTALLS INTO:
 #   .audit-harness/               (scripts + version marker)
+#   .audit-harness/configs/       (shared lint configs to `extends:` from your own root configs)
 #   scripts/audit-harness         (wrapper binary; dispatches to .audit-harness/scripts/*)
 #
 # CI usage after install:
@@ -79,6 +80,17 @@ fi
 
 # Copy scripts/ and metadata into .audit-harness/
 cp -r "${UNPACKED_DIR}/scripts" "${TARGET_DIR}/scripts"
+
+# Copy the shared lint configs into .audit-harness/configs/. The source dir at
+# the audit-harness repo root is `.audit-harness-configs/` (named so it does not
+# collide with the consumer-side `.audit-harness/` install target); it lands in
+# the consumer at `.audit-harness/configs/`, giving every repo one stable path
+# to point an `extends:` at (markdownlint / yamllint / ruff / shellcheck).
+# See .audit-harness/configs/README.md for the per-tool extend snippets.
+if [[ -d "${UNPACKED_DIR}/.audit-harness-configs" ]]; then
+  cp -r "${UNPACKED_DIR}/.audit-harness-configs" "${TARGET_DIR}/configs"
+fi
+
 cp "${UNPACKED_DIR}/README.md" "${TARGET_DIR}/README.md" 2>/dev/null || true
 cp "${UNPACKED_DIR}/LICENSE" "${TARGET_DIR}/LICENSE" 2>/dev/null || true
 # NOTICE: Apache-2.0 §4(d) requires redistributing the NOTICE file with any
@@ -181,12 +193,20 @@ cat <<EOF
 ✓ audit-harness ${VERSION} installed.
 
 Vendored at: ${REPO_ROOT}/${TARGET_DIR}/
+Configs at:  ${REPO_ROOT}/${TARGET_DIR}/configs/   (extend these from your own root lint configs)
 Wrapper at:  ${REPO_ROOT}/${WRAPPER_PATH}
 
 Usage:
   ${WRAPPER_PATH} --help
   ${WRAPPER_PATH} verify
   ${WRAPPER_PATH} escape-scan --staged
+
+Shared lint configs (point an \`extends\` at these):
+  ${TARGET_DIR}/configs/markdownlint.yaml   # extends: in .markdownlint.yaml
+  ${TARGET_DIR}/configs/yamllint.yaml       # extends: in .yamllint.yaml
+  ${TARGET_DIR}/configs/ruff.toml           # extend = in ruff.toml
+  ${TARGET_DIR}/configs/shellcheckrc        # reference shape for .shellcheckrc
+  ${TARGET_DIR}/configs/README.md           # per-tool extend snippets
 
 Next steps:
   1. git add ${TARGET_DIR}/ ${WRAPPER_PATH}
