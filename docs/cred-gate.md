@@ -111,9 +111,21 @@ fingerprint prefix, so the finding is actionable without re-leaking. The
 
 The `cred-gate` CI lane in `.github/workflows/ci.yml` runs
 `tests/cred-gate/run-cred-gate-tests.sh`, which proves the credential-redaction
-fixture (E08a), the env-var spillover fixture (E08b), the `--json` envelope
+fixtures (E08a), the env-var spillover fixtures (E08b), the `--json` envelope
 round-trip, and — because the same suite also exercises `emit-evidence.sh` — the
 `gate.decision.emitted` OTel event (iah-E07b), which fires per the NORMATIVE
 runtime event taxonomy (intent-eval-lab `067-AT-SPEC` § 2.2) with the
 `gate.decision` enum `{pass, fail, advisory, error}` and the kernel-pinned
-attribute spelling. Both must pass for the lane to be green.
+attribute spelling. Both the redaction group AND the spillover group must pass
+for the lane to be green (iah-E08c "both must pass").
+
+The fixture suite covers the **full catalog**: every provider-key shape in
+`SHAPE_PATTERNS` (anthropic, openai, groq, nvidia, AWS, Google, GitHub, Slack,
+private-key block) has a FAILing fixture built from a **synthetic, non-real**
+value, and every `SPILLOVER_PATTERNS` heuristic (`process-env-spread`,
+`os-environ-dump`, `env-block-key`, `printenv-capture`) has its own fixture — so
+a regression in any single regex cannot ship silently green. Two PASS guards
+(a non-matching value, and benign "environment" prose) pin the false-positive
+posture. All fixtures are inline in the runner: synthetic secret values are
+injected into the local environment for the duration of one assertion and never
+touch `argv` (passed by env-var NAME via `--secret-env`).
