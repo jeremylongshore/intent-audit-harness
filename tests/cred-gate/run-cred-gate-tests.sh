@@ -14,6 +14,14 @@
 #                          advisory, error} and kernel-pinned attribute spelling
 #                          (gate.name / gate.decision / gate.policy_ref).
 #
+#   iah-E07a (OTel)      — the agent.rollout.gate.evaluated event in
+#                          scripts/emit-evidence.sh fires by name with its four
+#                          attributes (gate.id / gate.result / gate.runner /
+#                          gate.commit_sha). NON-NORMATIVE legacy observability
+#                          signal (067-AT-SPEC § 2.2 does not register it); locked
+#                          so a scraping collector cannot silently lose it. Same
+#                          collector-absent no-op contract as E07b (iah-E07c).
+#
 # It mirrors the repo's existing runner style (tests/dns-preflight, tests/semver):
 #   bash tests/cred-gate/run-cred-gate-tests.sh
 #   exit 0 = all green; exit 1 = at least one assertion failed. ⛔ / ✓ markers.
@@ -222,6 +230,54 @@ assert_eq "2" "$both" "exactly two OTel events fire (evaluated + gate.decision.e
 # OTel is best-effort: with no collector signal the path is a silent no-op.
 none=$(echo '{"gate_id":"g4","result":"PASS","input_hash":"sha256:aa","policy_hash":"sha256:bb"}'  | bash "$EMIT" 2>&1 >/dev/null | grep -c '\[OTEL\]' || true)
 assert_eq "0" "$none" "collector-absent path is a silent no-op (iah-E07c)"
+
+# ---------------------------------------------------------------------------
+# Group 5 — iah-E07a: agent.rollout.gate.evaluated OTel event
+# ---------------------------------------------------------------------------
+# The evaluated event is the observation fired when a gate evaluation is wrapped
+# into evidence. It is a NON-NORMATIVE legacy observability signal: 067-AT-SPEC
+# § 2.2 closes the `gate.*` category and does NOT register a gate-evaluated name,
+# so nothing should pin to it (the normative decision signal is gate.decision.emitted,
+# Group 4). These assertions lock the event NAME + its four required attributes so
+# a collector that already scrapes it does not silently lose the signal, and prove
+# the same collector-absent no-op contract (iah-E07c) for this event specifically.
+echo
+echo "== iah-E07a: OTel agent.rollout.gate.evaluated event =="
+
+# The evaluated event fires by name with its four attributes (gate.id /
+# gate.result / gate.runner / gate.commit_sha) when a collector signal is present.
+otel_eval=$(echo '{"gate_id":"g6","result":"PASS","input_hash":"sha256:aa","policy_hash":"sha256:bb"}'  | AUDIT_HARNESS_OTEL=1 bash "$EMIT" --runner-version "audit-harness@test" --commit-sha "deadbeef" 2>&1 >/dev/null | grep '"name":"agent.rollout.gate.evaluated"' || true)
+eval_ok=$(printf '%s' "$otel_eval" | sed 's/^\[OTEL\] //' | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    print('bad'); sys.exit()
+a = d.get('attributes', {})
+print('ok' if (d.get('name') == 'agent.rollout.gate.evaluated'
+    and a.get('gate.id') == 'g6'
+    and a.get('gate.result') == 'PASS'
+    and a.get('gate.runner') == 'audit-harness@test'
+    and a.get('gate.commit_sha') == 'deadbeef') else 'bad')
+" 2>/dev/null || echo "bad")
+assert_eq "ok" "$eval_ok" "agent.rollout.gate.evaluated fires with gate.id + gate.result + gate.runner + gate.commit_sha"
+
+# A double-quote injected into gate_id must stay JSON-escaped in the evaluated
+# event (offline-safe + structurally valid; no re-leak of the raw value as JSON).
+otel_eval_inj=$(echo '{"gate_id":"g7\"injection","result":"PASS","input_hash":"sha256:aa","policy_hash":"sha256:bb"}'  | AUDIT_HARNESS_OTEL=1 bash "$EMIT" 2>&1 >/dev/null | grep '"name":"agent.rollout.gate.evaluated"' || true)
+eval_inj_ok=$(printf '%s' "$otel_eval_inj" | sed 's/^\[OTEL\] //' | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    print('bad'); sys.exit()
+print('ok' if d.get('attributes', {}).get('gate.id') == 'g7\"injection' else 'bad')
+" 2>/dev/null || echo "bad")
+assert_eq "ok" "$eval_inj_ok" "agent.rollout.gate.evaluated keeps a quote-bearing gate.id JSON-escaped"
+
+# Collector-absent: the evaluated event is a silent no-op when no OTel signal is set.
+eval_none=$(echo '{"gate_id":"g8","result":"PASS","input_hash":"sha256:aa","policy_hash":"sha256:bb"}'  | bash "$EMIT" 2>&1 >/dev/null | grep -c '"name":"agent.rollout.gate.evaluated"' || true)
+assert_eq "0" "$eval_none" "collector-absent path emits no agent.rollout.gate.evaluated event (iah-E07c)"
 
 # ---------------------------------------------------------------------------
 echo

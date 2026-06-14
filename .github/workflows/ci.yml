@@ -326,13 +326,15 @@ jobs:
         run: bash tests/semver/run-semver-tests.sh
 
   cred-gate:
-    name: cred-gate + OTel-decision suite (iah-E08 + iah-E07b)
+    name: cred-gate + OTel-event suite (iah-E08 + iah-E07a + iah-E07b)
     runs-on: ubuntu-latest
     # CISO binding DR-010 S1Q5 (iah-E08c "both must pass"): runs the provider
     # credential PASS/FAIL gate fixtures — credential-redaction (iah-E08a) +
-    # env-var spillover (iah-E08b) — AND the gate.decision.emitted OTel
-    # event (iah-E07b, per 067-AT-SPEC § 2.2) in scripts/emit-evidence.sh, since the same offline suite
-    # exercises both. Fully offline: no provider is contacted, no real key is
+    # env-var spillover (iah-E08b) — AND both OTel events in
+    # scripts/emit-evidence.sh: gate.decision.emitted (iah-E07b, NORMATIVE per
+    # 067-AT-SPEC § 2.2) and agent.rollout.gate.evaluated (iah-E07a, legacy
+    # observability), since the same offline suite exercises all of them. Fully
+    # offline: no provider is contacted, no real key is
     # read; synthetic secret fixtures are injected via env-var NAME and never
     # touch argv. Failure-mode docs: docs/cred-gate.md.
     steps:
@@ -340,7 +342,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Run cred-gate + OTel-decision suite
+      - name: Run cred-gate + OTel-event suite
         run: bash tests/cred-gate/run-cred-gate-tests.sh
 
   classify:
