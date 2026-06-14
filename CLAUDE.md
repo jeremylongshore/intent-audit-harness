@@ -48,10 +48,28 @@ This repo is the **deterministic-gates layer** of the three-repo convergence vis
 
 **No feature code commits until Phase B kickoff** per master plan § Risks. The ~1,140 npm downloads of this package (verified 2026-05-11 from the npm registry — the previously-stated 45,000+ figure belonged to the separate `claude-code-plugins` package; correction logged in ISEDC Session 3 by the Research Expert seat) still represent real production consumers — the polyglot trifecta (npm + PyPI + crates) and existing CLI surface stay; `--json` is purely additive.
 
+## Canonical specs (cross-reference, do not restate)
+
+The 7-layer testing taxonomy and the static↔behavioral tier composition are now
+**central, versioned, NORMATIVE specs in `intent-eval-lab`** — this repo points to
+them rather than restating them, so there is one referent and no N-way drift:
+
+- **7-layer testing taxonomy** → `intent-eval-lab/specs/taxonomy/v0.1.0-draft/SPEC.md`.
+  The authoritative layer set (git-hooks → static → unit → integration → system → E2E →
+  acceptance), per-layer concerns, and the walls inside layers. audit-harness's gates are
+  the deterministic checks *inside* these layers (escape-scan/crap/arch/bias/gherkin/harness-hash
+  live in the static + acceptance walls). Where this repo's prose and the taxonomy spec disagree
+  about what a layer means, **the spec wins.**
+- **Tier-bridge (static ↔ behavioral composition)** → `intent-eval-lab/specs/tier-bridge/v0.1.0-draft/SPEC.md`.
+  How a skill's static tiers (validator grading + the static production gate) compose with the
+  behavioral `j-rig` tier into one promotion decision — ordering, fail-fast boundary, verdict
+  algebra, and the Evidence Bundle each tier emits. audit-harness sits on the static side of this
+  bridge; for the composition rules, **the spec wins.**
+
 ## Relationship to the skills
 
-- `~/.claude/skills/audit-tests/` — the *diagnostic* skill; its SKILL.md Step 1/4/6 invoke commands in this package
-- `~/.claude/skills/implement-tests/` — the *installer* skill; its L1 + L3 playbooks add this as a dev dep
+- `~/.claude/skills/audit-tests/` — the *diagnostic* skill; its SKILL.md Step 1/4/6 invoke commands in this package. It maps a repo against the canonical taxonomy spec above.
+- `~/.claude/skills/implement-tests/` — the *installer* skill; its L1 + L3 playbooks add this as a dev dep. It installs missing layers from that same taxonomy spec.
 - The skills stay updated via their own version bumps. This package versions independently.
 
 When updating this package, also check:

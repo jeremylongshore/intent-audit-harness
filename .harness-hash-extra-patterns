@@ -19,6 +19,20 @@ scripts/*.py
 # routing can't drift silently from the scripts it dispatches to)
 bin/audit-harness.js
 
+# Shared lint configs (iep-shared-lint-configs / bd_000-projects-e3ey). These
+# are policy the five IEP repos vendor (.audit-harness/configs/) and `extends`
+# from — a silent edit to a markdownlint/yamllint/ruff/shellcheck rule is a
+# policy change and must go through `bash scripts/harness-hash.sh --init`
+# (re-pin) + review, the same discipline that protects the gate scripts above.
+.audit-harness-configs/*.yaml
+.audit-harness-configs/*.toml
+.audit-harness-configs/shellcheckrc
+.audit-harness-configs/README.md
+
+# The installer itself — it now vendors BOTH .audit-harness/scripts/ AND the
+# configs dir; pinning it keeps the vendor surface from changing silently.
+install.sh
+
 # This pin-extra-patterns file itself — preventing silent edits to the
 # self-pinning scope. Bootstrapping note: the first --init that runs with this
 # file in place will hash it into the manifest; subsequent edits require re-init.
