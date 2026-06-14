@@ -12,18 +12,16 @@ target-version = "py38"    # match python/pyproject.toml requires-python = ">=3.
 # Lint scope:
 #   - scripts/*.py            (the canonical Python deterministic gates)
 #   - python/src/intent_audit_harness/{__init__,__main__,cli}.py   (the wrapper surface)
+#   - python/src/intent_audit_harness/scripts/*.py + rust/scripts/*.py
+#       (the bundled mirrors — now byte-identical to scripts/* and held that way
+#        by scripts/check-wrapper-sync.sh + the ci.yml `wrapper-sync` lane, so they
+#        are linted too; per iah-python-wrapper-scripts-sync the prior exclusion
+#        workaround is removed)
 #
 # Excluded:
-#   - python/.venv/                                  (vendored deps; not own code)
-#   - python/src/intent_audit_harness/scripts/       (bundled-content mirror of
-#       scripts/*; stale-sync issue tracked by iah-python-wrapper-scripts-sync.
-#       Once that bead ships build-time sync, this exclusion can drop.)
-#   - rust/scripts/                                  (same bundled-content
-#       pattern for the Rust wrapper; same follow-up bead covers it)
+#   - python/.venv/           (vendored deps; not own code)
 extend-exclude = [
   "python/.venv/",
-  "python/src/intent_audit_harness/scripts/",
-  "rust/scripts/",
 ]
 
 [lint]
