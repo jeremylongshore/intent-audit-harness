@@ -1,0 +1,90 @@
+# typos (crate-ci/typos) configuration for intent-audit-harness.
+#
+# This lane is ADVISORY (non-blocking) — see .github/workflows/typos.yml.
+# Its job is to surface genuine spelling mistakes in prose/code without
+# flagging the Intent Eval Platform's domain vocabulary as errors.
+#
+# Part of iep-typos-rollout: one advisory typos lane across all 5 IEP repos.
+#
+# When typos flags a real word that is NOT a typo (a domain term, an acronym,
+# a tool name, a deliberate identifier), add it to [default.extend-words]
+# (maps the token to itself = "this is correct, leave it") or [default.extend-identifiers]
+# for code identifiers. Do NOT silence by fixing prose in this PR — advisory only.
+
+[files]
+# Vendored / generated / lock / binary trees that typos should never scan.
+extend-exclude = [
+  "node_modules/",
+  "dist/",
+  "build/",
+  "python/dist/",
+  "python/build/",
+  ".audit-harness/",
+  ".beads/",
+  "*.lock",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "Cargo.lock",
+  "*.snap",
+  "*.svg",
+  "*.min.js",
+  "fixtures/",
+  "tests/fixtures/",
+]
+
+[default]
+# Treat these as correct everywhere they appear (whole-word, case-insensitive).
+# IEP domain vocabulary, repo/package short-names, and tooling terms that are
+# NOT misspellings.
+extend-ignore-identifiers-re = [
+  # IEP repo/bead prefixes (iec-, iel-, iah-, iar-, iaj-) and ids like iep-typos-rollout
+  "ia[hjr]-?[a-z0-9-]*",
+  "ie[cl]-?[a-z0-9-]*",
+  "iep-[a-z0-9-]*",
+  # bd bead identifiers, e.g. bd_000-projects-t0ba / bd_000-projects-9k5h.
+  # The opaque suffix is a random handle, not prose — never spell-check it.
+  # typos splits on '-' and '_', so the trailing 3-5 char handle (t0ba, 9k5h,
+  # ufc, 3zol) becomes its own token; match handles that contain a digit so
+  # we don't over-suppress real alphabetic words.
+  "bd_[A-Za-z0-9_-]+",
+  "\\b[a-z]*[0-9][a-z0-9]*\\b",
+]
+
+[default.extend-words]
+# Platform / ecosystem acronyms and domain terms.
+iep = "iep"
+iec = "iec"
+iel = "iel"
+iah = "iah"
+iar = "iar"
+iaj = "iaj"
+isedc = "isedc"
+# Supply-chain / signing / schema tooling.
+sops = "sops"
+sigstore = "sigstore"
+rekor = "rekor"
+cosign = "cosign"
+zod = "zod"
+toml = "toml"
+yaml = "yaml"
+jsonl = "jsonl"
+# Common code/CLI tokens that English dictionaries flag.
+deps = "deps"
+crate = "crate"
+crates = "crates"
+structs = "structs"
+enums = "enums"
+stdin = "stdin"
+stdout = "stdout"
+stderr = "stderr"
+# Project-specific names.
+intentsolutions = "intentsolutions"
+gherkin = "gherkin"
+booktabs = "booktabs"
+# Citation author surname (appears in the upgrade-landscape research doc).
+suh = "suh"
+# Deliberate hyphenated English prefix (mis-route / mis-issuance / mis-formatted);
+# typos splits on the hyphen and flags the bare prefix as a typo.
+mis = "mis"
+# Valid alternative spelling used in a Python error message string.
+unparseable = "unparseable"
