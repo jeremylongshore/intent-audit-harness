@@ -74,6 +74,36 @@ shape='{"note":"embedded AKIAIOSFODNN7EXAMPLE here"}'
 ec=0; printf '%s' "$shape" | bash "$CRED_GATE" >/dev/null 2>&1 || ec=$?
 assert_eq "1" "$ec" "undeclared provider-key SHAPE FAILs (exit 1)"
 
+# Full provider-key-shape catalog: every shape in scripts/cred-gate.sh's
+# SHAPE_PATTERNS must have a FAILing fixture, so a regression in any single
+# regex cannot ship silently green. Each value is SYNTHETIC and NON-REAL —
+# constructed only to satisfy the shape, never a live credential.
+#   label format  shape-name:fixture-value
+for label in \
+  'anthropic-key:sk-ant-NOTREAL00abcdef0123456789XYZ' \
+  'openai-key:sk-proj-NOTREAL00abcdef0123456789XYZ' \
+  'groq-key:gsk_NOTREAL00abcdef0123456789ABCDEFG0' \
+  'nvidia-key:nvapi-NOTREAL00abcdef0123456789XYZ0' \
+  'aws-access-key-id:AKIANOTREAL0EXAMPLE0' \
+  'google-api-key:AIzaNOTREAL0000000000000000000000000000' \
+  'github-token:ghp_NOTREAL00abcdefghijklmnopqrstuvwxyz0123' \
+  'slack-token:xoxb-NOTREAL-000000000000-abcdefABCDEF' \
+  'private-key-block:-----BEGIN RSA PRIVATE KEY-----' \
+; do
+  shape_name="${label%%:*}"
+  shape_val="${label#*:}"
+  # Embed the synthetic value inside an otherwise-clean JSON string field.
+  shape_artifact=$(printf '{"note":"embedded %s here"}' "$shape_val")
+  ec=0; printf '%s' "$shape_artifact" | bash "$CRED_GATE" >/dev/null 2>&1 || ec=$?
+  assert_eq "1" "$ec" "provider-key shape ($shape_name) FAILs (exit 1)"
+done
+
+# A synthetic value that does NOT match any catalogued shape must PASS — proves
+# the catalog is shape-specific, not a blanket "looks-keyish" heuristic.
+nonkey='{"note":"this build ref is release-1.1.8-rc and is not a key"}'
+ec=0; printf '%s' "$nonkey" | bash "$CRED_GATE" >/dev/null 2>&1 || ec=$?
+assert_eq "0" "$ec" "non-matching value PASSes (catalog is shape-specific, not keyish-heuristic)"
+
 # The FAIL finding must NOT echo the secret value back (no re-leak). We assert the
 # finding text reports a length + fingerprint, never the raw value.
 export FIXTURE_SECRET="sk-fixture-NOTREAL-0123456789abcdefXYZ"
@@ -91,7 +121,14 @@ unset FIXTURE_SECRET
 echo "== iah-E08b: env-var spillover =="
 
 # An artifact serializing the whole environment must FAIL even with no named key.
-for label in  'process-env-spread:{"ctx":{...process.env}}'  'env-block-key:{"debug":{"environment":{"HOME":"/x"}}}'  'printenv-capture:{"cmd":"printenv > dump.txt"}' ; do
+# One fixture per spillover pattern in scripts/cred-gate.sh's SPILLOVER_PATTERNS
+# so a regression in any single heuristic cannot ship silently green.
+for label in \
+  'process-env-spread:{"ctx":{...process.env}}' \
+  'os-environ-dump:{"ctx":{"all":dict(os.environ)}}' \
+  'env-block-key:{"debug":{"environment":{"HOME":"/x"}}}' \
+  'printenv-capture:{"cmd":"printenv > dump.txt"}' \
+; do
   name="${label%%:*}"
   artifact="${label#*:}"
   ec=0; printf '%s' "$artifact" | bash "$CRED_GATE" >/dev/null 2>&1 || ec=$?
