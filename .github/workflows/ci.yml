@@ -275,6 +275,24 @@ jobs:
           echo "" >> "${GITHUB_STEP_SUMMARY}"
           echo "Per IEP Convergence Debt Plan Priority 3: \`iah-version-canonical-check\` + \`iah-version-drift\` + \`iah-license-drift\`." >> "${GITHUB_STEP_SUMMARY}"
 
+  wrapper-sync:
+    name: bundled wrapper-script mirror sync
+    # Per iah-python-wrapper-scripts-sync (bd_000-projects-65k4). The Node package
+    # dispatches the CANONICAL scripts under scripts/; the Python (PyPI) and Rust
+    # (crates.io) wrappers cannot reach those at install time, so each BUNDLES a
+    # byte-for-byte copy (python/src/intent_audit_harness/scripts/, rust/scripts/).
+    # Those copies were found ~1 month stale on 2026-05-24 — the bundled crap-score.py
+    # was missing the --json evidence envelope, the go PATH guard, and os.walk pruning,
+    # so `pip install intent-audit-harness && audit-harness crap` ran the OLD gate.
+    # This lane fails the build if any bundled mirror drifts from canonical, making
+    # that class of silent staleness impossible to merge. Resync locally with
+    # `bash scripts/check-wrapper-sync.sh --fix`.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify bundled mirrors are byte-identical to canonical scripts/
+        run: bash scripts/check-wrapper-sync.sh
+
   regression:
     name: backward-compat regression suite (v0.3.0+)
     runs-on: ubuntu-latest
