@@ -211,6 +211,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write # attach the .sigstore bundles onto the Release
+      id-token: write # sigstore-python keyless signing (Fulcio OIDC)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -247,6 +250,25 @@ jobs:
           python -m build
           twine check dist/*
 
+      # ── Keyless-sign the wheel + sdist with sigstore-python (bead kyk1) ──
+      #
+      # Per DR-010 Q2 hybrid language allowance, Python signing surfaces use
+      # sigstore-python (the PyPI-ecosystem-native signer) rather than cosign —
+      # mirroring how the npm leg uses npm --provenance and the emit-evidence job
+      # uses cosign. Produces a `<artifact>.sigstore` Sigstore bundle (Fulcio OIDC
+      # cert + Rekor inclusion proof) next to each dist artifact. The signing
+      # identity is this workflow's reusable-workflow ref. Guarded on the same
+      # PYPI_TOKEN gate as the publish: a signature only has meaning alongside the
+      # bytes that actually ship, so we sign exactly when (and only when) we publish.
+      - name: Sign wheel + sdist (sigstore-python keyless → Rekor)
+        if: steps.guard.outputs.token_present == 'true'
+        uses: sigstore/gh-action-sigstore-python@v3.4.0
+        with:
+          inputs: ./python/dist/*.whl ./python/dist/*.tar.gz
+          # We attach the bundles onto the GitHub Release ourselves below, so
+          # don't let the action upload its own duplicate workflow artifacts.
+          upload-signing-artifacts: false
+
       - name: Publish to PyPI
         if: steps.guard.outputs.token_present == 'true'
         env:
@@ -256,6 +278,25 @@ jobs:
           cd python
           twine upload --non-interactive dist/*
           echo "✓ published Python wrapper to PyPI"
+
+      # Attach the Sigstore bundles onto this tag's Release so consumers can
+      # `python -m sigstore verify identity ...` the downloaded wheel/sdist. The
+      # `release` job above already created the Release on this tag.
+      - name: Publish .sigstore bundles onto the Release
+        if: steps.guard.outputs.token_present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          tag="${GITHUB_REF#refs/tags/}"
+          bundles=(python/dist/*.sigstore python/dist/*.sigstore.json)
+          if [ "${#bundles[@]}" -eq 0 ]; then
+            echo "::error::sigstore signing produced no bundles to attach"
+            exit 1
+          fi
+          gh release upload "$tag" "${bundles[@]}" --clobber
+          echo "✓ attached ${#bundles[@]} Sigstore bundle(s) to release $tag"
 
   # ── Publish the Rust wrapper to crates.io (polyglot parity with npm) ──
   #
@@ -268,6 +309,10 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # attest-build-provenance keyless signing (Fulcio OIDC)
+      attestations: write # write the build-provenance attestation to the repo
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -301,6 +346,28 @@ jobs:
           cd rust
           cargo publish --dry-run
 
+      # ── Build-provenance attestation for the crate tarball (bead 13ty) ──
+      #
+      # crates.io supports verifiable build provenance: `cargo package` produces
+      # the exact `.crate` tarball that `cargo publish` uploads, and GitHub's
+      # attest-build-provenance generates a SLSA in-toto provenance predicate for
+      # that tarball, signed keyless via Sigstore (Fulcio cert + Rekor inclusion).
+      # We `cargo package` first to materialize the tarball, attest those exact
+      # bytes, then `cargo publish` ships the same bytes. Guarded on the same
+      # CARGO_REGISTRY_TOKEN gate: provenance only has meaning for bytes that ship.
+      - name: Package crate tarball (the exact bytes cargo publish uploads)
+        if: steps.guard.outputs.token_present == 'true'
+        run: |
+          cd rust
+          cargo package --locked || cargo package
+          echo "CRATE_TARBALL=$(ls "$PWD"/target/package/*.crate)" >> "$GITHUB_ENV"
+
+      - name: Attest crate build provenance (SLSA → Sigstore/Rekor)
+        if: steps.guard.outputs.token_present == 'true'
+        uses: actions/attest-build-provenance@v4.1.0
+        with:
+          subject-path: ${{ env.CRATE_TARBALL }}
+
       - name: Publish to crates.io
         if: steps.guard.outputs.token_present == 'true'
         env:
@@ -308,7 +375,7 @@ jobs:
         run: |
           cd rust
           cargo publish
-          echo "✓ published Rust wrapper to crates.io"
+          echo "✓ published Rust wrapper to crates.io (build-provenance attested)"
 
   # ── Alert on a failed tag-release over the tailnet (bead 59tx) ──
   #

@@ -1,10 +1,33 @@
 # PyPI publish — automated, pending token
 
 **Wired in `.github/workflows/release.yml`** (`publish-pypi` job): on every `v*.*.*`
-tag push, the workflow builds the sdist + wheel, runs `twine check`, and uploads to
-PyPI. The job is **guarded** — it no-ops with an explanatory log when the `PYPI_TOKEN`
-repo secret is absent. It **activates automatically once `PYPI_TOKEN` is set** as a
-repository secret; no further code change is needed. It never runs on a PR (tag-only).
+tag push, the workflow builds the sdist + wheel, runs `twine check`, **keyless-signs
+the wheel + sdist with sigstore-python** (Fulcio OIDC cert + Rekor inclusion proof —
+the `.sigstore` bundles are attached onto the GitHub Release), and uploads to PyPI. The
+job is **guarded** — it no-ops with an explanatory log when the `PYPI_TOKEN` repo secret
+is absent. It **activates automatically once `PYPI_TOKEN` is set** as a repository secret;
+no further code change is needed. It never runs on a PR (tag-only).
+
+## Signing (bead kyk1 — `iah-py-sigstore`)
+
+Per DR-010 Q2 hybrid-language allowance, the Python signing surface uses
+**sigstore-python** (the PyPI-ecosystem-native signer) rather than cosign — mirroring
+how the npm leg uses `npm --provenance` and the emit-evidence job uses cosign. The
+`sigstore/gh-action-sigstore-python` step signs `python/dist/*.whl` and
+`python/dist/*.tar.gz` keyless via the workflow's OIDC identity, producing a
+`<artifact>.sigstore` Sigstore bundle per artifact. Those bundles are uploaded onto the
+tag's GitHub Release; a consumer verifies a downloaded wheel with:
+
+```bash
+python -m sigstore verify identity intent_audit_harness-X.Y.Z-py3-none-any.whl \
+  --bundle intent_audit_harness-X.Y.Z-py3-none-any.whl.sigstore \
+  --cert-identity 'https://github.com/jeremylongshore/intent-audit-harness/.github/workflows/release.yml@refs/tags/vX.Y.Z' \
+  --cert-oidc-issuer 'https://token.actions.githubusercontent.com'
+```
+
+Signing is gated on the same `PYPI_TOKEN` guard as the publish: a signature only has
+meaning alongside the bytes that actually ship, so the workflow signs exactly when (and
+only when) it publishes.
 
 **Status:** distribution artifacts built and validated, but **not yet uploaded** to PyPI.
 
