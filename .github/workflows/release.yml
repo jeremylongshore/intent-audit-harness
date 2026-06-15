@@ -48,6 +48,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
+          # pin the checked-out bytes to the exact ref that triggered this run —
+          # the pushed tag on a tag release — instead of relying on
+          # actions/checkout's implicit default. Provenance is a one-way door; a
+          # wrong-bytes attestation is unrecoverable, so the bytes we publish +
+          # sign MUST be the bytes of the tag, never main. On workflow_dispatch
+          # github.ref is the dispatched branch ref (the deliberate escape hatch,
+          # which publishes whatever package.json carries).
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Setup Node
@@ -124,6 +133,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
+          # this job signs the EvidenceBundle, so the canonical bytes it hashes +
+          # cosign-signs MUST come from the pushed tag, not main. This job only
+          # runs on a tag push (if: startsWith(github.ref, 'refs/tags/v')), so
+          # github.ref is always the tag here.
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Setup Node
@@ -199,6 +214,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
+          # the PyPI sdist/wheel is built from this checkout, so the bytes MUST
+          # be the pushed tag's bytes. This job is tag-only.
+          ref: ${{ github.ref }}
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -251,6 +271,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
+          # the crates.io crate is built + published from this checkout, so the
+          # bytes MUST be the pushed tag's bytes. This job is tag-only.
+          ref: ${{ github.ref }}
 
       - name: Setup Rust toolchain
         run: |
