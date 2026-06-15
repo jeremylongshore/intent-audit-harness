@@ -4,6 +4,31 @@ All notable changes are recorded here. Format follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+_Nothing yet._
+
+### Riding a future v2.1 routine release (descoped from 1.2.0)
+
+- **OTel event-name polish (iah-E07b/c).** The `agent.rollout.gate.evaluated` and `gate.decision.emitted` event names are already locked + tested on main (PRs #78, #81 per NORMATIVE `intent-eval-lab/000-docs/067-AT-SPEC`). Any further attribute-schema polish on those events is deferred to a routine v2.1 release rather than headlined here — it is additive telemetry refinement, not a 1.2.0 capability boundary.
+
+## [1.2.0] - 2026-06-15
+
+A minor release: the read-only "comprehensive audit, on any repo" brain (`classify` → `conform` → `audit` → `scan` → `currency`), the kernel-emitting evidence path (`emit-evidence` Evidence Bundle, E04), the provider credential gate (`cred-gate`, E08), shared vendorable lint configs (#85), and a golden-master fitness function — all additive, with the zero-runtime-dependency guarantee preserved.
+
+### Release narrative (what shipped since 1.1.8)
+
+- **`emit-evidence` Evidence Bundle emitter (E04).** The CI-only signed-evidence path emits the harness's own deterministic self-gate as a kernel `gate-result/v1` row inside an `EvidenceBundle`, cosign-signs the canonical bytes (Fulcio OIDC + Rekor), and publishes a `report-manifest.json` the dashboard re-verifies at ingest. Detail under "CI-only signed evidence emit" below.
+- **Provider credential gate (`cred-gate`, E08).** A new gate that asserts provider credentials PASS/FAIL with full redaction + spillover coverage (`scripts/cred-gate.sh`, fixtures via PR #80).
+- **Shared, vendorable lint configs (#85).** `.audit-harness-configs/` (markdownlint / yamllint / ruff / shellcheck) is the canonical config set the IEP repos vendor + extend; `install.sh` now vendors both `scripts/` and `configs/`.
+- **Dogfood AAR (iah-E10d).** First-downstream-adopter run captured at `000-docs/013-AA-AACR-rollout-gate-dogfood-iah-E10-2026-06-15.md`.
+
+### Apache-2.0 §4(d) NOTICE obligation — satisfied
+
+`NOTICE` is present at the repo root, listed in `package.json#files` (ships in the npm tarball), included in the Python sdist + Rust crate distributions, AND vendored into `.audit-harness/` by `install.sh` (see "`install.sh` vendors NOTICE" below). The §4(d) attribution-travels-with-distribution obligation holds across npm, PyPI, crates.io, and the vendored-install path.
+
+### Why minor, not patch
+
+Multiple new CLI verbs (`classify`, `conform`, `audit`, `scan`, `currency`, `cred-gate`) and new authored feature surfaces (shared lint configs, golden-master suite, the CI-only evidence emit). Per SemVer this is a minor bump. No CLI command was renamed or removed; the change is purely additive and the published tarball stays zero-runtime-dependency.
+
 ### Added — golden-master suite for gherkin-lint + crap-score stdout shapes (iah-golden-master)
 
 A fitness function that pins the raw stdout of the two scorers whose output is a downstream contract.
