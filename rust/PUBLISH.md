@@ -1,10 +1,30 @@
 # crates.io publish — automated, pending token
 
 **Wired in `.github/workflows/release.yml`** (`publish-crates` job): on every `v*.*.*`
-tag push, the workflow runs `cargo publish --dry-run` then `cargo publish`. The job is
-**guarded** — it no-ops with an explanatory log when the `CARGO_REGISTRY_TOKEN` repo
-secret is absent. It **activates automatically once `CARGO_REGISTRY_TOKEN` is set** as a
-repository secret; no further code change is needed. It never runs on a PR (tag-only).
+tag push, the workflow runs `cargo publish --dry-run`, **`cargo package`-s the crate
+tarball and attests its build provenance** (SLSA in-toto predicate, signed keyless via
+Sigstore), then `cargo publish`. The job is **guarded** — it no-ops with an explanatory
+log when the `CARGO_REGISTRY_TOKEN` repo secret is absent. It **activates automatically
+once `CARGO_REGISTRY_TOKEN` is set** as a repository secret; no further code change is
+needed. It never runs on a PR (tag-only).
+
+## Build-provenance attestation (bead 13ty — `iah-rust-attest`)
+
+crates.io supports verifiable build provenance. `cargo package` materializes the exact
+`.crate` tarball that `cargo publish` uploads; GitHub's `actions/attest-build-provenance`
+generates a SLSA in-toto provenance predicate for those exact bytes, signed keyless via
+Sigstore (Fulcio cert + Rekor inclusion). The workflow packages first, attests the
+tarball, then publishes the same bytes — so the published crate carries a verifiable
+provenance attestation tying it to this repo + tag + workflow. Verify a downloaded crate
+with:
+
+```bash
+gh attestation verify intent-audit-harness-X.Y.Z.crate \
+  --repo jeremylongshore/intent-audit-harness
+```
+
+Attestation is gated on the same `CARGO_REGISTRY_TOKEN` guard as the publish: provenance
+only has meaning for bytes that actually ship.
 
 ## Cargo.lock policy (ACTING-CTO call, u29b)
 
