@@ -10,6 +10,31 @@ _Nothing yet._
 
 - **OTel event-name polish (iah-E07b/c).** The `agent.rollout.gate.evaluated` and `gate.decision.emitted` event names are already locked + tested on main (PRs #78, #81 per NORMATIVE `intent-eval-lab/000-docs/067-AT-SPEC`). Any further attribute-schema polish on those events is deferred to a routine v2.1 release rather than headlined here — it is additive telemetry refinement, not a 1.2.0 capability boundary.
 
+## [1.2.1] - 2026-06-16
+
+A patch release: release-pipeline supply-chain hardening (polyglot signing) plus
+dev-dependency bumps. No CLI surface, runtime behavior, or API boundary changes —
+the published artifacts are byte-identical in behavior to 1.2.0; only the release
+machinery and dev tooling moved.
+
+### Changed — polyglot release signing wired into the publish pipeline (#90)
+
+- **crates.io build-provenance attestation.** The `publish-crates` leg now emits a
+  GitHub build-provenance attestation for the published crate artifact, extending the
+  signed-supply-chain guarantee to the Rust distribution.
+- **sigstore-python wheel + sdist signing.** The `publish-pypi` leg now signs the built
+  wheel and sdist with `sigstore-python` (keyless Fulcio OIDC + Rekor), so the PyPI
+  distribution carries verifiable provenance alongside the existing npm sigstore path.
+- **crates.io publish is now active.** With `CARGO_REGISTRY_TOKEN` provisioned as a
+  repository secret, the `publish-crates` leg goes live on this tag — closing the
+  polyglot publish loop (npm + PyPI + crates.io all publish + sign from one tag).
+
+### Changed — dev-dependency bumps
+
+- Bump `eslint` from 9.39.4 to 10.5.0 (#71).
+- Bump `jeremylongshore/intent-rollout-gate` GitHub Action pin (#86).
+- Bump `crate-ci/typos` from 1.29.4 to 1.47.2 (#87).
+
 ## [1.2.0] - 2026-06-15
 
 A minor release: the read-only "comprehensive audit, on any repo" brain (`classify` → `conform` → `audit` → `scan` → `currency`), the kernel-emitting evidence path (`emit-evidence` Evidence Bundle, E04), the provider credential gate (`cred-gate`, E08), shared vendorable lint configs (#85), and a golden-master fitness function — all additive, with the zero-runtime-dependency guarantee preserved.
