@@ -180,6 +180,61 @@ jobs:
           fi
           echo "✓ signed $signed bundle(s)"
 
+      # ── Verify each signature back, in-repo, before publishing (iah-E10) ──
+      #
+      # Closes the dogfood chain end-to-end inside audit-harness's OWN pipeline:
+      #   emit (ci/emit-evidence.ts, harness-hash self-gate)
+      #     → sign (cosign sign-blob, Fulcio OIDC + Rekor, above)
+      #     → VERIFY (this step) — cosign verify-blob each signed bundle against
+      #       the exact GitHub Actions OIDC identity that produced it.
+      #
+      # Before this step existed, release.yml signed the bundles but nothing in
+      # this repo's own CI ever verified them — the only verifier was the
+      # downstream dashboard. That left the harness's own "verify chain
+      # end-to-end" dogfood scope (iah-E10c) unclosed: a sign that no one in the
+      # producing pipeline checks is not a verified chain. This step makes the
+      # release fail-closed on an unverifiable signature.
+      #
+      # The verified identity is pinned to this workflow's own reusable-workflow
+      # ref (repo + .github/workflows/release.yml@<ref>) and the GitHub Actions
+      # OIDC issuer — the same subject ci/emit-evidence.ts records in the
+      # manifest skeleton (signingClaims()) and the dashboard re-checks at
+      # ingest. A signature whose certificate identity does not match those
+      # claims fails the build.
+      - name: Verify each EvidenceBundle signature (cosign verify-blob; fail-closed)
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          # Pin the verified certificate identity to THIS workflow ref + the GH
+          # Actions OIDC issuer. github.ref is the pushed tag here (this job is
+          # tag-only), so the identity is repo/.github/workflows/release.yml@<tag>.
+          cert_identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}"
+          cert_issuer="https://token.actions.githubusercontent.com"
+          echo "verifying against identity: ${cert_identity}"
+          verified=0
+          for bundle in build/evidence/bundle-*.json; do
+            case "$bundle" in *.sigstore.json) continue;; esac
+            sig="${bundle%.json}.sigstore.json"
+            if [ ! -s "$sig" ]; then
+              echo "::error::expected signature ${sig} for ${bundle} but it is missing/empty"
+              exit 1
+            fi
+            echo "::group::cosign verify-blob $bundle"
+            cosign verify-blob \
+              --new-bundle-format \
+              --bundle "$sig" \
+              --certificate-identity "$cert_identity" \
+              --certificate-oidc-issuer "$cert_issuer" \
+              "$bundle"
+            echo "::endgroup::"
+            verified=$((verified + 1))
+          done
+          if [ "$verified" -eq 0 ]; then
+            echo "::error::no signed EvidenceBundles were found to verify"
+            exit 1
+          fi
+          echo "✓ verified $verified signed bundle(s) — emit→sign→verify chain closed in-repo"
+
       - name: Assemble report-manifest.json (fail-closed on shape mismatch)
         run: node --experimental-strip-types ci/assemble-manifest.ts --dir build/evidence --out build/evidence/report-manifest.json
 

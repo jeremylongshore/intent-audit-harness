@@ -34,7 +34,7 @@ This satisfies the four iah-E10 child scopes:
 |---|---|---|
 | iah-E10a | pin against a prior frozen harness version for self-check | `tests/dogfood/bundle.json` is a committed, schema-pinned `gate-result/v1` fixture (frozen kernel wire shape), consumed deterministically regardless of the live row shape. `.harness-hash` self-pins the gate scripts that produce the live row. |
 | iah-E10b | produce a signed bundle for audit-harness's own gates | PRODUCE step emits a live Evidence Bundle row from the harness's own `escape-scan` gate via `emit-evidence`; the tag-release `emit-evidence` job (`release.yml`) cosign-keyless-signs (Fulcio + Rekor) the kernel-shaped row. |
-| iah-E10c | verify chain end-to-end | The committed run exercises PRODUCE → CONSUME → DECIDE → SURFACE green; the Action verifies the bundle against the policy and returns a decision. |
+| iah-E10c | verify chain end-to-end | TWO verified loops: (1) the rollout-gate-dogfood workflow exercises PRODUCE → CONSUME → DECIDE → SURFACE green (the Action verifies the bundle against the policy and returns a decision); (2) as of 2026-06-16, the tag-release `emit-evidence` job runs `cosign verify-blob` on every signed bundle, in-repo, against this workflow's own GitHub Actions OIDC identity — so the full **emit → sign → verify** signature chain now closes inside audit-harness's own pipeline, fail-closed, not only at the downstream dashboard. |
 | iah-E10d | AAR for the dogfood run | this document. |
 
 ## What worked
@@ -76,3 +76,10 @@ This satisfies the four iah-E10 child scopes:
   (`success`); Dependabot bump to `intent-rollout-gate@v0.2.0` also passes the job.
 - Signing path for the released row: `.github/workflows/release.yml` `emit-evidence`
   job (cosign keyless → Fulcio OIDC + Rekor).
+- In-repo verify of the released row (added 2026-06-16): the same `emit-evidence`
+  job's `cosign verify-blob` step re-verifies each signed bundle against this
+  workflow's own GitHub Actions OIDC identity
+  (`repo/.github/workflows/release.yml@<tag>`, issuer
+  `token.actions.githubusercontent.com`) before the manifest is published —
+  fail-closed. This closes the emit → sign → **verify** chain inside the
+  producing pipeline; previously the only verifier was the downstream dashboard.
