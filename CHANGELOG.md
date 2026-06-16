@@ -10,6 +10,26 @@ _Nothing yet._
 
 - **OTel event-name polish (iah-E07b/c).** The `agent.rollout.gate.evaluated` and `gate.decision.emitted` event names are already locked + tested on main (PRs #78, #81 per NORMATIVE `intent-eval-lab/000-docs/067-AT-SPEC`). Any further attribute-schema polish on those events is deferred to a routine v2.1 release rather than headlined here — it is additive telemetry refinement, not a 1.2.0 capability boundary.
 
+## [1.2.2] - 2026-06-16
+
+A patch release closing the polyglot publish loop. No CLI surface, runtime behavior,
+or API boundary changes — only the release machinery moved. v1.2.1 published to npm
+but failed PyPI (a twine bug) and crates.io (an account email-verification gate);
+this release publishes all three registries cleanly.
+
+### Fixed — PyPI publish (#92)
+
+- **twine now uploads only built distributions, not the `.sigstore.json` bundles.** The
+  `publish-pypi` leg's `twine upload` call is scoped to `dist/*.whl dist/*.tar.gz`, so
+  the sigstore signature bundles emitted alongside the wheel + sdist are no longer
+  passed to twine (which rejected them and failed the v1.2.1 PyPI publish).
+
+### Fixed — crates.io publish now active
+
+- **crates.io publish goes live.** The account email-verification gate that blocked the
+  v1.2.1 crates.io publish is now resolved, so the `publish-crates` leg publishes on
+  this tag — closing the npm + PyPI + crates polyglot publish loop.
+
 ## [1.2.1] - 2026-06-16
 
 A patch release: release-pipeline supply-chain hardening (polyglot signing) plus
