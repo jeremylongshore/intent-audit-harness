@@ -276,7 +276,11 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
           cd python
-          twine upload --non-interactive dist/*
+          # Upload ONLY the built distributions — NOT the .sigstore.json bundles
+          # the signing step drops into dist/ (twine rejects them as
+          # "Unknown distribution format"). The Sigstore bundles are attached to
+          # the GitHub Release in the next step. (fix: v1.2.1 PyPI publish failure)
+          twine upload --non-interactive dist/*.whl dist/*.tar.gz
           echo "✓ published Python wrapper to PyPI"
 
       # Attach the Sigstore bundles onto this tag's Release so consumers can
