@@ -6,9 +6,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Riding a future v2.1 routine release (descoped from 1.2.0)
-
-- **OTel event-name polish (iah-E07b/c).** The `agent.rollout.gate.evaluated` and `gate.decision.emitted` event names are already locked + tested on main (PRs #78, #81 per NORMATIVE `intent-eval-lab/000-docs/067-AT-SPEC`). Any further attribute-schema polish on those events is deferred to a routine v2.1 release rather than headlined here — it is additive telemetry refinement, not a 1.2.0 capability boundary.
+> **Riding a future v2.1 routine release (descoped from 1.2.0):** OTel event-name
+> polish (iah-E07b/c). The `agent.rollout.gate.evaluated` and `gate.decision.emitted`
+> event names are already locked + tested on main (PRs #78, #81 per NORMATIVE
+> `intent-eval-lab/000-docs/067-AT-SPEC`). Any further attribute-schema polish on
+> those events is deferred to a routine v2.1 release rather than headlined here — it
+> is additive telemetry refinement, not a 1.2.0 capability boundary.
 
 ## [1.2.2] - 2026-06-16
 
@@ -54,9 +57,7 @@ iah-E07), shared vendorable lint configs, wrapper-mirror drift-guard CI, and tai
 CI-failure alerting — all additive, with the zero-runtime-dependency guarantee
 preserved.
 
-### Why minor, not patch
-
-A new CLI-adjacent gate surface (`cred-gate`) and new authored feature surfaces (shared lint configs, the locked OTel event taxonomy, the wrapper drift-guard lane). Per SemVer this is a minor bump. No CLI command was renamed or removed; the change is purely additive and the published tarball stays zero-runtime-dependency.
+> **Why minor, not patch:** A new CLI-adjacent gate surface (`cred-gate`) and new authored feature surfaces (shared lint configs, the locked OTel event taxonomy, the wrapper drift-guard lane). Per SemVer this is a minor bump. No CLI command was renamed or removed; the change is purely additive and the published tarball stays zero-runtime-dependency.
 
 ### Added
 
@@ -83,6 +84,8 @@ Ships the iah-E06 production-signing pre-flight gate to downstream consumers, pl
 the comprehensive PP-PLAN-040 supply-chain + hygiene wave, crap-score backend
 repairs, and a SemVer contract-pin test suite.
 
+> **Why patch, not minor:** The pre-flight scripts shipped to the repo in earlier PRs (#70, #75); this patch propagates them to npm consumers via a version bump. No new public CLI commands or flag changes in this release boundary.
+
 ### Added
 
 - **DNSSEC + CAA production-signing pre-flight (iah-E06) (#70).** Before a production-mode `emit-evidence` run signs canonical bytes, two deterministic pre-flight scripts assert the signing domain (`evals.intentsolutions.io`) is cryptographically sound — `scripts/dnssec-check.sh` verifies the DNSSEC chain is present and validates; `scripts/caa-check.sh` verifies the CAA records authorize the signing certificate authority. Both fail closed: any error, missing record, or unreachable resolver blocks the signing path rather than emitting an unverifiable attestation. Staging/draft emit is unaffected.
@@ -103,10 +106,6 @@ repairs, and a SemVer contract-pin test suite.
 - **crap-score Go/JS scoring backends repaired + 3 bash defects from the umbrella review (#66).**
 - **Evidence-integrity bugs + SHA256 portability + kernel schema URL (#64).**
 
-### Why patch, not minor
-
-The pre-flight scripts shipped to the repo in earlier PRs (#70, #75); this patch propagates them to npm consumers via a version bump. No new public CLI commands or flag changes in this release boundary.
-
 ## [1.1.7] - 2026-06-08
 
 A CI-only patch keeping the dashboard evidence-emit job runnable.
@@ -124,9 +123,7 @@ dashboard (nr75.12) — all additive, with the zero-runtime-dependency guarantee
 preserved. (Note: an earlier CHANGELOG draft attributed this PP-PLAN-040 verb set
 to 1.2.0; it actually shipped here in 1.1.6 via PRs #52–#59.)
 
-### Why minor, not patch
-
-Multiple new read-only CLI verbs (`classify`, `conform`, `audit`, `scan`, `currency`) and new authored feature surfaces (the audit-profile data spec, the registry datum, the CI-only evidence emit). Per SemVer this is a minor bump. No CLI command was renamed or removed; the change is purely additive and the published tarball stays zero-runtime-dependency.
+> **Why minor, not patch:** Multiple new read-only CLI verbs (`classify`, `conform`, `audit`, `scan`, `currency`) and new authored feature surfaces (the audit-profile data spec, the registry datum, the CI-only evidence emit). Per SemVer this is a minor bump. No CLI command was renamed or removed; the change is purely additive and the published tarball stays zero-runtime-dependency.
 
 ### Added
 
@@ -144,6 +141,8 @@ Multiple new read-only CLI verbs (`classify`, `conform`, `audit`, `scan`, `curre
 
 ## [1.1.5] - 2026-06-03
 
+> **Why patch, not minor:** No new CLI commands, no new flags, no API change, no script behavior change. This is release-engineering + metadata: the publish pipeline that ships the existing `1.1.x` code, plus URL corrections for the repo rename, plus the install.sh glob fix. The pinned policy scripts (`.harness-hash`) are untouched.
+
 ### Added
 
 - **npm release pipeline (closes the publish-pipeline gap).** This is the first release published to npm via CI with Sigstore provenance. Until now the repo had **no release workflow** — npm was stuck at `0.1.0` while the code (and every other manifest) had advanced through `1.0.0` → `1.1.4`, four minors of CHANGELOG-documented work that never reached consumers. `npm install @intentsolutions/audit-harness` resolved to the stale `0.1.0` tarball. New `.github/workflows/release.yml` mirrors the provenance approach of `intent-eval-core`'s release workflow, adapted for this zero-dependency polyglot CLI (no pnpm, no lockfile, no TS build). Triggers on `push` of a `v*.*.*` tag and on `workflow_dispatch`, sets `id-token: write` for npm/Sigstore OIDC, verifies the pushed tag matches `package.json#version`, runs the `--version` self-check + `escape-scan.sh --staged`, then `npm publish --provenance --access public`.
@@ -158,11 +157,9 @@ Multiple new read-only CLI verbs (`classify`, `conform`, `audit`, `scan`, `curre
 - **Package metadata + `install.sh` URLs for the `intent-audit-harness` repo rename.** The GitHub repo was renamed `audit-harness` → `intent-audit-harness`, but the metadata still pointed at the old path. `package.json` (`homepage`, `repository.url`, `bugs.url`), `python/pyproject.toml` + `rust/Cargo.toml` project-URL fields, `python/src/intent_audit_harness/__init__.py` docstring source-link, `README.md` (the `curl … install.sh` line + two "Related" skill links), and `install.sh` (the `REPO=` variable, usage-comment URLs, re-run hint, and the default `VERSION` bumped `v0.1.0` → `v1.1.5`) were all repointed to the renamed repo.
 - **`install.sh` tarball-path glob broke after the rename.** The GitHub archive tarball unpacks as `<repo>-<version>/`, which became `intent-audit-harness-1.1.5/` after the rename. The unpack-dir detection used `find … -name 'audit-harness-*'`, and `-name` matches the basename with no implicit leading wildcard, so it matched **nothing** under the new prefix — every vendored install would have failed. Changed the glob to `-name '*audit-harness-*'` (leading wildcard), matching both the current `intent-audit-harness-*` name and legacy `audit-harness-*` tags.
 
-### Why patch, not minor
-
-No new CLI commands, no new flags, no API change, no script behavior change. This is release-engineering + metadata: the publish pipeline that ships the existing `1.1.x` code, plus URL corrections for the repo rename, plus the install.sh glob fix. The pinned policy scripts (`.harness-hash`) are untouched.
-
 ## [1.1.4] - 2026-05-25
+
+> **Why patch, not minor:** Pure cleanup release: dead-code removal, perf microoptimization, bug fixes for cross-call inconsistencies, CI version pin. No new CLI commands, no new flags, no API change. AAR: `000-docs/009-AA-AACR-v1.1.4-cleanup-bundle-2026-05-25.md`.
 
 ### Changed
 
@@ -175,11 +172,9 @@ No new CLI commands, no new flags, no API change, no script behavior change. Thi
 - **`gherkin-lint.sh` `prev_blank` print-every-line noise (Gemini #71 review chain).** Closes `iah-gherkin-prev-blank-noise` (P2). The third awk block (the And-at-scenario-start checker) opened with a bare `prev_blank = 1` expression that awk interpreted as an always-true pattern with implicit `{ print }` — flooding stdout with every line of every feature file alongside the intentional ERROR printf. `prev_blank` was never read anywhere; both touches were removed so the block produces ONLY the targeted ERROR line.
 - **`crap-score.py` exclusion sets deduplicated via an `EXCLUDED_DIRS` constant (Gemini #71 review).** Closes `iah-crap-score-exclusion-dedup` (P2). Two separate sets with overlapping intent but divergent contents — `ignore` in `score_python()` (had `reports`, lacked `.next`/`.nuxt`/`.cache`) and `prune` in `main()` (had `.next`/`.nuxt`/`.cache`, lacked `reports`) — caused real asymmetric skips. Extracted to a single module-level `EXCLUDED_DIRS` union referenced by both call sites.
 
-### Why patch, not minor
-
-Pure cleanup release: dead-code removal, perf microoptimization, bug fixes for cross-call inconsistencies, CI version pin. No new CLI commands, no new flags, no API change. AAR: `000-docs/009-AA-AACR-v1.1.4-cleanup-bundle-2026-05-25.md`.
-
 ## [1.1.3] - 2026-05-25
+
+> **Why patch, not minor:** Pure lint-gate addition + dead-code removal. No new CLI commands, no new flags, no API change. AAR: `000-docs/008-AA-AACR-ruff-iep-P6-2026-05-24.md`.
 
 ### Added
 
@@ -194,11 +189,9 @@ Pure cleanup release: dead-code removal, perf microoptimization, bug fixes for c
 
 - **3 ruff-surfaced dead-code findings.** `crap-score.py`: a redundant local `import hashlib, os` inside the `if args.json:` block (shadowing the used module-level `import os`, F401) was removed and `hashlib` moved to module-level imports per Gemini PR #39; and a dead local `metrics = …` in `score_rust()` (F841). `cli.py`: a dead `import os` (F401, zero `os.*` usages).
 
-### Why patch, not minor
-
-Pure lint-gate addition + dead-code removal. No new CLI commands, no new flags, no API change. AAR: `000-docs/008-AA-AACR-ruff-iep-P6-2026-05-24.md`.
-
 ## [1.1.2] - 2026-05-24
+
+> **Why patch, not minor:** Pure dead-code removal + a CI policy tightening. No new CLI commands, no new flags, no API change, no behavioral change for any consumer. AAR: `000-docs/007-AA-AACR-shellcheck-hard-fail-iep-P6-2026-05-24.md`.
 
 ### Changed
 
@@ -213,11 +206,9 @@ Pure lint-gate addition + dead-code removal. No new CLI commands, no new flags, 
 
 - **`gherkin-lint.sh` awk subprocess undercount (silent-failure class bug; Gemini PR #38 review).** The awk-fallback path printed `WARN`/`ERROR` lines via `awk printf`, but those subprocesses never incremented the parent shell's `WARN_COUNT`/`ERROR_COUNT` — the summary said "0 warnings, 0 errors" while errors were actively printed and the exit code stayed 0. Exactly the silent-failure class the linter exists to surface elsewhere. The new `process_awk_output()` helper wraps each awk subprocess, counts `WARN`/`ERROR` lines via inline awk, increments the bash counters, then re-prints. Verified: a deliberate failure now exits 1 with `0 warning(s), 1 error(s)`.
 
-### Why patch, not minor
-
-Pure dead-code removal + a CI policy tightening. No new CLI commands, no new flags, no API change, no behavioral change for any consumer. AAR: `000-docs/007-AA-AACR-shellcheck-hard-fail-iep-P6-2026-05-24.md`.
-
 ## [1.1.1] - 2026-05-23
+
+> **Why patch, not minor:** Pure bug + portability fixes. No new flags, no new commands, no policy change, no breaking change to the manifest format. These scripts are now vendored into `intent-eval-lab` (PR #67); landing the fixes before the rollout reaches more repos avoids re-publishing buggy vendored copies.
 
 ### Fixed
 
@@ -233,11 +224,9 @@ Pure dead-code removal + a CI policy tightening. No new CLI commands, no new fla
 
 - **Version bumped to v1.1.1 across all 5 manifests** and **`.harness-hash` regenerated** (4 of 9 pinned-file hashes change). AAR: `000-docs/006-AA-AACR-script-robustness-upstream-iep-P3-2026-05-23.md`.
 
-### Why patch, not minor
-
-Pure bug + portability fixes. No new flags, no new commands, no policy change, no breaking change to the manifest format. These scripts are now vendored into `intent-eval-lab` (PR #67); landing the fixes before the rollout reaches more repos avoids re-publishing buggy vendored copies.
-
 ## [1.1.0] - 2026-05-22
+
+> **Why minor, not patch:** The `.harness-hash-extra-patterns` mechanism is a new authored feature surface — repos that opt in get a new capability. Before this release the audit-harness CI workflow could not enforce its own policy; a silent edit to `escape-scan.sh` (the gate that REFUSES threshold-lowering changes) would pass CI. That is the failure mode this release closes.
 
 ### Added
 
@@ -250,10 +239,6 @@ Pure bug + portability fixes. No new flags, no new commands, no policy change, n
 ### Changed
 
 - **Version bumped to v1.1.0 across all 5 manifests.** Per the `version-canonical-check` CI gate landed in v1.0.2 (PR #35). AAR: `000-docs/005-AA-AACR-iah-self-pin-iep-P3-2026-05-22.md`.
-
-### Why minor, not patch
-
-The `.harness-hash-extra-patterns` mechanism is a new authored feature surface — repos that opt in get a new capability. Before this release the audit-harness CI workflow could not enforce its own policy; a silent edit to `escape-scan.sh` (the gate that REFUSES threshold-lowering changes) would pass CI. That is the failure mode this release closes.
 
 ## [1.0.2] - 2026-05-21
 
@@ -288,6 +273,11 @@ The `.harness-hash-extra-patterns` mechanism is a new authored feature surface �
 > Documented for completeness — the `--json` + `emit-evidence` work landed in the
 > source tree as the v0.3.0 milestone but a `v0.3.0` git tag was never cut; the next
 > published tag was `v1.0.0`. Kept here so the Milestone-2 capability set is not lost.
+>
+> **Notes:**
+>
+> - **No breaking changes.** Pre-v0.3.0 callers see identical text-mode output and exit codes; `--json` is purely additive.
+> - **CISO gate (per ISEDC v1 Q1, 2026-05-10):** pushing a signed Statement to Rekor against `evals.intentsolutions.io/gate-result/v1` is BLOCKED until DNSSEC + CAA records are verified on the namespace.
 
 ### Added
 
@@ -300,11 +290,6 @@ The `.harness-hash-extra-patterns` mechanism is a new authored feature surface �
 
 - **`bin/audit-harness.js`** dispatcher exposes the new `emit-evidence` subcommand.
 - **`scripts/arch-check.sh`** `--json` output reshaped to the gate-result envelope shape.
-
-### Notes
-
-- **No breaking changes.** Pre-v0.3.0 callers see identical text-mode output and exit codes; `--json` is purely additive.
-- **CISO gate (per ISEDC v1 Q1, 2026-05-10):** pushing a signed Statement to Rekor against `evals.intentsolutions.io/gate-result/v1` is BLOCKED until DNSSEC + CAA records are verified on the namespace.
 
 ## [0.2.0] - 2026-05-10
 
@@ -322,6 +307,13 @@ The `.harness-hash-extra-patterns` mechanism is a new authored feature surface �
 
 Initial release. Extracted from the `audit-tests` Claude Code skill v7.0.0 to enable in-repo enforcement without global skill installation.
 
+> **Key design decisions:**
+>
+> - **Scripts stay as shell/python** — not a TypeScript port; battle-tested, language-portable, minimal dependencies.
+> - **Thin Node CLI** — `bin/audit-harness.js` is a dispatcher only; all logic lives in `scripts/`.
+> - **Policy-driven thresholds** — `escape-scan.sh` reads floors from `tests/TESTING.md` in the target repo, not from the script source.
+> - **Zero runtime dependencies** beyond Node 18+, bash, and Python 3 (only if using `crap`).
+
 ### Added
 
 - **`audit-harness verify`** — SHA-256 hash verification for pinned policy files.
@@ -332,13 +324,6 @@ Initial release. Extracted from the `audit-tests` Claude Code skill v7.0.0 to en
 - **`audit-harness bias`** — count common test-bias patterns.
 - **`audit-harness gherkin-lint`** — advisory Gherkin quality check.
 - **`audit-harness crap`** — CRAP (Complexity × Coverage) scorer for Python, JS/TS, Go, Rust.
-
-### Key design decisions
-
-- **Scripts stay as shell/python** — not a TypeScript port; battle-tested, language-portable, minimal dependencies.
-- **Thin Node CLI** — `bin/audit-harness.js` is a dispatcher only; all logic lives in `scripts/`.
-- **Policy-driven thresholds** — `escape-scan.sh` reads floors from `tests/TESTING.md` in the target repo, not from the script source.
-- **Zero runtime dependencies** beyond Node 18+, bash, and Python 3 (only if using `crap`).
 
 [Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.2.2...HEAD
 [1.2.2]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.2.1...v1.2.2
