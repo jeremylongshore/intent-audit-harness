@@ -24,9 +24,8 @@ concurrency:
 
 jobs:
   markdownlint:
-    name: markdownlint-cli2 (advisory)
+    name: markdownlint-cli2
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: DavidAnson/markdownlint-cli2-action@v23
@@ -51,12 +50,11 @@ jobs:
           reporter: github-pr-check
 
   link-check:
-    name: lychee (link integrity, offline, advisory)
+    name: lychee (link integrity, offline)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: lycheeverse/lychee-action@v2
         with:
           args: --offline --config lychee.toml "**/*.md"
-          fail: false
+          fail: true

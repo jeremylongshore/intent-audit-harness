@@ -1,12 +1,11 @@
 name: Actionlint
 
-# Advisory (non-blocking) lint of GitHub Actions workflow YAML via rhysd/actionlint.
+# Blocking lint of GitHub Actions workflow YAML via rhysd/actionlint.
 # Catches workflow-syntax errors, expression typos, deprecated runner labels,
 # shellcheck findings in `run:` blocks, and bad `uses:` refs.
-# This lane NEVER blocks a merge: the job is continue-on-error, so findings
-# surface as annotations without gating required CI.
+# A finding (non-zero actionlint exit) blocks the PR.
 #
-# Part of iep-actionlint-coverage: one advisory actionlint lane across all 5 IEP repos.
+# Part of iep-actionlint-coverage: one actionlint lane across all 5 IEP repos.
 
 on:
   pull_request:
@@ -22,10 +21,9 @@ concurrency:
 
 jobs:
   actionlint:
-    name: actionlint (workflow lint, advisory)
+    name: actionlint
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
       - name: Run actionlint

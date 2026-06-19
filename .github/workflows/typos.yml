@@ -1,11 +1,11 @@
 name: Typos
 
-# Advisory (non-blocking) source-code spell-check via crate-ci/typos.
+# Blocking source-code spell-check via crate-ci/typos.
 # Configuration + domain-term ignore-list lives in .typos.toml.
-# This lane NEVER blocks a merge: the job is continue-on-error, so genuine
-# typos surface as annotations without gating required CI.
+# A genuine typo (not in the .typos.toml domain-vocabulary ignore-list) blocks
+# the PR. Extend .typos.toml for legitimate domain terms — do not soften the gate.
 #
-# Part of iep-typos-rollout: one advisory typos lane across all 5 IEP repos.
+# Part of iep-typos-rollout: one typos lane across all 5 IEP repos.
 
 on:
   pull_request:
@@ -21,10 +21,9 @@ concurrency:
 
 jobs:
   typos:
-    name: typos (spell-check, advisory)
+    name: typos
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: crate-ci/typos@v1.47.2
