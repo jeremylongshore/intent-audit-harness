@@ -10,7 +10,7 @@ Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `impl
 
 ## What it is
 
-A small CLI wrapping 6 deterministic scripts:
+A small CLI dispatching 17 deterministic commands (shell + stdlib-Python scripts):
 
 | Command | Purpose |
 |---|---|
@@ -18,10 +18,19 @@ A small CLI wrapping 6 deterministic scripts:
 | `audit-harness init` | Pin the current state of engineer-owned policy files |
 | `audit-harness list` | Show pinned files |
 | `audit-harness escape-scan --staged` | Detect AI attempts to lower test thresholds, delete tests, bypass architecture rules |
+| `audit-harness cred-gate` | Provider-credential PASS/FAIL gate — FAIL if a declared secret, provider-key shape, or serialized env leaks into the artifact about to be signed |
 | `audit-harness arch` | Run language-appropriate architecture-rule checker (dependency-cruiser / import-linter / ArchUnit / deptrac / arch-go) |
 | `audit-harness bias` | Count common test-bias patterns |
 | `audit-harness gherkin-lint` | Advisory Gherkin quality check |
 | `audit-harness crap` | CRAP (Complexity × Coverage) scorer — Python, Go, JS/TS, Rust |
+| `audit-harness emit-evidence` | Wrap a gate-result JSON envelope in an in-toto Statement v1 (predicate `gate-result/v1`) |
+| `audit-harness classify` | Read-only repo classifier → an `audit-profile/v1` value (never writes) |
+| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas |
+| `audit-harness audit` | Read-only testing-depth gate-runner → coverage presence per pyramid layer + crap-score |
+| `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner (gitleaks / osv-scanner / Semgrep / syft / lychee) |
+| `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
+| `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
+| `audit-harness gen-layer-applicability` | Project the canonical audit-profile registry into `layer-applicability.md` |
 
 ## Install
 

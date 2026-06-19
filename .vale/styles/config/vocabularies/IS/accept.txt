@@ -120,7 +120,9 @@ codepath
 cyclomatic
 deduplication
 dependabot
+env
 gitignored
+gitleaks
 hardcode
 hardcoded
 jsonschema
@@ -134,6 +136,7 @@ subcommand
 subcommands
 subprocess
 subprocesses
+syft
 SWRBench
 toolchain
 undercount
