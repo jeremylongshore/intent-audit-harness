@@ -6,6 +6,10 @@ coverage/
 build/
 reports/
 
+# lychee link-checker cache artifact (the offline CI lane writes none, but a
+# local `lychee` run can; a repo-root dotfile would also trip boundary gates).
+.lycheecache
+
 # NOTE: .harness-hash is INTENTIONALLY tracked, not ignored.
 # Per iep-P3 iah-self-pin (bd_000-projects-itpl) + audit-harness CLAUDE.md
 # design rule 5 ("the harness tests itself"): the manifest IS the policy

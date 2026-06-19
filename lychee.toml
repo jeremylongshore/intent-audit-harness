@@ -17,7 +17,3 @@ exclude_path = [
   "python/dist",
   "python/build",
 ]
-
-[cache]
-enabled = true
-max_cache_age = "7d"

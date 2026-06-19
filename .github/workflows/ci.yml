@@ -269,11 +269,13 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "## Manifest version + license alignment" >> "${GITHUB_STEP_SUMMARY}"
-          echo "" >> "${GITHUB_STEP_SUMMARY}"
-          echo "Verifies that \`version.txt\`, \`python/pyproject.toml\`, \`python/src/intent_audit_harness/__init__.py\`, \`rust/Cargo.toml\`, and \`rust/Cargo.lock\` all agree with the canonical \`package.json\` for both version and Apache-2.0 license." >> "${GITHUB_STEP_SUMMARY}"
-          echo "" >> "${GITHUB_STEP_SUMMARY}"
-          echo "Per IEP Convergence Debt Plan Priority 3: \`iah-version-canonical-check\` + \`iah-version-drift\` + \`iah-license-drift\`." >> "${GITHUB_STEP_SUMMARY}"
+          {
+            echo "## Manifest version + license alignment"
+            echo ""
+            echo "Verifies that \`version.txt\`, \`python/pyproject.toml\`, \`python/src/intent_audit_harness/__init__.py\`, \`rust/Cargo.toml\`, and \`rust/Cargo.lock\` all agree with the canonical \`package.json\` for both version and Apache-2.0 license."
+            echo ""
+            echo "Per IEP Convergence Debt Plan Priority 3: \`iah-version-canonical-check\` + \`iah-version-drift\` + \`iah-license-drift\`."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   wrapper-sync:
     name: bundled wrapper-script mirror sync
