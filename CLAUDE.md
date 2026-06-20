@@ -43,10 +43,10 @@ This repo is the **deterministic-gates layer** of the three-repo convergence vis
 
 Per DR-010 § 13.5 (acting-head-of-board override), the customer-signal gate is **REMOVED** — Phase B is sequenced by available bandwidth, not by a first-paying-customer signal. This work has since landed (the `--json` surface, `emit-evidence`, and the read-only `classify`/`conform`/`audit`/`scan` verbs all ship in the current CLI):
 
-- `AH-2` — adopt `--json` flag across all subcommands (uniform machine-readable output)
-- `AH-3` — add `emit-evidence` subcommand emitting Evidence Bundle gate-result rows
-- `AH-4` Phase B — adopt the schema in audit-harness via `AH-3`
-- `AH-5` — backward-compat regression suite for new `--json` flag
+- **[landed]** `AH-2` — adopt `--json` flag across all subcommands (uniform machine-readable output)
+- **[landed]** `AH-3` — add `emit-evidence` subcommand emitting Evidence Bundle gate-result rows
+- **[landed]** `AH-4` Phase B — adopt the schema in audit-harness via `AH-3`
+- **[landed]** `AH-5` — backward-compat regression suite for new `--json` flag
 
 The ~1,140 npm downloads of this package (verified 2026-05-11 from the npm registry — the previously-stated 45,000+ figure belonged to the separate `claude-code-plugins` package; correction logged in ISEDC Session 3 by the Research Expert seat) represent real production consumers — the polyglot trifecta (npm + PyPI + crates) and existing CLI surface stay; `--json` is purely additive.
 
