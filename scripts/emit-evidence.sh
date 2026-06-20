@@ -138,9 +138,12 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 STATEMENT=$(GATE_JSON="$GATE_JSON" PREDICATE_URI="$PREDICATE_URI" STATEMENT_TYPE="$STATEMENT_TYPE" \
   RUNNER="$RUNNER" COMMIT_SHA="$COMMIT_SHA" TIMESTAMP="$TIMESTAMP" \
   python3 - <<'PY'
-import json, os, sys
+import json, os, re, sys
 
 gate = json.loads(os.environ["GATE_JSON"])
+
+# Kernel _common.schema.json#/$defs/semver
+_SEMVER_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?(\+[A-Za-z0-9.-]+)?$")
 
 required = ["gate_id", "result", "input_hash", "policy_hash"]
 missing = [k for k in required if k not in gate]
@@ -148,20 +151,82 @@ if missing:
     sys.stderr.write(f"emit-evidence: gate-result missing required keys: {missing}\n")
     sys.exit(1)
 
-# Augment predicate with runner-supplied fields
+# Build the canonical gate-result/v1 predicate body (Blueprint B § 7.4 / kernel
+# GateResultV1Schema). The inbound gate JSON is the legacy/draft envelope
+# (gate_id/result/policy_hash/input_hash[/metadata]); map + synthesize the
+# canonical fields. The kernel schema FORBIDS additionalProperties, so the legacy
+# `result`/`timestamp` keys are REPLACED, not augmented. Mirrors the kernel-valid
+# self-gate emitter ci/emit-evidence.ts:buildGateResult.
+metadata = gate.get("metadata") or {}
+
+# result (legacy UPPERCASE) / gate_decision (canonical) -> closed enum.
+_DECISION_MAP = {"pass": "pass", "fail": "fail", "advisory": "advisory", "error": "error"}
+decision_raw = str(gate.get("gate_decision", gate.get("result", ""))).strip().lower()
+gate_decision = _DECISION_MAP.get(decision_raw, "error")
+
+# gate_name: kebab-case short name; fall back to the last ':' segment of gate_id.
+gate_name = gate.get("gate_name") or gate["gate_id"].rsplit(":", 1)[-1]
+
+# gate_version: SemVer; fall back to the runner's semver (<tool>@X.Y.Z). The
+# kernel pattern is strict, so a non-SemVer runner suffix (e.g. '@unknown')
+# degrades to 0.0.0 rather than emitting a row that fails kernel validation.
+gate_version = gate.get("gate_version")
+if not gate_version:
+    _runner = os.environ["RUNNER"]
+    gate_version = _runner.split("@", 1)[1] if "@" in _runner else ""
+if not _SEMVER_RE.match(str(gate_version)):
+    gate_version = "0.0.0"
+
+# gate_reasons: empty array permitted ONLY for unconditional pass; otherwise >=1.
+reasons = gate.get("gate_reasons")
+if not reasons:
+    if gate_decision == "pass":
+        reasons = []
+    else:
+        reasons = [str(metadata.get("reason") or gate.get("failure_mode")
+                       or f"{gate_name}: {gate_decision}")]
+
+# coverage: BOTH arrays REQUIRED. Pass an inbound coverage through only when both
+# keys are present AND lists (a half-populated dict would fail kernel validation);
+# otherwise synthesize. An indeterminate row records the dimension as skipped.
+_cov = gate.get("coverage")
+if (isinstance(_cov, dict)
+        and isinstance(_cov.get("dimensions_evaluated"), list)
+        and isinstance(_cov.get("dimensions_skipped"), list)):
+    coverage = {"dimensions_evaluated": _cov["dimensions_evaluated"],
+                "dimensions_skipped": _cov["dimensions_skipped"]}
+else:
+    _dim = str(metadata.get("kind") or gate_name)
+    if metadata.get("indeterminate"):
+        coverage = {"dimensions_evaluated": [], "dimensions_skipped": [_dim]}
+    else:
+        coverage = {"dimensions_evaluated": [_dim], "dimensions_skipped": []}
+
+# policy_ref: `sha256:<hex>:<path>` — append an artifact/schema path to policy_hash.
+policy_ref = gate.get("policy_ref")
+if not policy_ref:
+    _path = metadata.get("artifact_path") or metadata.get("schema_id") or ".harness-hash"
+    policy_ref = f'{gate["policy_hash"]}:{_path}'
+
 predicate = {
-    "gate_id":     gate["gate_id"],
-    "result":      gate["result"],
-    "policy_hash": gate["policy_hash"],
-    "input_hash":  gate["input_hash"],
-    "timestamp":   os.environ["TIMESTAMP"],
-    "runner":      os.environ["RUNNER"],
-    "commit_sha":  os.environ["COMMIT_SHA"],
+    "gate_id":      gate["gate_id"],
+    "gate_name":    gate_name,
+    "gate_version": gate_version,
+    "gate_decision": gate_decision,
+    "gate_reasons": reasons,
+    "coverage":     coverage,
+    "policy_ref":   policy_ref,
+    "policy_hash":  gate["policy_hash"],
+    "input_hash":   gate["input_hash"],
+    "evaluated_at": os.environ["TIMESTAMP"],
+    "runner":       os.environ["RUNNER"],
+    "commit_sha":   os.environ["COMMIT_SHA"],
 }
 
-# Carry forward optional fields if present
-for opt in ("metadata", "failure_mode", "advisory_severity"):
-    if opt in gate:
+# Carry forward optional canonical fields only (schema forbids unknown keys).
+for opt in ("metadata", "failure_mode", "advisory_severity", "cost_record_ref",
+            "replay_fidelity_level", "coverage_detail"):
+    if gate.get(opt) is not None:
         predicate[opt] = gate[opt]
 
 # Subject naming: subject.name MUST equal predicate.gate_id (SPEC § 6 R8)

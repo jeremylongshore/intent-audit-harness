@@ -18,7 +18,10 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SCRIPTS="$ROOT/scripts"
 FIXTURES="$ROOT/tests/fixtures"
-SCHEMA="$ROOT/tests/fixtures/gate-result.schema.json"
+# Post-emit predicates are FULL kernel gate-result/v1 bodies (emit-evidence augments
+# the partial gate envelope into the canonical body). Validate against the full-kernel
+# fixture, NOT the partial input-envelope schema the gate emitters (conform/scan/audit) use.
+SCHEMA="$ROOT/tests/fixtures/gate-result-v1.schema.json"
 
 PASS=0
 FAIL=0
@@ -145,6 +148,7 @@ if [[ "$HAVE_JSONSCHEMA" -eq 1 ]]; then
       "$SCRIPTS/escape-scan.sh --no-hash $CLEAN_DIFF --json" \
       "$SCRIPTS/escape-scan.sh --no-hash $REFUSE_DIFF --json"; do
       ec=0
+      # shellcheck disable=SC2086  # $combo is an intentional multi-word command string (script + flags); word-splitting is required here
       out=$(bash $combo 2>/dev/null) || ec=$?
       augmented=$(echo "$out" | bash "$SCRIPTS/emit-evidence.sh" --runner-version "audit-harness@0.3.0" --commit-sha "abc1234" 2>/dev/null)
       if echo "$augmented" | python3 -c "
@@ -155,6 +159,7 @@ stmt = json.loads(sys.stdin.read())
 errs = list(Draft202012Validator(schema).iter_errors(stmt['predicate']))
 sys.exit(0 if not errs else 1)
 " 2>/dev/null; then
+        # shellcheck disable=SC2086  # intentional split: take the script path (first word) of $combo
         note_pass "schema-valid (post-augmentation): $(echo $combo | awk '{print $1}' | xargs basename)"
       else
         note_fail "schema-INVALID: $combo (exit $ec) — augmented predicate rejected"
