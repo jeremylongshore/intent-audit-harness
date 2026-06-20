@@ -13,6 +13,29 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > those events is deferred to a routine v2.1 release rather than headlined here — it
 > is additive telemetry refinement, not a 1.2.0 capability boundary.
 
+## [1.2.3] - 2026-06-20
+
+A patch release shipping a correctness fix to the CLI `emit-evidence` command. No
+CLI surface, no new commands — the evidence emitter now produces kernel-valid
+output where it previously did not.
+
+### Fixed
+
+- **`emit-evidence` now emits kernel-valid `gate-result/v1` predicate bodies (#103).**
+  The CLI `emit-evidence` wrapped gate rows in an in-toto Statement declaring
+  `predicateType: https://evals.intentsolutions.io/gate-result/v1`, but the predicate
+  body carried the legacy draft envelope (`result`/`timestamp`), which fails
+  `@intentsolutions/core`'s `GateResultV1Schema` (it forbids additional properties) —
+  so a downstream `intent-rollout-gate` rejected the bundle. The emitter now builds the
+  canonical body (`gate_decision`, `gate_name`, `gate_version`, `gate_reasons`,
+  `coverage`, `policy_ref`, `evaluated_at`), bringing the general-purpose CLI path to
+  parity with the internal `ci/emit-evidence.ts` self-gate (which already emitted
+  kernel-valid rows). The post-emit predicate is now validated against a full-kernel
+  fixture (`tests/fixtures/gate-result-v1.schema.json`); the partial input-envelope
+  fixture stays for the gate emitters' raw rows. Surfaced by the first external-adopter
+  convergence run; verified `conform | emit-evidence` → 9/9 kernel-valid →
+  `intent-rollout-gate` decision `block → allow`.
+
 ## [1.2.2] - 2026-06-16
 
 A patch release closing the polyglot publish loop. No CLI surface, runtime behavior,
