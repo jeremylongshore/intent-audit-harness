@@ -138,9 +138,12 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 STATEMENT=$(GATE_JSON="$GATE_JSON" PREDICATE_URI="$PREDICATE_URI" STATEMENT_TYPE="$STATEMENT_TYPE" \
   RUNNER="$RUNNER" COMMIT_SHA="$COMMIT_SHA" TIMESTAMP="$TIMESTAMP" \
   python3 - <<'PY'
-import json, os, sys
+import json, os, re, sys
 
 gate = json.loads(os.environ["GATE_JSON"])
+
+# Kernel _common.schema.json#/$defs/semver
+_SEMVER_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?(\+[A-Za-z0-9.-]+)?$")
 
 required = ["gate_id", "result", "input_hash", "policy_hash"]
 missing = [k for k in required if k not in gate]
@@ -164,11 +167,15 @@ gate_decision = _DECISION_MAP.get(decision_raw, "error")
 # gate_name: kebab-case short name; fall back to the last ':' segment of gate_id.
 gate_name = gate.get("gate_name") or gate["gate_id"].rsplit(":", 1)[-1]
 
-# gate_version: SemVer; fall back to the runner's semver (<tool>@X.Y.Z).
+# gate_version: SemVer; fall back to the runner's semver (<tool>@X.Y.Z). The
+# kernel pattern is strict, so a non-SemVer runner suffix (e.g. '@unknown')
+# degrades to 0.0.0 rather than emitting a row that fails kernel validation.
 gate_version = gate.get("gate_version")
 if not gate_version:
     _runner = os.environ["RUNNER"]
-    gate_version = _runner.split("@", 1)[1] if "@" in _runner else "0.0.0"
+    gate_version = _runner.split("@", 1)[1] if "@" in _runner else ""
+if not _SEMVER_RE.match(str(gate_version)):
+    gate_version = "0.0.0"
 
 # gate_reasons: empty array permitted ONLY for unconditional pass; otherwise >=1.
 reasons = gate.get("gate_reasons")
@@ -179,9 +186,15 @@ if not reasons:
         reasons = [str(metadata.get("reason") or gate.get("failure_mode")
                        or f"{gate_name}: {gate_decision}")]
 
-# coverage: both arrays REQUIRED. An indeterminate row records the dimension as skipped.
-if isinstance(gate.get("coverage"), dict) and "dimensions_evaluated" in gate["coverage"]:
-    coverage = gate["coverage"]
+# coverage: BOTH arrays REQUIRED. Pass an inbound coverage through only when both
+# keys are present AND lists (a half-populated dict would fail kernel validation);
+# otherwise synthesize. An indeterminate row records the dimension as skipped.
+_cov = gate.get("coverage")
+if (isinstance(_cov, dict)
+        and isinstance(_cov.get("dimensions_evaluated"), list)
+        and isinstance(_cov.get("dimensions_skipped"), list)):
+    coverage = {"dimensions_evaluated": _cov["dimensions_evaluated"],
+                "dimensions_skipped": _cov["dimensions_skipped"]}
 else:
     _dim = str(metadata.get("kind") or gate_name)
     if metadata.get("indeterminate"):
