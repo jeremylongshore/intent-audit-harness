@@ -88,6 +88,132 @@ Define the JSON Schema 2020-12 envelope for a single Evidence Bundle gate-result
 }
 ```
 
+## Sibling predicate: `skill-refiner-pass/v1` rows in the same envelope
+
+> **Status: DESIGN NOTES — sibling-predicate envelope mapping.** This section
+> documents how a `skill-refiner-pass/v1` evidence row sits in the **same**
+> Evidence Bundle envelope as audit-harness's `gate-result/v1` rows. The
+> normative authority for the `skill-refiner-pass/v1` predicate is
+> `intent-eval-lab/000-docs/083-AT-SPEC-skill-refiner-pass-v1-normative-spec-2026-06-17.md`
+> (prose) and `@intentsolutions/core/schemas/v1/skill-refiner-pass.schema.json`
+> (machine-readable; **the kernel schema wins on disagreement**). audit-harness
+> does **not** re-declare this schema — re-declaring a kernel-owned contract is
+> exactly what the `kernel-shadow-check` CI lane flags. This section is the
+> design-notes mapping only.
+
+### Why it belongs here
+
+The Evidence Bundle is the substrate every IEP validator emits into (Q3
+unification thesis, DR-010). audit-harness emits `gate-result/v1` rows for
+deterministic gates; the **Skill Refiner** (published as
+[`@intentsolutions/refiner@0.1.0`](https://www.npmjs.com/package/@intentsolutions/refiner))
+emits `skill-refiner-pass/v1` rows when a `SkillVersion` clears its acceptance
+gate. Both row types ride in the **same** in-toto Statement v1 / DSSE envelope
+documented above — a consumer (the Rollout Gate GitHub Action) unions rows of
+**both** predicate types out of one bundle. So emitters and consumers agree on
+the wire, the refiner-pass row's shape is captured here next to the
+`gate-result/v1` shape it mirrors.
+
+Per DR-082 Q4, `skill-refiner-pass/v1` **mirrors `gate-result/v1` exactly on the
+wire**: same in-toto Statement v1 envelope, same DSSE wrapping, same body-only
+schema validation, same row independence, same no-top-level-bundle-signature
+rule. The divergences are below the wire (a separate signing trust root + an
+independent `$schemaVersion` lane) and are NEVER expressed in the URL string or
+the envelope shape.
+
+### Predicate URI
+
+```text
+https://evals.intentsolutions.io/skill-refiner-pass/v1
+```
+
+A **flat sibling** of `gate-result/v1` (DR-082 Q1) — distinguished only by the
+type name `skill-refiner-pass`. There is no `/authoring/` URL segment, ever; the
+authoring/runtime chamber boundary lives below the wire (separate signing trust
+root + schema lane), never in the URI grammar.
+
+### Envelope placement (mirrors `gate-result/v1`)
+
+A `skill-refiner-pass/v1` row is one entry in the Evidence Bundle, byte-shape
+identical to the `gate-result/v1` rows above:
+
+- **`_type`** — `https://in-toto.io/Statement/v1`
+- **`subject[]`** — at least one entry whose `name` matches the
+  `^[a-z0-9][a-z0-9-]*:(client|server|ci|sandbox|local):[a-zA-Z0-9][a-zA-Z0-9.-]*$`
+  grammar; recommended idiom `skill-refiner:<side>:<skill-version-id>`. The
+  `subject[].digest.sha256` MUST equal the predicate body's `source_snapshot_hash`
+  **with the `sha256:` prefix removed** (the tamper-evidence binding, spec 083
+  § 4 — the authoring-chamber analogue of `gate-result/v1`'s `input_hash` ===
+  subject-digest binding).
+- **`predicateType`** — the URI above.
+- **`predicate`** — the body in the table below.
+- **DSSE wrapping** — `payloadType` `application/vnd.in-toto+json`, row-level
+  signature only, no top-level bundle signature. Row independence: each row is
+  verifiable without any sibling row.
+
+### Predicate body — the accept determinants (per spec 083 § 5.1)
+
+The body carries exactly the fields a verifier needs to independently re-derive
+the accept decision from immutable inputs. (Canonical machine-readable schema:
+`@intentsolutions/core/schemas/v1/skill-refiner-pass.schema.json`,
+`additionalProperties: false`.)
+
+| Field | Type | Role in the row |
+|---|---|---|
+| `verdict` | enum `accept \| reject` | Decision verdict (closed enum). A relying party reads `verdict === "accept"`, never row-presence alone. |
+| `reason` | array of strings, `minItems: 1` | Structured reason **codes** (not free prose — avoids leaking skill content onto a public transparency log). |
+| `refiner_strategy_id` | string, `minLength: 1` | The `RefinerStrategy` that produced the verdict — REQUIRED in the signed body (mechanism-swappable must not be mechanism-untraceable). Append-only-registered; a retired id is never reused. |
+| `skill_version_id` | UUIDv7 | The accepted `SkillVersion` (kernel's 14th entity). Referenced by the kernel's existing UUIDv7 primitive. |
+| `parent_version_id` | UUIDv7 | The parent `SkillVersion` the accepted one was refined from — binds parent → child so an unrelated skill can't be laundered through a forged lineage. |
+| `source_snapshot_hash` | `sha256:`-prefixed | Content hash of the **post-edit** SkillVersion snapshot. The in-toto `subject[].digest.sha256` equals this value prefix-stripped (the § 4 binding above). |
+| `eval_set_ref` | object `{ hash, version, lineage_id }` | Reference to the **FROZEN** eval-set the verdict was derived against — the epistemic basis. `hash` (`sha256:`-prefixed) pins exact content; `version` (string, `minLength: 1`) pins which published eval-set; `lineage_id` (UUIDv7) pins the lineage. `additionalProperties: false`. |
+| `edit_proposal_hash` | `sha256:`-prefixed | Hash of the `EditProposal` (the bounded edit-ops) that earned the pass — binds WHAT changed. |
+| `behavioral_delta` | number | Observed delta on the behavioral dimension the accept gate requires significant Pareto-dominance on. |
+| `named_dimension_deltas` | array of `{ id, delta, non_regressed }` | Per-named-dimension deltas — the non-regression surface. For an `accept`, every entry's `non_regressed` MUST be `true`. MAY be empty. Each item `additionalProperties: false`. |
+| `alpha` | number, `(0, 1)` exclusive | The significance level the one-sided z-test ran at — the falsifiability anchor. |
+| `test_statistic_kind` | const `one-sided-z` | Statistical-test family. CONST for v1; changing it mints `/v2`. |
+
+**Optional, descriptive (NOT determinants — spec 083 § 5.2):**
+`cost_record_ref` (UUIDv7 → `CostRecord.id`), `replay_fidelity_level`
+(`RF-0..RF-4`), `signing_downgrade_reason` (string). A consumer MUST NOT treat
+their absence as a verification failure.
+
+### Producer / consumer relationship
+
+- **Producer:** `@intentsolutions/refiner` (the Skill Refiner) — emits one
+  `skill-refiner-pass/v1` row per real refiner verdict. audit-harness's own
+  emitter (`scripts/emit-evidence.{sh,py}`) produces `gate-result/v1` rows;
+  audit-harness does **not** produce refiner-pass rows.
+- **Consumer:** the Rollout Gate (`intent-rollout-gate` GitHub Action) reads a
+  bundle and unions rows of **both** predicate types against a
+  `tests/TESTING.md` policy → ship / no-ship.
+- **Composable partial attestation:** like every platform predicate, a
+  refiner-pass row stands alone — silence ≠ failure. Absence of a row for a
+  skill means "no PASS emitted," never "that failed." Rows are unioned, not
+  joined.
+
+### Signing posture (spec 083 § 6)
+
+`skill-refiner-pass/v1` ships in `sigstore_staging` and becomes
+production-Rekor-signable ONLY when **all four** DR-082 Q3 triggers hold
+(AND-gated): (1) the SPEC.md normative section lands, (2) DNSSEC + CAA pre-flight
+green on `evals.intentsolutions.io`, (3) the authoring chamber's **separate**
+signing trust root is provisioned-and-live (the new gating step `gate-result/v1`
+never had — DR-081 no-shared-root), (4) ≥1 real `SkillVersion` clears the gate on
+a frozen, signed eval-set. Until then every row carries
+`signing_mode = "sigstore_staging"` and `rekor_log_index = null`. The cosign
+keyless OIDC identity MUST resolve to the **authoring** chamber's Fulcio identity,
+distinct from the runtime chamber's — a refiner-pass row signed by a
+runtime-chamber keyid is INVALID.
+
+### Cross-references (this section)
+
+- Normative prose spec: `intent-eval-lab/000-docs/083-AT-SPEC-skill-refiner-pass-v1-normative-spec-2026-06-17.md`
+- Canonical machine-readable schema (kernel; the authority on disagreement): `@intentsolutions/core/schemas/v1/skill-refiner-pass.schema.json`
+- The mirrored predecessor (`gate-result/v1` predicate body): `tests/fixtures/gate-result-v1.schema.json` + Blueprint B § 7
+- Minting ADR (the 5 binding decisions Q1–Q5): `intent-eval-lab/000-docs/082-AT-DECR-isedc-skill-refiner-pass-v1-predicate-uri-2026-06-17.md`
+- Producer: [`@intentsolutions/refiner`](https://www.npmjs.com/package/@intentsolutions/refiner)
+
 ## Adoption plan (audit-harness side)
 
 **Phase A (now):** this design document. No implementation.
