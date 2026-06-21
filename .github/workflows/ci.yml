@@ -431,6 +431,28 @@ jobs:
       - name: Run currency golden suite
         run: bash tests/currency/run-currency-tests.sh
 
+  migration-notes:
+    name: migration-notes generator suite (iah-E05d)
+    runs-on: ubuntu-latest
+    # The fourth acceptance criterion of the iah-E05 SemVer epic: a deterministic
+    # generator that turns CHANGELOG.md + SEMVER.md into adopter-facing migration
+    # notes (000-docs/012-AT-ARCH § 11.3 "a MAJOR bump ships migration notes").
+    # The suite pins the bump classification, the breaking-vs-additive banner, the
+    # half-open (from, to] range semantics, the Unreleased skip, the error exit
+    # codes, the --json envelope, and a smoke test against the shipped
+    # CHANGELOG.md (latest entry must equal package.json version). Stdlib-only,
+    # read-only, no network — same discipline as classify/conform/audit/currency.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run migration-notes generator suite
+        run: bash tests/migration-notes/run-migration-notes-tests.sh
+
   crap-score:
     name: crap-score join-regression suite (stubbed providers)
     runs-on: ubuntu-latest

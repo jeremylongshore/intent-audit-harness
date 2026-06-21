@@ -115,6 +115,7 @@ If you are an adopter pinning `@intentsolutions/audit-harness@^0.x.y`:
 | 0.2.0 | 2026-04 | Intentional Mapping terminology rename (internal docs only — zero CLI delta) |
 | 0.3.0 | 2026-05 (in flight, Milestone 2) | `--json` on all 6 gates; new `emit-evidence` subcommand; SemVer doc; backward-compat regression suite. Additive minor. |
 | 1.1.8+ | 2026-06 | new `cred-gate` subcommand (provider credential PASS/FAIL gate, iah-E08); `emit-evidence` now also fires the `gate.decision.emitted` OTel event (iah-E07b, per NORMATIVE intent-eval-lab `067-AT-SPEC` § 2.2: `gate.decision` enum `{pass, fail, advisory, error}` + `gate.name` + `gate.policy_ref`). Both additive. |
+| (unreleased) | 2026-06 | new `migration-notes` subcommand (adopter-facing migration-notes generator, iah-E05d) — read-only, stdlib, emits Markdown or a `migration-notes/v1` envelope from this file + `CHANGELOG.md`. Additive. |
 
 Future minor bumps add new gates, new flags, new optional fields in JSON metadata. Future major
 bumps will be rare; we will hold a major-bump as a last resort.
