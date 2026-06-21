@@ -13,6 +13,25 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > those events is deferred to a routine v2.1 release rather than headlined here — it
 > is additive telemetry refinement, not a 1.2.0 capability boundary.
 
+### Added
+
+- **`migration-notes` subcommand — adopter-facing migration-notes generator (iah-E05d).**
+  The fourth and final acceptance criterion of the `iah-E05` SemVer regression epic
+  (the first three — CLI surface snapshot, breaking-change detector, CI gate — ship
+  in `tests/semver/run-semver-tests.sh`). `audit-harness migration-notes [version]`
+  (`scripts/migration-notes.py`, stdlib-only, read-only, no network) turns the two
+  existing sources of truth — `CHANGELOG.md` (Keep a Changelog) and `SEMVER.md`
+  (the breaking-change classification table + stability guarantees) — into a single
+  migration document per `000-docs/012-AT-ARCH § 11.3` ("a MAJOR bump ships
+  migration notes"). No arg = the latest release; `<version>` = one version;
+  `--from A --to B` = the cumulative notes across the half-open `(A, B]` range. A
+  MAJOR boundary surfaces the release's `Removed`/`Changed`/`Deprecated` sections
+  and appends the `SEMVER.md` breaking-change rules + "what we will never do"
+  guarantees; a minor/patch boundary reports "no action required". `--json` emits a
+  `migration-notes/v1` envelope. The generator does not fabricate migration steps —
+  it surfaces authored release-log text, keeping notes traceable. Wired as a
+  dedicated CI suite (`tests/migration-notes/`, 12 assertions). Additive minor.
+
 ## [1.2.3] - 2026-06-20
 
 A patch release shipping a correctness fix to the CLI `emit-evidence` command. No

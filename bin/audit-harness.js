@@ -29,6 +29,7 @@ const COMMANDS = {
   'scan':          { script: 'scan.py',          args: [] },
   'fp-rate':       { script: 'fp-rate.py',       args: [] },
   'currency':      { script: 'currency.py',      args: [] },
+  'migration-notes': { script: 'migration-notes.py', args: [] },
   'gen-layer-applicability': { script: 'gen-layer-applicability.py', args: [] },
 };
 
@@ -101,6 +102,15 @@ Commands:
                            (the SLA gates nothing but human attention). NO exit-code
                            authority (always exit 0), no live-fetch, no auto-fix —
                            it reports; /sync-testing-harness acts.
+  migration-notes [ver]    Generate adopter-facing migration notes from CHANGELOG.md
+                           + SEMVER.md (iah-E05d). Read-only, deterministic, stdlib.
+                           No arg = the latest release; <ver> = one version;
+                           --from A --to B = the cumulative notes across (A, B].
+                           A MAJOR boundary surfaces the release's Removed/Changed/
+                           Deprecated sections + the SEMVER.md breaking-change rules;
+                           a minor/patch boundary reports "no action required".
+                           --json emits a migration-notes/v1 envelope. Exit 1 =
+                           version/range not in CHANGELOG; 2 = CHANGELOG unreadable.
   gen-layer-applicability  Project schemas/audit-profile/registry.v1.json into
                            schemas/audit-profile/layer-applicability.md. --write to
                            regenerate, --check to fail on drift (CI gate). The doc
