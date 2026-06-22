@@ -22,7 +22,7 @@ jobs:
         node-version: [18, 20, 22]
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node ${{ matrix.node-version }}
         uses: actions/setup-node@v6
@@ -98,7 +98,7 @@ jobs:
     env:
       SHELLCHECK_VERSION: "v0.10.0"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install pinned shellcheck
         run: |
           curl -sSL "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
@@ -119,7 +119,7 @@ jobs:
     # code. To bump: edit the pinned version below + run `ruff check` locally
     # to confirm nothing new fires + commit as part of an explicit PR.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -134,7 +134,7 @@ jobs:
     name: python -m py_compile (script lint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -149,7 +149,7 @@ jobs:
     # @eslint/js "recommended" ruleset (flat config: eslint.config.js).
     # Correctness floor, not a style enforcer. Per rnpy.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -168,7 +168,7 @@ jobs:
     # so the lane is green; a found shadow surfaces as a warning, not a block.
     # iah-E02 (the architecture question that historically gated this) is closed.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run kernel-shadow-check (advisory)
         run: bash scripts/kernel-shadow-check.sh
 
@@ -181,7 +181,7 @@ jobs:
     # MUST match exactly. CI fails if any drift is detected.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Verify all 4 manifests carry the same version and Apache-2.0 license
         shell: bash
         run: |
@@ -291,7 +291,7 @@ jobs:
     # `bash scripts/check-wrapper-sync.sh --fix`.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Verify bundled mirrors are byte-identical to canonical scripts/
         run: bash scripts/check-wrapper-sync.sh
 
@@ -299,7 +299,7 @@ jobs:
     name: backward-compat regression suite (v0.3.0+)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -335,7 +335,7 @@ jobs:
     # Complements (does not duplicate) the regression suite (behavioral parity)
     # and the golden suite (raw stdout shape).
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -358,7 +358,7 @@ jobs:
     # read; synthetic secret fixtures are injected via env-var NAME and never
     # touch argv. Failure-mode docs: docs/cred-gate.md.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -369,7 +369,7 @@ jobs:
     name: classify golden suite (audit-profile/v1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -382,7 +382,7 @@ jobs:
     name: conform golden suite (gate-result/v1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -398,7 +398,7 @@ jobs:
     name: audit golden suite (testing-depth gate-runner)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -411,7 +411,7 @@ jobs:
     name: scan golden suite (security/hygiene/skill-quality)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -424,7 +424,7 @@ jobs:
     name: currency advisory report suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -443,7 +443,7 @@ jobs:
     # CHANGELOG.md (latest entry must equal package.json version). Stdlib-only,
     # read-only, no network — same discipline as classify/conform/audit/currency.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -462,7 +462,7 @@ jobs:
     # Go coverage join, and absolute-vs-relative path normalization for the
     # JS coverage join.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -479,7 +479,7 @@ jobs:
     # schema gate cannot. CI installs no complexity provider, so the golden
     # captures crap-score's no-provider envelope shape (deterministic).
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -490,7 +490,7 @@ jobs:
     name: layer-applicability projection drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -504,7 +504,7 @@ jobs:
     name: gate FP-rate measurement (advisory)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'

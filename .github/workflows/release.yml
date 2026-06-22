@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
           # pin the checked-out bytes to the exact ref that triggered this run —
@@ -131,7 +131,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
           # this job signs the EvidenceBundle, so the canonical bytes it hashes +
@@ -271,7 +271,7 @@ jobs:
       id-token: write # sigstore-python keyless signing (Fulcio OIDC)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
           # the PyPI sdist/wheel is built from this checkout, so the bytes MUST
@@ -374,7 +374,7 @@ jobs:
       attestations: write # write the build-provenance attestation to the repo
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
           # the crates.io crate is built + published from this checkout, so the
