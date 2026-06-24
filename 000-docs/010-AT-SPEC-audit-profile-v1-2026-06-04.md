@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-04
 **Type:** AT-SPEC (specification)
-**Status:** DRAFT (Phase 0 — data + safety spine)
+**Status:** ACCEPTED — `audit-profile/v1` is a live contract. The schema (`schemas/audit-profile/v1.schema.json` + `registry.v1.json`) ships in the published package and the `classify` verb that emits it is live in the CLI (audit-harness 1.2.x).
 **Authority:** PP-PLAN-040 (`intent-eval-lab/000-docs/040-PP-PLAN-audit-trio-comprehensive-2026-06-04.md`) §§ 3.3, 4.4, 5, 7 Phase 0
 **Artifacts:** `schemas/audit-profile/v1.schema.json` + fixtures under `tests/fixtures/audit-profile/`
 **Relationship:** mirrors `tests/fixtures/gate-result.schema.json` (`gate-result/v1`) conventions so the two predicates compose in one Evidence Bundle.

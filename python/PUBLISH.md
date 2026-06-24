@@ -1,4 +1,4 @@
-# PyPI publish — automated, pending token
+# PyPI publish — live (automated on tag)
 
 **Wired in `.github/workflows/release.yml`** (`publish-pypi` job): on every `v*.*.*`
 tag push, the workflow builds the sdist + wheel, runs `twine check`, **keyless-signs
@@ -29,9 +29,9 @@ Signing is gated on the same `PYPI_TOKEN` guard as the publish: a signature only
 meaning alongside the bytes that actually ship, so the workflow signs exactly when (and
 only when) it publishes.
 
-**Status:** distribution artifacts built and validated, but **not yet uploaded** to PyPI.
+**Status:** PUBLISHED — `intent-audit-harness` is live on PyPI (currently 1.2.x), uploaded automatically by the `publish-pypi` job once `PYPI_TOKEN` was set. The remainder of this doc is the original token-bootstrap runbook, retained for the history and for re-bootstrapping in a fork.
 
-`twine check` passed on both the sdist and wheel. What's missing is a PyPI API token — no `~/.pypirc`, no `pass` entry under `pypi/`, no `TWINE_PASSWORD` / `TWINE_USERNAME` in the environment.
+`twine check` passed on both the sdist and wheel. The blocker at the time of writing was a missing PyPI API token — no `~/.pypirc`, no `pass` entry under `pypi/`, no `TWINE_PASSWORD` / `TWINE_USERNAME` in the environment; that has since been provisioned.
 
 ## To publish
 

@@ -1,4 +1,4 @@
-# crates.io publish — automated, pending token
+# crates.io publish — live (automated on tag)
 
 **Wired in `.github/workflows/release.yml`** (`publish-crates` job): on every `v*.*.*`
 tag push, the workflow runs `cargo publish --dry-run`, **`cargo package`-s the crate
@@ -38,8 +38,12 @@ own entry, provide zero locking value, and add another version-drift surface tha
 gitignored until the crate gains real dependencies, at which point this call should be
 revisited and the lockfile committed.
 
-**Status:** `cargo publish --dry-run` passed cleanly, but the crate is **not yet uploaded**
-to crates.io — no `~/.cargo/credentials.toml` and no `CARGO_REGISTRY_TOKEN` in env.
+**Status:** PUBLISHED — `intent-audit-harness` is live on crates.io (currently 1.2.x),
+uploaded automatically by the `publish-crates` job once `CARGO_REGISTRY_TOKEN` was set.
+The remainder of this doc is the original token-bootstrap runbook, retained for the history
+and for re-bootstrapping in a fork. The blocker at the time of writing was a missing
+crates.io token (no `~/.cargo/credentials.toml`, no `CARGO_REGISTRY_TOKEN` in env); that
+has since been provisioned.
 
 ## To publish
 

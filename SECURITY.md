@@ -46,7 +46,7 @@ Email **<security@intentsolutions.io>** with:
 audit-harness sits in CI as a quality gate. Its security posture must consider:
 
 - **Adversary inside the repo** — AI agent or contributor attempting to lower test thresholds, delete tests, or silently weaken the harness. Mitigation: `.harness-hash` manifest pins policy files; `escape-scan` detects common tampering patterns; modifying these requires committer to also re-run `init` and explicitly commit the new manifest.
-- **Adversary upstream** — supply-chain attack on the npm/PyPI/crates package. Mitigation: minimal dependencies in the dispatcher; signed releases (planned); cosign keyless OIDC signing on releases (planned).
+- **Adversary upstream** — supply-chain attack on the npm/PyPI/crates package. Mitigation: minimal dependencies in the dispatcher; signed releases shipped (npm `--provenance` SLSA attestation, sigstore-python keyless signing on PyPI wheels/sdists, SLSA build-provenance attestation on the crates tarball); cosign keyless OIDC signing on emitted evidence bundles, all wired in `.github/workflows/release.yml`.
 - **Adversary in consumer repo's CI** — attempt to forge `verify` output to claim manifest passed. Mitigation: the harness emits structured output that downstream collectors can re-verify against the on-disk manifest.
 
 ## Disclosure Process
