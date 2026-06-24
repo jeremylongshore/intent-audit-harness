@@ -2,10 +2,12 @@
 
 ## Supported Versions
 
+`@intentsolutions/audit-harness` follows SemVer; the current 1.x release line receives security fixes.
+
 | Version | Supported |
 |---------|-----------|
-| latest (v0.1.x) | Yes |
-| < latest | Best effort |
+| v1.2.x (current) | Yes |
+| < v1.2 | Best effort — upgrade to the current line |
 
 ## Reporting a Vulnerability
 
