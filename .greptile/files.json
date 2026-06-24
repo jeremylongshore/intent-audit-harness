@@ -2,18 +2,63 @@
   "files": [
     {
       "path": "CLAUDE.md",
-      "description": "Repo contract for @intentsolutions/audit-harness. Establishes the load-bearing invariants a reviewer needs: scripts/*.sh + scripts/*.py are the source of truth (the bin/audit-harness.js CLI is a thin dispatcher), zero runtime deps, backward-compat on the CLI surface (deprecate before remove), policy-driven thresholds (read from the target repo's tests/TESTING.md, never hardcoded), the harness tests itself, the read-only classify/conform verbs, and the kernel-shadow rule (do not re-declare @intentsolutions/core contracts). Read this before judging whether a change respects the repo's design rules.",
+      "description": "Repo contract for @intentsolutions/audit-harness. The load-bearing invariants a reviewer needs: scripts/*.sh + scripts/*.py are the source of truth (bin/audit-harness.js is a thin dispatcher), zero runtime deps, backward-compat on the CLI surface (deprecate 2 minor versions before removing), policy-driven thresholds (read from the target repo's tests/TESTING.md, never hardcoded), the harness tests itself, the read-only classify/conform/audit/scan verbs, and the kernel-shadow rule (do not re-declare @intentsolutions/core contracts). Read this before judging whether a change respects the repo's design rules.",
+      "scope": ["**"]
+    },
+    {
+      "path": "README.md",
+      "description": "User-facing surface + canonical command roster. The 'What it is' table enumerates all 17 deterministic commands (verify, init, list, escape-scan, cred-gate, arch, bias, gherkin-lint, crap, emit-evidence, classify, conform, audit, scan, fp-rate, currency, gen-layer-applicability) and the three install flavors (npm / PyPI / crates) that publish the same CLI surface. Use this to confirm a change matches the documented command contract and the polyglot install story.",
       "scope": ["**"]
     },
     {
       "path": "SEMVER.md",
-      "description": "The SemVer commitment — the authoritative source of what counts as a breaking change to the CLI surface consumed by adopter hooks/CI and the audit-tests/implement-tests skills. Defines the frozen exit-code table per command, the stdout/stderr stream contract (--json on stdout, human-readable on stderr), the frozen emit-evidence predicate URI (gate-result/v1), and the bump-classification matrix (additive=minor, surface-breaking=major, anything ambiguous=major; a MAJOR bump ships migration notes). Consult this for any change touching bin/, scripts/, exit codes, or output streams.",
+      "description": "The SemVer commitment — authoritative source of what counts as a breaking change to the CLI surface consumed by adopter hooks/CI and the audit-tests/implement-tests skills. Defines the FROZEN exit-code table per command, the stdout/stderr stream contract (--json on stdout, human-readable on stderr — there is no third mode), the FROZEN emit-evidence predicate URI (gate-result/v1), and the bump matrix (additive=minor; surface-breaking=major; anything ambiguous=major; a MAJOR bump ships migration notes). Consult for ANY change touching bin/, scripts/, exit codes, or output streams.",
+      "scope": ["bin/**", "scripts/**", "SEMVER.md", "CHANGELOG.md", "package.json"]
+    },
+    {
+      "path": "CHANGELOG.md",
+      "description": "Keep-a-Changelog history. Every CLI-surface change (new command, new flag, new exit code, new JSON field) MUST land a CHANGELOG entry in the same PR — a surface change without a CHANGELOG entry is a defect per SEMVER.md. Read to confirm a surface-affecting PR documented its delta.",
       "scope": ["bin/**", "scripts/**", "SEMVER.md", "CHANGELOG.md", "package.json"]
     },
     {
       "path": "000-docs/001-DR-DESIGN-evidence-bundle-envelope-design-notes.md",
-      "description": "Design notes for the Evidence Bundle gate-result envelope that emit-evidence produces. Documents the row's required/optional fields, the schema-versioned + forward-compatible + hash-pinnable + idempotent (canonicalized, byte-identical modulo timestamp) + no-PII constraints, and the sibling skill-refiner-pass/v1 predicate mapping. CRITICAL: the canonical schema is KERNEL-owned (@intentsolutions/core); this doc DESCRIBES the shape but audit-harness must NOT re-declare the kernel schema — that is exactly what kernel-shadow-check flags. Read this when reviewing emit-evidence, the gate-result row shape, or any new schema-shaped artifact.",
-      "scope": ["scripts/emit-evidence.sh", "scripts/emit-evidence.py", "000-docs/**", "schemas/**"]
+      "description": "Design notes for the Evidence Bundle gate-result envelope that emit-evidence produces. Documents the row's required/optional fields, the schema-versioned + forward-compatible + hash-pinnable + idempotent (canonicalized, byte-identical modulo timestamp) + no-PII constraints, the in-toto Statement v1 wrapping, and the sibling skill-refiner-pass/v1 predicate mapping. CRITICAL: the canonical schema is KERNEL-owned (@intentsolutions/core); this doc DESCRIBES the shape but audit-harness must NOT re-declare the kernel schema — re-declaring is exactly what kernel-shadow-check flags. Read when reviewing emit-evidence, the gate-result row shape, or any new schema-shaped artifact.",
+      "scope": ["scripts/emit-evidence.sh", "scripts/emit-evidence.py", "ci/emit-evidence.ts", "000-docs/**", "schemas/**"]
+    },
+    {
+      "path": "000-docs/002-RR-LAND-upgrade-landscape.md",
+      "description": "Research landscape mapping audit-harness into the testing-platform convergence: the academic state-of-the-art (mutation testing, AI-code detection, attestation), the OSS competitor scan (in-toto, SLSA, Sigstore, GUAC, Scorecard, Stryker/PIT/mutmut/cargo-mutants), borrowable patterns (in-toto Statement as the row shape, predicate-URI versioning, advisory-first gates), and the capability gap matrix (what the harness emits today vs. the convergence target). Read for the WHY behind the in-toto envelope and the deterministic-gate design choices.",
+      "scope": ["scripts/**", "000-docs/**"]
+    },
+    {
+      "path": "000-docs/010-AT-SPEC-audit-profile-v1-2026-06-04.md",
+      "description": "Spec for the audit-profile/v1 value that the read-only `classify` verb resolves. Defines repo-type ∪ Claude-artifact classification, the dimension→gate registry resolution against schemas/audit-profile/registry.v1.json, the recorded registry_hash, and the unresolved[] surface that a Claude inspector may later refine. Read when reviewing classify.py, the registry datum, or any change to how gate sets are derived.",
+      "scope": ["scripts/classify.py", "scripts/gen-layer-applicability.py", "schemas/audit-profile/**", "000-docs/**"]
+    },
+    {
+      "path": "000-docs/012-AT-ARCH-repo-blueprint-2026-06-10.md",
+      "description": "The repo blueprint — architecture-of-record for audit-harness as the deterministic-gates layer of the Intent Eval Platform. Read for the canonical structural picture (scripts-as-truth dispatcher, polyglot packaging, read-only brain) when assessing whether a change is architecturally consistent.",
+      "scope": ["**"]
+    },
+    {
+      "path": "docs/gate-promotion.md",
+      "description": "The advisory→blocking promotion rule. Every gate ships enforcement: advisory (runs, emits its gate-result/v1 row, exits 0 — never reddens a build); blocking (exit 1 on violation) is EARNED, gated on a measured false-positive rate ≤ 5% over a labeled corpus via the fp-rate harness. Read when reviewing a gate's enforcement level, a default-blocking change, or anything touching exit-code semantics and trust posture.",
+      "scope": ["scripts/**", "docs/**", "schemas/audit-profile/**"]
+    },
+    {
+      "path": "docs/cred-gate.md",
+      "description": "Spec for the cred-gate command — the provider-credential PASS/FAIL gate that FAILs if a declared secret, provider-key shape, or serialized env leaks into the artifact about to be signed. The last line of defense before emit-evidence anchors anything. Read when reviewing cred-gate.sh, secret-leak detection, or the pre-signing path.",
+      "scope": ["scripts/cred-gate.sh", "scripts/emit-evidence.sh", "docs/**"]
+    },
+    {
+      "path": "scripts/kernel-shadow-check.sh",
+      "description": "The kernel-shadow-check gate itself — the deterministic guard that fails CI if the repo locally re-declares a kernel-owned contract ($id / GateResultV1 / EvidenceBundle / skill-refiner-pass schema) instead of referencing @intentsolutions/core. Read to understand what the no-kernel-contract-shadow binding mechanically enforces before flagging a suspected shadow by hand.",
+      "scope": ["scripts/**", "schemas/**", "ci/**"]
+    },
+    {
+      "path": "scripts/check-wrapper-sync.sh",
+      "description": "The wrapper-sync gate — verifies the polyglot wrapper scripts (the Python/Rust shims that re-expose the same CLI surface) stay byte-synced with their canonical source so the three install flavors never drift. Read when reviewing any change to the wrapper scripts or the dispatcher that the wrappers mirror.",
+      "scope": ["scripts/**", "python/**", "rust/**", "bin/**"]
     }
   ]
 }
