@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "CLAUDE.md",
+      "description": "Repo contract for @intentsolutions/audit-harness. Establishes the load-bearing invariants a reviewer needs: scripts/*.sh + scripts/*.py are the source of truth (the bin/audit-harness.js CLI is a thin dispatcher), zero runtime deps, backward-compat on the CLI surface (deprecate before remove), policy-driven thresholds (read from the target repo's tests/TESTING.md, never hardcoded), the harness tests itself, the read-only classify/conform verbs, and the kernel-shadow rule (do not re-declare @intentsolutions/core contracts). Read this before judging whether a change respects the repo's design rules.",
+      "scope": ["**"]
+    },
+    {
+      "path": "SEMVER.md",
+      "description": "The SemVer commitment — the authoritative source of what counts as a breaking change to the CLI surface consumed by adopter hooks/CI and the audit-tests/implement-tests skills. Defines the frozen exit-code table per command, the stdout/stderr stream contract (--json on stdout, human-readable on stderr), the frozen emit-evidence predicate URI (gate-result/v1), and the bump-classification matrix (additive=minor, surface-breaking=major, anything ambiguous=major; a MAJOR bump ships migration notes). Consult this for any change touching bin/, scripts/, exit codes, or output streams.",
+      "scope": ["bin/**", "scripts/**", "SEMVER.md", "CHANGELOG.md", "package.json"]
+    },
+    {
+      "path": "000-docs/001-DR-DESIGN-evidence-bundle-envelope-design-notes.md",
+      "description": "Design notes for the Evidence Bundle gate-result envelope that emit-evidence produces. Documents the row's required/optional fields, the schema-versioned + forward-compatible + hash-pinnable + idempotent (canonicalized, byte-identical modulo timestamp) + no-PII constraints, and the sibling skill-refiner-pass/v1 predicate mapping. CRITICAL: the canonical schema is KERNEL-owned (@intentsolutions/core); this doc DESCRIBES the shape but audit-harness must NOT re-declare the kernel schema — that is exactly what kernel-shadow-check flags. Read this when reviewing emit-evidence, the gate-result row shape, or any new schema-shaped artifact.",
+      "scope": ["scripts/emit-evidence.sh", "scripts/emit-evidence.py", "000-docs/**", "schemas/**"]
+    }
+  ]
+}
