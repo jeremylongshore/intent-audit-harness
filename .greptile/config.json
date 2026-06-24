@@ -1,0 +1,46 @@
+{
+  "rules": [
+    {
+      "id": "enforcement-travels-with-code",
+      "rule": "Enforcement must travel with the code. Hooks and CI MUST reference the in-repo harness (e.g. `scripts/audit-harness`, `pnpm exec audit-harness`, or a vendored `.audit-harness/` copy) and MUST NEVER reference a `~/.claude/` path or otherwise assume the audit-tests / implement-tests skill is installed globally. Flag any hook, workflow, doc, or installer line that points enforcement at `~/.claude/` or any user-home skill path — a fresh clone must reproduce every gate.",
+      "scope": ["**"],
+      "severity": "high"
+    },
+    {
+      "id": "semver-breaking-change-discipline",
+      "rule": "Any change to the public CLI surface — subcommand roster, flags, exit codes, or the stdout/stderr stream contract — is governed by SEMVER.md. Removing/renaming a subcommand or flag, changing an existing exit code for the same input, changing existing default text output, moving output between stdout and stderr for the same flag combination, or tightening an input regex/enum is a MAJOR change. Such a change MUST ship: the correct version bump per SEMVER.md (anything ambiguous → major), a CHANGELOG.md entry, and adopter-facing migration notes (a MAJOR bump ships migration notes). Flag any CLI/exit-code/output-stream change shipped without the matching SemVer bump + CHANGELOG entry + migration notes.",
+      "scope": ["bin/**", "scripts/**", "SEMVER.md", "CHANGELOG.md", "package.json"],
+      "severity": "high"
+    },
+    {
+      "id": "no-kernel-contract-shadow",
+      "rule": "Canonical contracts are KERNEL-owned (`@intentsolutions/core`). Do NOT locally re-declare a kernel-owned schema — specifically the `gate-result/v1` or evidence-bundle JSON Schema (`$id`), or a `GateResultV1` / `EvidenceBundle` TypeScript or Python type. Reference the kernel (`@intentsolutions/core/schemas/...`) instead. This is the `kernel-shadow-check` binding: design-notes mappings may DESCRIBE a kernel schema but must not re-DECLARE it. Flag any new `$id`, type definition, or schema file that shadows a kernel-owned contract instead of referencing the kernel.",
+      "scope": ["**"],
+      "severity": "high"
+    },
+    {
+      "id": "polyglot-manifests-version-license-canonical",
+      "rule": "The four polyglot manifests must stay version- and license-canonical. `package.json` (npm) is the single source of truth for version + license; `version.txt`, `python/pyproject.toml`, `python/src/intent_audit_harness/__init__.py`, `rust/Cargo.toml`, and `rust/Cargo.lock` MUST all carry the exact same version string and the `Apache-2.0` license. Flag any manifest edit that bumps or sets a version/license in one manifest without mirroring it across all of them — the `version-canonical-check` CI lane fails on drift.",
+      "scope": ["package.json", "version.txt", "python/**", "rust/**"],
+      "severity": "high"
+    },
+    {
+      "id": "deterministic-gates-stay-deterministic",
+      "rule": "A gate that claims determinism MUST stay deterministic: no network calls, no live schema fetches, and no LLM/model calls inside the gate's verdict path. Bundled JSON Schemas (e.g. `schemas/conform/v1/`) are validated against content-addressed local copies, never live-fetched; same input must produce a byte-identical result (modulo timestamp). A missing external tool yields an honest ADVISORY indeterminate, never a false FAIL or a network fallback. Flag any new `curl`/`fetch`/`requests`/`http`/`urllib` call, live `$ref` fetch, or model invocation introduced into a deterministic gate script (`scripts/classify.py`, `scripts/conform.py`, `scripts/escape-scan.sh`, `scripts/crap-score.py`, `scripts/arch-check.sh`, `scripts/bias-count.sh`, `scripts/gherkin-*.sh`, and the `emit-evidence` verdict path).",
+      "scope": ["scripts/**", "bin/**"],
+      "severity": "high"
+    },
+    {
+      "id": "zero-runtime-deps",
+      "rule": "Zero runtime dependencies. The Node CLI dispatcher runs on Node >=18, bash, and python3 only (python3 for the `crap` command). Adding any npm/PyPI/crates RUNTIME dependency requires explicit strong justification in the PR description. Flag any new entry under `dependencies` in package.json (devDependencies for linters/tooling are fine) or a new third-party import added to a `scripts/` gate.",
+      "scope": ["package.json", "scripts/**", "bin/**"],
+      "severity": "medium"
+    },
+    {
+      "id": "frozen-predicate-uri",
+      "rule": "The `emit-evidence` in-toto predicate URI `https://evals.intentsolutions.io/gate-result/v1` is FROZEN once any signed Statement referencing it is pushed to a public transparency log (Rekor). A breaking change to the predicate body must mint a new URI (`gate-result/v2`) — never silently change the body shape under the same URI. The `evals.intentsolutions.io` namespace is reserved exclusively for these predicate URIs. Flag any edit that changes the `gate-result/v1` predicate URI string or mutates the predicate body shape under the same URI.",
+      "scope": ["scripts/emit-evidence.sh", "scripts/emit-evidence.py", "bin/**", "SEMVER.md"],
+      "severity": "high"
+    }
+  ]
+}
