@@ -1,5 +1,18 @@
 {
+  "strictness": 3,
+  "commentTypes": ["logic", "syntax"],
+  "triggerOnUpdates": true,
+  "fixWithAI": true,
+  "statusCheck": false,
+  "ignorePatterns": "node_modules/\ncoverage/\npackage-lock.json\npnpm-lock.yaml\n.audit-harness/\nrust/target/\nrust/Cargo.lock\npython/**/__pycache__/",
+  "confidenceScoreSection": { "included": true },
+  "sequenceDiagramSection": { "included": true },
   "rules": [
+    {
+      "id": "no-gate-weakening",
+      "rule": "Never suggest lowering a CI threshold, deleting/skipping/weakening a test, relaxing an assertion, bypassing type checks, disabling a security/policy/audit check, or reducing coverage/mutation/audit requirements — unless the same PR replaces it with a stronger equivalent.",
+      "severity": "high"
+    },
     {
       "id": "enforcement-travels-with-code",
       "rule": "Enforcement must travel with the code. Hooks and CI MUST reference the in-repo harness (e.g. `scripts/audit-harness`, `pnpm exec audit-harness`, or a vendored `.audit-harness/` copy) and MUST NEVER reference a `~/.claude/` path or otherwise assume the audit-tests / implement-tests skill is installed globally. Flag any hook, workflow, doc, or installer line that points enforcement at `~/.claude/` or any user-home skill path — a fresh clone must reproduce every gate.",
