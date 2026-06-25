@@ -162,7 +162,6 @@ Be info-dense and specific: cite the file + line, name the invariant, and say wh
 is. Skip nits that don't touch these axes — a wrong call on one of the eight above is worth far more
 than a style comment.
 
-
 ## Review priorities — what to weight, what to skip
 
 Greptile is **advisory** here. The deterministic merge gate is this repo's own
