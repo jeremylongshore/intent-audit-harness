@@ -423,7 +423,7 @@ jobs:
 
       - name: Attest crate build provenance (SLSA → Sigstore/Rekor)
         if: steps.guard.outputs.token_present == 'true'
-        uses: actions/attest-build-provenance@v4.1.0
+        uses: actions/attest-build-provenance@v4.1.1
         with:
           subject-path: ${{ env.CRATE_TARBALL }}
 
