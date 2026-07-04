@@ -9,7 +9,7 @@ The canonical implementation of the test-enforcement scripts used by the `audit-
 ## Core design rules
 
 1. **Scripts are the source of truth.** The Node CLI (`bin/audit-harness.js`) is a thin dispatcher. All logic lives in `scripts/*.sh` and `scripts/*.py`. Don't port to TypeScript unless there's a concrete reason (cross-platform Windows bug, etc.).
-2. **Zero runtime deps.** Node ≥18, bash, python3 for the `crap` command. Adding any npm dependency requires strong justification in the PR.
+2. **Zero runtime deps.** Node ≥18, bash, python3 (used by 9 script verbs: crap-score, classify, conform, audit, scan, currency, fp-rate, migration-notes, gen-layer-applicability). Adding any npm dependency requires strong justification in the PR.
 3. **Backward compatibility on CLI surface.** Once shipped, commands don't get renamed or repurposed. Add new ones; deprecate before removing (2 minor versions warning minimum).
 4. **Policy-driven, never hardcoded.** Thresholds (coverage floor, CRAP limits, mutation kill rate) read from the target repo's `tests/TESTING.md`. Never hardcode a number in a script.
 5. **The harness tests itself.** Run `bash scripts/escape-scan.sh --staged` on any proposed diff before committing.
@@ -83,14 +83,15 @@ When updating this package, also check:
 ## Release flow
 
 ```bash
-# bump version per SemVer
-npm version patch   # or minor, or major
+# bump the CANONICAL version (package.json) per SemVer, then mirror to the
+# polyglot manifests so version-canonical-check passes:
+npm version patch   # or minor, or major  → updates package.json
+# mirror the new number into version.txt, python/pyproject.toml + __init__.py,
+# rust/Cargo.toml + Cargo.lock (CI version-canonical-check enforces parity)
 
-# publish to npm (requires ~/.npmrc with org-scope token)
-pnpm publish
-
-# push tag to GitHub
-git push --follow-tags
+# DO NOT `pnpm publish` by hand — publishing is CI-only for Sigstore provenance.
+git push --follow-tags        # tag push triggers .github/workflows/release.yml
+# → CI runs `npm publish --provenance --access public` (keyless Sigstore OIDC)
 ```
 
 ## Testing the harness
@@ -98,6 +99,8 @@ git push --follow-tags
 - `audit-harness verify` / `init` / `list` — self-evident; try on a throwaway repo
 - `audit-harness escape-scan --staged` — requires a staged diff; test by staging a threshold-lowering change and confirming REFUSE
 - `audit-harness crap` — requires `radon` (Python) or `gocyclo` (Go) installed; test on a small repo
+- `audit-harness cred-gate --secret-env NAME --input file.json` — provider-cred leak gate (exit 1 on leak); `arch` / `bias` / `gherkin-lint` — the static-wall gates; `audit` / `scan` — read-only testing-depth + security/hygiene gate-runners (emit `gate-result/v1`); `emit-evidence` — writes Evidence Bundle rows.
+- Safety levers: `AUDIT_HARNESS_DISABLE=1` (kill-switch, gates no-op), `AUDIT_HARNESS_TIMEOUT=N` (per-command watchdog, exit 124), `.audit-harness.yml` (per-repo override: classify_pins / advisory / disable_gates).
 
 ## Version management
 
@@ -110,7 +113,7 @@ git push --follow-tags
 ## AI code review (Greptile + Gemini)
 
 Two AI reviewers run on PRs here, **both advisory** — neither is a branch-protection
-required check. The deterministic merge gate is this repo's own CI (the audit-harness self-check + shellcheck + version-canonical-check + Python compile-check) plus CodeQL.
+required check. The deterministic merge gate is this repo's own CI (`ci.yml`: self-check on Node 18/20/22, shellcheck, ruff, `python -m py_compile`, version-canonical-check, wrapper-byte-sync, gen-layer-applicability check, fp-rate) plus the separate `codeql.yml`, `actionlint.yml`, `doc-quality.yml`, `typos.yml`, and `rollout-gate-dogfood.yml` workflows.
 
 - **Gemini Code Assist** (`.gemini/config.yaml` + `.gemini/styleguide.md`) is the
   **active** reviewer. Re-instated 2026-06-24 as the fallback after the Greptile
