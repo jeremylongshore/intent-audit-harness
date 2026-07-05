@@ -13,6 +13,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > those events is deferred to a routine v2.1 release rather than headlined here — it
 > is additive telemetry refinement, not a 1.2.0 capability boundary.
 
+## [1.3.0] - 2026-07-05
+
 ### Added
 
 - **`migration-notes` subcommand — adopter-facing migration-notes generator (iah-E05d).**
