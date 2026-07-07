@@ -12,8 +12,8 @@
 
 - **`audit-harness migration-notes` subcommand** (iah-E05d) — the adopter-facing
   migration-notes generator (the 4th and final AC of the `iah-E05` SemVer
-  regression epic). Stdlib-Python, read-only, no network; turns `CHANGELOG.md`
-  + `SEMVER.md` into a single migration document. `--json` emits a
+  regression epic). Stdlib-Python, read-only, no network; turns
+  `CHANGELOG.md` + `SEMVER.md` into a single migration document. `--json` emits a
   `migration-notes/v1` envelope. Wired to a dedicated 12-assertion CI suite
   (`tests/migration-notes/`). A new CLI command → MINOR bump per the repo's
   versioning policy.
