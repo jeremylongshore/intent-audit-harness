@@ -66,7 +66,7 @@ jobs:
       # TODO: bump to @v0.2.0 once intent-rollout-gate v0.2.0 ships.
       - name: Consume bundle + policy -> ship/no-ship decision
         id: gate
-        uses: jeremylongshore/intent-rollout-gate@v0.3.0
+        uses: jeremylongshore/intent-rollout-gate@v0.3.1
         with:
           bundle-path: tests/dogfood/bundle.json
           policy-path: tests/dogfood/policy.json
