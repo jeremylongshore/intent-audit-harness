@@ -115,5 +115,70 @@ producing gates across five dimensions — the case where picking a single class
 
 ---
 
+## 6. Predicate baseline — what the harness recognizes vs. what it emits
+
+This spec doubles as the audit-harness **predicate baseline**: the roster of Evidence Bundle
+predicate types the harness is aware of, split by whether the harness *emits* the row or merely
+*recognizes* it as a sibling in the same bundle. The split matters because the `kernel-shadow-check`
+CI lane flags any attempt to re-declare a kernel-owned contract — the harness must know these
+predicates exist without owning their schemas.
+
+| Predicate URI | Emitted by the harness? | Harness relationship |
+|---|---|---|
+| `https://evals.intentsolutions.io/audit-profile/v1.schema.json` | ✅ yes — `classify` verb | The value this spec defines. |
+| `https://evals.intentsolutions.io/gate-result/v1` | ✅ yes — `conform` / `audit` / `scan` / `emit-evidence` verbs | Deterministic gate outcomes. Conventions this spec mirrors (§ 1). |
+| `https://evals.intentsolutions.io/skill-refiner-pass/v1` | ❌ no — see § 6.1 | Recognized sibling; emitted by the **Skill Refiner**, not the harness. |
+
+### 6.1 `skill-refiner-pass/v1` — recognized, not harness-emitted
+
+The **Skill Refiner** (published as
+[`@intentsolutions/refiner`](https://www.npmjs.com/package/@intentsolutions/refiner)) emits
+`skill-refiner-pass/v1` rows when a `SkillVersion` clears its acceptance gate. These rows ride in the
+**same** in-toto Statement v1 / DSSE Evidence Bundle envelope as the harness's `gate-result/v1` rows,
+so a downstream consumer (the Rollout Gate GitHub Action) unions rows of all three predicate types out
+of one bundle. audit-harness must **recognize** this predicate for baseline completeness but **never
+emits it and never re-declares its schema** — the kernel schema
+(`@intentsolutions/core/schemas/v1/skill-refiner-pass.schema.json`) is the authority, and the wire-shape
+mapping lives in the sibling-predicate section of the envelope design notes
+(`000-docs/001-DR-DESIGN-evidence-bundle-envelope-design-notes.md`).
+
+**Predicate type.** `https://evals.intentsolutions.io/skill-refiner-pass/v1` — a **flat sibling** of
+`gate-result/v1` and `audit-profile/v1` (no `/authoring/` URL segment; the authoring/runtime chamber
+boundary lives below the wire, never in the URI grammar). Distinguished only by the type name
+`skill-refiner-pass`. The predicate body attests a `SkillVersion` accept-decision from the Refiner —
+`verdict` (`accept | reject`), the accepted `skill_version_id` + `parent_version_id` lineage, the
+`source_snapshot_hash` tamper-evidence binding, the frozen `eval_set_ref`, and the `behavioral_delta` /
+`named_dimension_deltas` accept determinants. A relying party reads `verdict === "accept"`, never
+row-presence alone.
+
+**Expected row count per refinement run.** One `skill-refiner-pass/v1` row per real Refiner **verdict**
+— i.e. per `SkillVersion` that the Refiner evaluates against its acceptance gate in a run, whether the
+verdict is `accept` or `reject`. Rows are **composable partial attestations**: each stands alone,
+silence ≠ failure, and rows are unioned (not joined) with the harness's own `gate-result/v1` rows in the
+bundle. Absence of a refiner-pass row for a skill means "no verdict emitted," never "that failed." A
+harness run contributes **zero** refiner-pass rows — the harness's row count for this predicate is
+always 0 (it only recognizes them arriving from the Refiner).
+
+**Sigstore mode handling.** `skill-refiner-pass/v1` ships in `signing_mode = "sigstore_staging"`
+(`rekor_log_index = null`) and becomes production-Rekor-signable only when all four DR-082 Q3 triggers
+hold (AND-gated): the SPEC.md normative section lands, DNSSEC + CAA pre-flight is green on
+`evals.intentsolutions.io`, the authoring chamber's **separate** signing trust root is provisioned-and-live
+(a gating step `gate-result/v1` never had — DR-081 no-shared-root), and ≥1 real `SkillVersion` clears the
+gate on a frozen signed eval-set. Its cosign keyless OIDC identity MUST resolve to the **authoring**
+chamber's Fulcio identity, distinct from the runtime chamber's that signs `gate-result/v1`; a
+refiner-pass row signed by a runtime-chamber keyid is INVALID. The harness does not sign these rows —
+this baseline records the mode only so a bundle carrying mixed predicate types is understood.
+
+**Cross-references.**
+
+- Wire-shape / envelope mapping (audit-harness side): `000-docs/001-DR-DESIGN-evidence-bundle-envelope-design-notes.md` § "Sibling predicate: `skill-refiner-pass/v1` rows in the same envelope"
+- Normative prose spec: `intent-eval-lab/000-docs/083-AT-SPEC-skill-refiner-pass-v1-normative-spec-2026-06-17.md`
+- Canonical machine-readable schema (kernel; wins on disagreement): `@intentsolutions/core/schemas/v1/skill-refiner-pass.schema.json`
+- Minting ADR (Q1–Q5 binding decisions): `intent-eval-lab/000-docs/082-AT-DECR-isedc-skill-refiner-pass-v1-predicate-uri-2026-06-17.md`
+- Producer: [`@intentsolutions/refiner`](https://www.npmjs.com/package/@intentsolutions/refiner)
+
+---
+
 *Filed per Document Filing Standard v4.3. Canonical plan: PP-PLAN-040. Closes the schema deliverable of
-the Phase 0 "data + safety spine" epic.*
+the Phase 0 "data + safety spine" epic. § 6 predicate baseline closes bead aon3.2 (Skill Refiner —
+audit-harness baseline update to include the refiner-pass predicate).*
