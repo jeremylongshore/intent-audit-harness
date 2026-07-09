@@ -1,0 +1,18 @@
+{
+  "name": "@intentsolutions/audit-harness-signing-reconciler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CI-ONLY, NON-PUBLISHED tooling: the append-only Rekor OUTBOX + bounded-retry reconciler runtime for the kernel SkillVersion signing state machine (AC-2, CISO P0-RATIFY-2). Lives in audit-harness/ci/ so the published @intentsolutions/audit-harness stays zero-runtime-deps — this dir is outside the package.json `files` allowlist and never ships to npm. Consumes @intentsolutions/core@0.10.0's state machine; never reimplements it.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "reconcile": "node --experimental-strip-types src/cli.ts",
+    "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@intentsolutions/core": "0.10.0"
+  }
+}
