@@ -249,3 +249,84 @@ test('reconcile does not mutate its input rows in place (returns new objects for
   // The original object is unchanged — the reconciler produced a new row.
   assert.deepEqual(row, before);
 });
+
+test('fail-closed on a garbage clock: an invalid `now` throws and reconciles nothing (finding #2)', async () => {
+  const outbox = new InMemoryOutbox();
+  const transport = new ScriptedRekorTransport([delivered(1)]);
+  const row = pendingRow({ retry_after: '2026-07-09T00:00:00Z', retry_count: 0 });
+
+  // A garbage clock must be REFUSED loudly — never run the retry/backoff math off NaN.
+  await assert.rejects(
+    () => reconcile([row], { now: 'not-a-real-timestamp', rekorTransport: transport, outbox }),
+    /must be a parseable RFC 3339 UTC timestamp/,
+  );
+  // Nothing was attempted: the transport was never called and nothing was persisted.
+  assert.equal(transport.calls.length, 0);
+  assert.equal((await outbox.all()).length, 0);
+});
+
+test('null retry_after is treated as due-immediately, never a Date.parse(null) crash (finding #4)', async () => {
+  const outbox = new InMemoryOutbox();
+  const transport = new ScriptedRekorTransport([delivered(555)]);
+  // A row whose retry_after is explicitly absent (undefined) — the parsed kernel type
+  // never carries null, but the isDue seam must handle null/undefined identically.
+  const row = pendingRow({ retry_after: undefined, retry_count: 0 });
+
+  const report = await reconcile([row], { now: NOW, rekorTransport: transport, outbox });
+
+  // No retry_after ⇒ due immediately ⇒ pushed + signed. No crash, no fail-safe skip.
+  assert.deepEqual(report.signed, [row.id]);
+  assert.equal(transport.calls.length, 1);
+});
+
+test('fail-closed #6: when the constructed signing_failed row is kernel-invalid it is NOT persisted', async () => {
+  // Force the terminal (exhaustion) branch, then make the kernel validator reject the
+  // constructed signing_failed row. The reconciler must NOT persist the invalid row —
+  // it must pass the ORIGINAL (kernel-valid) row through untouched and route the
+  // validation failure to human review, never emitting a broken SkillVersion.
+  const outbox = new InMemoryOutbox();
+  const transport = new ScriptedRekorTransport([undelivered('rekor down')]);
+  const row = pendingRow({
+    retry_after: '2026-07-09T00:30:00Z',
+    retry_count: SKILL_VERSION_MAX_SIGNING_RETRIES - 1,
+  });
+
+  // Monkeypatch the kernel validator to reject the exhaustion-constructed row
+  // (status === 'signing_failed'), while leaving the top-of-loop parse of the
+  // original pending row intact. This proves the fail-closed branch does not persist.
+  const realSafeParse = SkillVersionSchema.safeParse.bind(SkillVersionSchema);
+  let patched: typeof SkillVersionSchema.safeParse;
+  try {
+    patched = ((input: unknown) => {
+      if (
+        typeof input === 'object' &&
+        input !== null &&
+        (input as { status?: unknown }).status === 'signing_failed'
+      ) {
+        return realSafeParse({ __force_invalid__: true });
+      }
+      return realSafeParse(input);
+    }) as typeof SkillVersionSchema.safeParse;
+    // @ts-expect-error — deliberate test-only override of a bound method
+    SkillVersionSchema.safeParse = patched;
+
+    const report = await reconcile([row], { now: NOW, rekorTransport: transport, outbox });
+
+    // The invalid signing_failed row is NOT in `failed` and NOT persisted to rows.
+    assert.equal(report.failed.length, 0);
+    const passthrough = report.rows.find((r) => r.id === row.id);
+    assert.ok(passthrough);
+    // The ORIGINAL pending row is passed through untouched — never a broken active/failed row.
+    assert.equal(passthrough.status, 'pending_production');
+    assert.deepEqual(report.skipped, [row.id]);
+    // The validation failure is surfaced to human review + recorded as a fail-closed skip.
+    assert.equal(report.humanReview.length, 1);
+    assert.match(report.humanReview[0]?.reason ?? '', /fail-closed/);
+    const records = await outbox.all();
+    assert.equal(records.at(-1)?.outcome, 'skipped');
+    assert.match(records.at(-1)?.detail ?? '', /fail-closed/);
+  } finally {
+    // @ts-expect-error — restore the real bound method
+    SkillVersionSchema.safeParse = realSafeParse;
+  }
+});

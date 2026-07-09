@@ -73,3 +73,25 @@ test('JsonFileOutbox: missing ledger file reads as empty history (not an error)'
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('JsonFileOutbox: append creates the parent dir if it does not exist (no ENOENT)', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'reconciler-outbox-'));
+  try {
+    // Path under a NOT-yet-existing nested subdir (mirrors the default `build/…`).
+    const path = join(dir, 'build', 'nested', 'signing-outbox.jsonl');
+    const box = new JsonFileOutbox(path);
+    // First append must succeed even though `build/nested/` does not exist yet.
+    await box.append(rec('a', 'success'));
+    await box.append(rec('b', 'terminal'));
+
+    const raw = await readFile(path, 'utf8');
+    const lines = raw.split('\n').filter((l) => l.trim() !== '');
+    assert.equal(lines.length, 2);
+    assert.deepEqual(
+      (await box.all()).map((r) => r.skill_version_id),
+      ['a', 'b'],
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

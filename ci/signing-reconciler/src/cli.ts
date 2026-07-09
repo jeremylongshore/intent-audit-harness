@@ -35,7 +35,7 @@ interface CliArgs {
   readonly json: boolean;
 }
 
-function parseArgs(argv: readonly string[]): CliArgs {
+export function parseArgs(argv: readonly string[]): CliArgs {
   let rows: string | null = null;
   // The clock is read ONCE, HERE, at the process edge — never inside reconcile().
   let now = new Date().toISOString();
@@ -43,10 +43,20 @@ function parseArgs(argv: readonly string[]): CliArgs {
   let json = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--rows') rows = argv[i + 1] ?? rows;
-    else if (a === '--now') now = argv[i + 1] ?? now;
-    else if (a === '--outbox') outbox = argv[i + 1] ?? outbox;
-    else if (a === '--json') json = true;
+    // Value-taking flags consume argv[i + 1] AND advance the cursor past it, so a
+    // value (e.g. `rows.json`) is never re-processed as an option on the next pass.
+    if (a === '--rows') {
+      rows = argv[i + 1] ?? rows;
+      i += 1;
+    } else if (a === '--now') {
+      now = argv[i + 1] ?? now;
+      i += 1;
+    } else if (a === '--outbox') {
+      outbox = argv[i + 1] ?? outbox;
+      i += 1;
+    } else if (a === '--json') {
+      json = true;
+    }
   }
   return { rows, now, outbox, json };
 }

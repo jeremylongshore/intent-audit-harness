@@ -76,14 +76,22 @@ export interface ReconcileOptions {
   readonly backoff?: BackoffPolicy;
 }
 
-/** RFC 3339 lexical-safe comparison via Date parsing; both are UTC. */
-function isDue(retryAfter: string | undefined, now: string): boolean {
-  // No retry_after set ⇒ eligible immediately (a freshly-queued row).
-  if (retryAfter === undefined) return true;
+/**
+ * RFC 3339 comparison via Date parsing; both are UTC.
+ *
+ * `now` is caller-validated to parse (see `reconcile()`), so it is always finite here.
+ * `retryAfter` accepts `null` as well as `undefined` — a raw/absent value is treated
+ * the same as no retry_after: eligible immediately. There is NO `Date.parse(null as any)`
+ * unsafe path; null/undefined short-circuit before any parse.
+ */
+function isDue(retryAfter: string | null | undefined, now: string): boolean {
+  // No retry_after set (undefined OR null) ⇒ eligible immediately (a freshly-queued row).
+  if (retryAfter === undefined || retryAfter === null) return true;
   const ra = Date.parse(retryAfter);
-  const n = Date.parse(now);
-  if (Number.isNaN(ra) || Number.isNaN(n)) return false; // unparseable → not due (fail-safe)
-  return ra <= n;
+  // `now` is validated finite by the caller. A garbage retry_after is NOT-DUE (fail-safe:
+  // an unparseable schedule must never be treated as "past due" and pushed early).
+  if (Number.isNaN(ra)) return false;
+  return ra <= Date.parse(now);
 }
 
 /**
@@ -97,6 +105,16 @@ export async function reconcile(
   options: ReconcileOptions,
 ): Promise<ReconcileReport> {
   const now = options.now;
+  // FAIL-CLOSED on a garbage clock. Every downstream decision (isDue, backoff's
+  // Date.parse(now) + …) depends on `now` parsing to a finite instant. If it does
+  // not, isDue would treat undefined-retry rows as due and the retry path would
+  // compute retry_after off a NaN clock (→ "Invalid Date"). The reconciler must
+  // NEVER run off a garbage clock — refuse the whole pass loudly.
+  if (!Number.isFinite(Date.parse(now))) {
+    throw new Error(
+      `reconcile: 'now' must be a parseable RFC 3339 UTC timestamp; got ${JSON.stringify(now)}`,
+    );
+  }
   const transport = options.rekorTransport ?? new NoopRekorTransport();
   const outbox = options.outbox;
   const backoff = options.backoff ?? defaultBackoff;
@@ -124,8 +142,10 @@ export async function reconcile(
         retry_count: extractRetryCount(raw),
         detail: `fail-closed: row did not parse against the kernel SkillVersion validator (${parsed.error.issues[0]?.message ?? 'invalid'})`,
       });
-      // Pass the raw through untouched only if it at least has the fields we can
-      // safely re-emit; otherwise drop from rows to avoid emitting garbage.
+      // FAIL-CLOSED, unconditionally: an unparseable row is DROPPED from `rows`
+      // (it is recorded in `unparseable` + the outbox, but never re-emitted). We do
+      // not re-emit a partial/garbage row — the only rows this reconciler outputs are
+      // kernel-valid ones. Comment == code: unparseable ⇒ dropped.
       continue;
     }
 
@@ -214,10 +234,35 @@ export async function reconcile(
         retry_count: attemptsAfter,
         signing_downgrade_reason: `rekor unreachable after ${attemptsAfter} attempts (max ${SKILL_VERSION_MAX_SIGNING_RETRIES}); surfaced to human review — ${result.reason}`,
       };
+      // FAIL-CLOSED: the signing_failed row MUST be kernel-valid before it is
+      // persisted (signing_failed keeps staging signing_mode + no rekor index, so the
+      // cross-field invariant holds). If the kernel validator rejects it, we NEVER
+      // persist the invalid row — we pass the ORIGINAL (already-kernel-valid) row
+      // through unchanged, record a structured skip in the outbox, and surface the
+      // validation failure to human review. An invalid SkillVersion never reaches
+      // `rows`.
       const check = SkillVersionSchema.safeParse(failedRow);
-      // signing_failed keeps signing_mode staging (no rekor index) so the invariant holds.
-      const finalRow = check.success ? check.data : failedRow;
-      rows.push(finalRow);
+      if (!check.success) {
+        rows.push(row);
+        skipped.push(row.id);
+        const reason = `fail-closed: constructed signing_failed row rejected by kernel validator (${check.error.issues[0]?.message ?? 'invalid'}) — original row left untouched`;
+        humanReview.push({
+          skill_version_id: row.id,
+          skill_id: row.skill_id,
+          retry_count: attemptsAfter,
+          reason,
+        });
+        await outbox.append({
+          at: now,
+          skill_version_id: row.id,
+          skill_id: row.skill_id,
+          outcome: 'skipped',
+          retry_count: attemptsAfter,
+          detail: reason,
+        });
+        continue;
+      }
+      rows.push(check.data);
       failed.push(row.id);
       const item: HumanReviewItem = {
         skill_version_id: row.id,
