@@ -9,14 +9,18 @@ name: Rollout Gate Dogfood
 #   decide   -> the Action returns ship (allow) / no-ship (block)
 #   surface  -> the decision is echoed + written to the job summary
 #
-# BOOTSTRAP-PROTECTED / ADVISORY-ONLY:
-#   This workflow demonstrates adoption but must NEVER destabilize audit-harness
-#   CI (the harness gating itself is a bootstrap hazard). Two independent guards
-#   keep it non-blocking:
-#     1. job-level `continue-on-error: true` — a failure here never fails the run
-#     2. the Action runs with `fail-on-block: 'false'` — a block decision reports
-#        only, it does not fail the step.
-#   This workflow is intentionally NOT in branch-protection required checks.
+# ENFORCING (since 2026-07-16):
+#   This lane is enforcing and is intended to be a REQUIRED branch-protection
+#   check. The Action runs with `fail-on-block: 'true'` and the job has no
+#   `continue-on-error`, so a block decision (or any step failure) fails CI on
+#   this repo. That is the point: a product named "rollout gate" must gate at
+#   least one real thing before external adoption is credible.
+#
+#   History: this lane started advisory-only (job-level continue-on-error +
+#   fail-on-block 'false') as the M6 first-downstream-adopter demonstration,
+#   to avoid destabilizing audit-harness CI while the loop was unproven. After
+#   a consistently green run history it was flipped to enforcing on
+#   2026-07-16. Escape hatch: revert this one workflow file.
 
 on:
   push:
@@ -29,10 +33,8 @@ permissions:
 
 jobs:
   rollout-gate-dogfood:
-    name: rollout-gate self-adoption (advisory)
+    name: rollout-gate self-adoption (enforcing)
     runs-on: ubuntu-latest
-    # ADVISORY GUARD #1: never fail the CI run on anything in this job.
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -40,7 +42,7 @@ jobs:
       # ---- PRODUCE -----------------------------------------------------------
       # Demonstrate that audit-harness emits a real gate-result/v1 row from its
       # own escape-scan gate. This is the harness's native Evidence Bundle row.
-      # (Best-effort: failure here is tolerated by continue-on-error.)
+      # This step is enforcing: if the harness cannot emit a valid row, CI fails.
       - name: Emit a live audit-harness Evidence Bundle row
         run: |
           set -euo pipefail
@@ -62,19 +64,21 @@ jobs:
       # gate-result/v1 predicate shape (gate_decision/gate_name/coverage); the
       # fixture guarantees a deterministic, schema-valid input in CI.
       #
-      # Pinned to the stable released tag v0.1.0.
-      # TODO: bump to @v0.2.0 once intent-rollout-gate v0.2.0 ships.
+      # Pinned to the newest released tag, v0.3.2 (2026-07-08).
       - name: Consume bundle + policy -> ship/no-ship decision
         id: gate
-        uses: jeremylongshore/intent-rollout-gate@v0.3.1
+        uses: jeremylongshore/intent-rollout-gate@v0.3.2
         with:
           bundle-path: tests/dogfood/bundle.json
           policy-path: tests/dogfood/policy.json
-          # ADVISORY GUARD #2: report-only. A block decision never fails the step.
-          fail-on-block: 'false'
+          # ENFORCING: a block decision fails this step, and therefore CI.
+          fail-on-block: 'true'
 
       # ---- SURFACE -----------------------------------------------------------
+      # Runs even when the gate step fails, so a BLOCK decision is still
+      # surfaced in the job summary alongside the red check.
       - name: Surface the rollout decision
+        if: always()
         run: |
           set -euo pipefail
           DECISION='${{ steps.gate.outputs.decision }}'
@@ -82,14 +86,14 @@ jobs:
           echo "rollout decision: ${DECISION:-<none>}"
           echo "blocking reasons: ${REASONS:-[]}"
           {
-            echo "## Rollout Gate Dogfood (advisory)"
+            echo "## Rollout Gate Dogfood (enforcing)"
             echo ""
-            echo "audit-harness self-adopts \`intent-rollout-gate@v0.1.0\` — M6 first downstream adopter."
+            echo "audit-harness self-adopts \`intent-rollout-gate@v0.3.2\` — M6 first downstream adopter, now enforcing."
             echo ""
             echo "| field | value |"
             echo "| --- | --- |"
             echo "| decision | \`${DECISION:-<none>}\` |"
             echo "| reasons | \`${REASONS:-[]}\` |"
             echo ""
-            echo "This loop is advisory-only and never blocks audit-harness CI."
+            echo "This loop is enforcing: a block decision fails audit-harness CI."
           } >> "$GITHUB_STEP_SUMMARY"
