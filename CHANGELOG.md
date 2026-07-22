@@ -6,6 +6,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Kernel currency and shadow detection:** the kernel-shadow gate now checks
+  both local re-declarations and dependency ranges that cannot resolve to the
+  current `@intentsolutions/core@0.10.0`. Its offline contract suite covers
+  the 0.x caret trap, lower-bound SemVer behavior, unknown-range surfacing,
+  and fail-closed lookup messaging. Release-time Evidence Bundle validation is
+  pinned to the same exact kernel version.
+
 > **Riding a future v2.1 routine release (descoped from 1.2.0):** OTel event-name
 > polish (iah-E07b/c). The `agent.rollout.gate.evaluated` and `gate.decision.emitted`
 > event names are already locked + tested on main (PRs #78, #81 per NORMATIVE

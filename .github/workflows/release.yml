@@ -152,8 +152,13 @@ jobs:
         uses: sigstore/cosign-installer@v3
 
       # CI-only kernel install — NEVER written to package.json (zero-dep stays).
+      # Keep this exact pin aligned with the sibling IEP consumers and the
+      # kernel-shadow currency gate; signed evidence must be checked by the
+      # same canonical validator surface the dashboard consumes.
       - name: Install kernel validators (CI-only, --no-save)
-        run: npm i --no-save @intentsolutions/core@0.2.0
+        env:
+          KERNEL_VERSION: "0.10.0"
+        run: npm i --no-save "@intentsolutions/core@${KERNEL_VERSION}"
 
       - name: Emit-evidence self-check (kernel-valid + canonical-stable)
         run: node --experimental-strip-types ci/emit-evidence.ts --self-check
