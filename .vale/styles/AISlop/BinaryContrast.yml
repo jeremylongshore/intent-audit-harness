@@ -1,0 +1,10 @@
+extends: existence
+message: "AI-slop cadence: 'not X, it's Y' binary contrast ('%s'). Make the direct claim instead."
+level: warning
+nonword: true
+link: https://github.com/petergyang/no-ai-slop
+tokens:
+  - '[Ii]t[''’]?s not [^.?!]{2,60}[.?!]\s+[Ii]t[''’]?s '
+  - '\b(is|are|was|were) not [^.,?!]{2,50}[.?!]\s+[Ii]t[''’]?s '
+  - '\b(is|are|was|were|does|do|did)n[''’]?t (just |merely |only |simply )?[^.,?!]{2,50}[,.]\s*[Ii]t[''’]?s '
+  - '\b[Nn]ot (just|merely|simply|only) [^.,?!]{2,50}, (but|it[''’]?s) '

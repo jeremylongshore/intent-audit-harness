@@ -1,0 +1,7 @@
+extends: existence
+message: "AI-slop cadence: negative listing ('%s'). Rewrite plainly."
+level: warning
+nonword: true
+link: https://github.com/petergyang/no-ai-slop
+tokens:
+  - '\b[Nn]ot (a|an|just|only|about|your) [^.?!]{2,45}[.?!]\s+[Nn]ot (a|an|just|only|about|your) '

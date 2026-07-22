@@ -1,0 +1,28 @@
+extends: existence
+message: "AI-slop word: '%s'. Prefer a plainer, more specific word."
+level: warning
+ignorecase: true
+link: https://github.com/petergyang/no-ai-slop
+tokens:
+  - delve
+  - delving
+  - tapestry
+  - testament
+  - bustling
+  - meticulous
+  - meticulously
+  - supercharge
+  - supercharged
+  - unleash
+  - revolutionize
+  - plethora
+  - myriad
+  - utilize
+  - utilizes
+  - utilizing
+  - boasts
+  - realm
+  - treasure trove
+  - firstly
+  - moreover
+  - furthermore

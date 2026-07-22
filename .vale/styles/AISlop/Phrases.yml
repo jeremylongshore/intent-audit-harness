@@ -1,0 +1,29 @@
+extends: existence
+message: "AI-slop phrase: '%s'. Cut it or state the concrete point."
+level: warning
+ignorecase: true
+nonword: true
+link: https://github.com/petergyang/no-ai-slop
+tokens:
+  - 'here[''’]?s the thing'
+  - 'let[''’]?s be (clear|honest|real)'
+  - 'make no mistake'
+  - 'at the end of the day'
+  - 'the (simple|honest|hard|real) truth is'
+  - 'what (nobody|no one|most people|few people) (tells?|realizes?|understands?)'
+  - 'the part (that )?most people miss'
+  - 'the dirty (little )?secret'
+  - 'marks? a pivotal moment'
+  - 'a testament to'
+  - 'plays? a (vital|crucial|key|pivotal|significant) role'
+  - 'in today[''’]?s (fast-paced|ever-changing|digital) world'
+  - 'ever-(evolving|changing) landscape'
+  - 'at its core'
+  - 'it[''’]?s worth noting( that)?'
+  - 'needless to say'
+  - 'experts agree'
+  - 'studies (show|suggest|have shown)'
+  - 'research (shows|suggests|indicates)'
+  - 'it[''’]?s widely (known|believed|understood)'
+  - '(serves?|acts?|functions?) as a (centralized |central |single )?(hub|solution|platform|gateway|one-stop shop)'
+  - 'your go-to'
