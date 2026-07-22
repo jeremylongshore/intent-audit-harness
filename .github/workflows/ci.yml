@@ -159,16 +159,29 @@ jobs:
         run: npx eslint "bin/**/*.js"
 
   kernel-shadow-check:
-    name: kernel-shadow-check (no local re-declaration of kernel contracts)
+    name: kernel-shadow-check (no local re-declaration or stale range)
     runs-on: ubuntu-latest
-    # Advisory detector (873c): flags any file that re-DECLARES a kernel-owned
-    # contract (gate-result/v1 or evidence-bundle JSON Schema $id, or a TS/Python
-    # GateResultV1/EvidenceBundle type definition) instead of referencing
-    # @intentsolutions/core. Runs in advisory mode (exit 0, GitHub annotations)
-    # so the lane is green; a found shadow surfaces as a warning, not a block.
-    # iah-E02 (the architecture question that historically gated this) is closed.
+    # Advisory detector (873c). Two classes, same harm — a consumer validating
+    # against a kernel contract the platform has moved past:
+    #   1. re-DECLARING a kernel-owned contract (gate-result/v1 or evidence-bundle
+    #      JSON Schema $id, or a TS/Python GateResultV1/EvidenceBundle definition)
+    #      instead of referencing @intentsolutions/core;
+    #   2. declaring an @intentsolutions/core range that CANNOT resolve to the
+    #      current kernel — e.g. `^0.1.1` against 0.10.0, since a caret on a 0.x
+    #      major is capped at that minor. Class 2 was a blind spot until 2026-07-22:
+    #      this job reported bobs-big-brain-compiler clean while it sat nine minor
+    #      versions behind.
+    # Advisory mode (exit 0, GitHub annotations) keeps the lane green; findings
+    # surface as warnings. iah-E02 (the architecture question that historically
+    # gated this) is closed.
     steps:
       - uses: actions/checkout@v7
+      - name: Contract tests for the detector itself
+        # Deterministic + offline (every case pins KERNEL_LATEST_VERSION). Runs
+        # BEFORE the detector: a detector whose own tests fail should not have its
+        # "clean" believed — the blind spot it just grew was invisible precisely
+        # because nothing tested it.
+        run: bash tests/kernel-shadow/run-kernel-shadow-tests.sh
       - name: Run kernel-shadow-check (advisory)
         run: bash scripts/kernel-shadow-check.sh
 
