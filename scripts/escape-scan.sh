@@ -123,8 +123,20 @@ TESTING_MD="$ROOT/tests/TESTING.md"
 # Same reason for the trailing `|| true` on each guarded assignment: a false
 # `[[ -n ]]` test is the last command in an && list and would trip `set -e` too.
 policy_value() {
-  grep -Ei "^[[:space:]]*$1[[:space:]]*:" "$TESTING_MD" 2>/dev/null \
-    | head -1 | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/' || true
+  local raw
+  raw=$(grep -Ei "^[[:space:]]*$1[[:space:]]*:" "$TESTING_MD" 2>/dev/null \
+    | head -1 | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/' || true)
+  # The sed leaves the line UNCHANGED when it holds no number, so a typo like
+  # `coverage.line: eighty` used to become the "floor". Every later comparison
+  # then died on `[[: invalid arithmetic operator ]]` and the scan finished
+  # REFUSE=0 exit 0 — a fail-OPEN that let a blatant lowered threshold through.
+  # Anything non-numeric is discarded here so the built-in default stands.
+  if [[ "$raw" =~ ^[0-9]+$ ]]; then
+    printf '%s' "$raw"
+  else
+    [[ -n "$raw" ]] && echo "[FLAG] tests/TESTING.md: ${1//\\/} is not a number — using the built-in default" >&2
+    printf ''
+  fi
 }
 if [[ -f "$TESTING_MD" ]]; then
   v=$(policy_value 'coverage\.line')
@@ -169,8 +181,27 @@ check_below_floor() {
 #      `{ branches:<hi>, lines:<lo> }` tested the FIRST value, passed, and never looked at the second.
 #      That one bit the quoted form too — the "working" case was also broken.
 #
-# Quotes are now optional and EVERY key:value pair on the line is tested. The
-# left boundary keeps `max_lines:<N>` from matching the `lines` key.
+# Quotes are now optional — BOTH kinds. `'lines': 50` is valid JS and was still
+# slipping through a double-quote-only class, which is a one-character evasion.
+# EVERY key:value pair on the line is tested, not just the first. The left
+# boundary keeps `max_lines:<N>` from matching the `lines` key.
+# Case-sensitive on purpose: Jest keys are lowercase, so `LINES:` is not a
+# working config and therefore not a successful escape.
+# A bare `lines: 3` is a coverage threshold ONLY inside a coverage config. In
+# ordinary source it is just an object key, and making quotes optional turned
+# `const x = { lines: 3 }` into a REFUSE — a false positive that would block
+# honest commits, which is worse than the gap it closed. A threshold written
+# anywhere else has no effect on coverage and therefore cannot be an escape, so
+# scoping to these filenames loses no real detection.
+is_coverage_config() {
+  case "${1##*/}" in
+    jest.config.*|vitest.config.*|karma.conf.*|nyc.config.*|jest.setup.*) return 0 ;;
+    package.json|.nycrc|.nycrc.*|.c8rc|.c8rc.*) return 0 ;;
+    .coveragerc|setup.cfg|pyproject.toml|pytest.ini|tox.ini) return 0 ;;
+  esac
+  return 1
+}
+
 check_coverage_keys_below_floor() {
   local line="$1" floor="$2" pair n
   while IFS= read -r pair; do
@@ -178,7 +209,7 @@ check_coverage_keys_below_floor() {
     n="${pair##*:}"; n="${n//[^0-9]/}"
     if [[ -n "$n" ]] && [[ "$n" -lt "$floor" ]]; then return 0; fi
   done < <(printf '%s\n' "$line" \
-      | grep -oE '(^|[^A-Za-z0-9_])"?(branches|lines|functions|statements)"?[[:space:]]*:[[:space:]]*[0-9]+' \
+      | grep -oE "(^|[^A-Za-z0-9_])[\"']?(branches|lines|functions|statements)[\"']?[[:space:]]*:[[:space:]]*[0-9]+" \
       || true)
   return 1
 }
@@ -188,10 +219,20 @@ while IFS= read -r line; do
       note REFUSE "coverage fail_under lowered below policy floor ($COVERAGE_LINE_FLOOR) — escape attempt"
     fi
   fi
-  if check_coverage_keys_below_floor "$line" "$COVERAGE_LINE_FLOOR"; then
-    note REFUSE "Jest/c8 coverageThreshold lowered below policy floor ($COVERAGE_LINE_FLOOR) — escape attempt"
-  fi
 done <<< "$added_lines"
+
+# Coverage-key thresholds are checked PER FILE (see is_coverage_config above),
+# so this pass walks the diff with path context rather than the flat line list.
+while IFS=$'\t' read -r cpath cline; do
+  [[ -z "$cpath" ]] && continue
+  is_coverage_config "$cpath" || continue
+  if check_coverage_keys_below_floor "$cline" "$COVERAGE_LINE_FLOOR"; then
+    note REFUSE "coverageThreshold in $cpath lowered below policy floor ($COVERAGE_LINE_FLOOR) — escape attempt"
+  fi
+done < <(awk '
+  /^\+\+\+ / { p=$2; sub(/^b\//,"",p); next }
+  /^\+[^+]/   { if (p != "" && p != "/dev/null") print p "\t" substr($0,2) }
+' "$DIFF_SRC" || true)
 if echo "$added_lines" | grep -Eq 'coverageThreshold[[:space:]]*:[[:space:]]*0'; then
   note REFUSE "coverageThreshold set to 0 (escape attempt)"
 fi

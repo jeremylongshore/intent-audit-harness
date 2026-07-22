@@ -93,6 +93,7 @@ NINETY=90
 NINETY_FIVE=95
 WARN=warn
 SKIP=skip
+SQ="'"        # a single quote, composed so it is not a literal here
 
 FULL='coverage.line: 80
 coverage.branch: 70
@@ -117,6 +118,12 @@ assert_scan "jest.config.js  unquoted lines key (JS form)" "$FULL" 'jest.config.
   "module.exports = { coverageThreshold: { global: { lines: ${LOW} } } };" 'REFUSE'
 assert_scan "jest  lowered lines key on its own line" "$FULL" 'jest.config.js' \
   "  lines: ${LOW}," 'REFUSE'
+# A one-character evasion: single quotes are valid JS object-key syntax and were
+# slipping past a double-quote-only character class.
+assert_scan "jest  SINGLE-quoted key (valid JS)" "$FULL" 'jest.config.js' \
+  "  ${SQ}lines${SQ}: ${LOW}," 'REFUSE'
+assert_scan "single-quoted key ABOVE the floor passes" "$FULL" 'jest.config.js' \
+  "  ${SQ}lines${SQ}: ${NINETY_FIVE}," 'pass'
 assert_scan "branches key, not just lines" "$FULL" 'jest.config.js' \
   "  branches: ${TEN}," 'REFUSE'
 assert_scan "python  lowered fail_under" "$FULL" '.coveragerc' \
@@ -145,6 +152,27 @@ assert_scan "no tests/TESTING.md at all (built-in defaults)" '' '.coveragerc' \
 # floor of 80 but above a floor of 40, so a repo declaring the lower one passes.
 assert_scan "a repo-declared LOWER floor is honoured" 'coverage.line: 40' 'jest.config.js' \
   "  lines: ${LOW}," 'pass'
+
+echo "coverage keys are thresholds ONLY inside coverage configs:"
+# Making quotes optional briefly turned `const x = { lines: 3 }` in ordinary
+# source into a REFUSE. A threshold outside a coverage config has no effect and
+# so cannot be an escape; blocking honest commits is worse than the gap.
+assert_scan "app code  { lines: 3 }  must NOT fire" "$FULL" 'src/app.js' \
+  "const x = { lines: ${TEN} };" 'pass'
+assert_scan "app code  { statements: 12 }  must NOT fire" "$FULL" 'src/stats.js' \
+  "const s = { statements: ${TEN} };" 'pass'
+assert_scan "but jest.config.js still REFUSEs" "$FULL" 'jest.config.js' \
+  "  lines: ${LOW}," 'REFUSE'
+assert_scan "and a nested monorepo jest.config.js does too" "$FULL" 'packages/a/jest.config.js' \
+  "  lines: ${LOW}," 'REFUSE'
+assert_scan "and .nycrc does too" "$FULL" '.nycrc' \
+  "  \"lines\": ${LOW}" 'REFUSE'
+
+echo "a non-numeric policy value must fall back, never fail open:"
+# `coverage.line: eighty` used to become the floor, every comparison then died
+# on an arithmetic error, and the scan ended REFUSE=0 exit 0 — fail-OPEN.
+assert_scan "non-numeric floor still REFUSEs a blatant lowering" 'coverage.line: eighty' '.coveragerc' \
+  "fail_under = ${VERY_LOW}" 'REFUSE'
 
 echo "the other REFUSE/CHALLENGE classes still fire (no regression):"
 assert_scan "skip marker is CHALLENGED" "$FULL" 'test/a.test.js' \
