@@ -100,6 +100,56 @@ is_allowlisted() {
   esac
 }
 
+# The class-2 declaration anchor (see the block comment above the class-2 loop).
+CLASS2_PATTERN='(^|[[:space:]])((export|declare|abstract)[[:space:]]+)*(interface|class|type)[[:space:]]+(EvidenceBundlePayload|EvidenceBundle|GateResultV1)([[:space:]]*[{<(:=]|[[:space:]]+(extends|implements)[[:space:]])'
+
+# is_kernel_imported FILE SYMBOL — true when SYMBOL appears inside an import or
+# re-export statement that resolves to @intentsolutions/core in FILE. Statements
+# are reconstructed by joining the file and splitting on ';', so a multi-line
+# `import {\n  A,\n  B,\n} from "@intentsolutions/core/..."` is handled.
+is_kernel_imported() {
+  local file="$1" sym="$2"
+  awk -v sym="$sym" '
+    { buf = buf " " $0 }
+    END {
+      n = split(buf, stmts, /;/)
+      for (i = 1; i <= n; i++) {
+        if (stmts[i] ~ /@intentsolutions\/core/ &&
+            stmts[i] ~ ("(^|[^A-Za-z0-9_])" sym "([^A-Za-z0-9_]|$)")) { found = 1 }
+      }
+      exit(found ? 0 : 1)
+    }
+  ' "$file"
+}
+
+# is_kernel_derivation FILE LINE — true when LINE is a type alias whose right-hand
+# side is a pure derivation of a kernel-imported symbol. Anything else (an
+# interface, a class, a structural type literal, a union, or a derivation from a
+# locally-declared schema) returns false and is treated as a real declaration.
+is_kernel_derivation() {
+  local file="$1" line="$2" rhs sym
+  # Only `type X = ...` can derive; interface/class always declare a shape.
+  [[ "$line" =~ (^|[[:space:]])((export|declare|abstract)[[:space:]]+)*type[[:space:]] ]] || return 1
+  [[ "$line" == *=* ]] || return 1
+
+  rhs="${line#*=}"
+  # Strip comments, trailing semicolon, and surrounding whitespace.
+  rhs="${rhs%%//*}"
+  rhs="$(printf '%s' "$rhs" | sed -E 's/[[:space:]]*;?[[:space:]]*$//; s/^[[:space:]]+//')"
+
+  if [[ "$rhs" =~ ^z\.(infer|input|output)\<typeof[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)\>$ ]]; then
+    sym="${BASH_REMATCH[2]}"
+  elif [[ "$rhs" =~ ^typeof[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)$ ]]; then
+    sym="${BASH_REMATCH[1]}"
+  elif [[ "$rhs" =~ ^([A-Za-z_][A-Za-z0-9_]*)$ ]]; then
+    sym="${BASH_REMATCH[1]}"
+  else
+    return 1   # structural / union / intersection → a real declaration
+  fi
+
+  is_kernel_imported "$file" "$sym"
+}
+
 shadows=()
 
 # 1. JSON Schema documents claiming a kernel-owned canonical $id.
@@ -136,13 +186,36 @@ done < <(grep -rIlE '"\$id"[[:space:]]*:[[:space:]]*"https://evals\.intentsoluti
 #
 #    A re-export or import entry is followed by `,`, `}`, `;`, or end-of-line and
 #    therefore cannot match. `declare`/`abstract` prefixes are tolerated.
+#
+#    EXEMPT: a pure DERIVATION of a kernel-imported symbol, e.g.
+#      export type EvidenceBundle = z.infer<typeof EvidenceBundlePayloadSchema>;
+#    where `EvidenceBundlePayloadSchema` is imported/re-exported from
+#    @intentsolutions/core in the same file. Such an alias has no independent
+#    shape — it is defined BY the kernel schema and changes when the kernel
+#    changes, so it cannot drift, which is the entire harm this detector guards
+#    against. Only three RHS forms qualify (`z.infer|input|output<typeof S>`,
+#    `typeof S`, bare `S`); anything structural (`{`, `|`, `&`) is a real
+#    declaration and still flags, as does a derivation from a NON-kernel symbol.
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
   rel="${f#./}"
   is_allowlisted "$rel" && continue
-  shadows+=("$rel  (defines a kernel-owned type — should import from @intentsolutions/core)")
-done < <(grep -rIlE \
-            '(^|[[:space:]])((export|declare|abstract)[[:space:]]+)*(interface|class|type)[[:space:]]+(EvidenceBundlePayload|EvidenceBundle|GateResultV1)([[:space:]]*[{<(:=]|[[:space:]]+(extends|implements)[[:space:]])' \
+
+  # Per-LINE triage: a file is reported only if it holds at least one match that
+  # is not an exempt kernel derivation.
+  real_hits=()
+  while IFS= read -r hit; do
+    [[ -z "$hit" ]] && continue
+    lineno="${hit%%:*}"
+    text="${hit#*:}"
+    if is_kernel_derivation "$f" "$text"; then continue; fi
+    real_hits+=("$lineno")
+  done < <(grep -nE "$CLASS2_PATTERN" "$f" 2>/dev/null || true)
+
+  [[ ${#real_hits[@]} -eq 0 ]] && continue
+  lines="$(IFS=,; echo "${real_hits[*]}")"
+  shadows+=("$rel  (defines a kernel-owned type at line(s) ${lines} — should import from @intentsolutions/core)")
+done < <(grep -rIlE "$CLASS2_PATTERN" \
             --include='*.ts' --include='*.py' --exclude-dir=node_modules --exclude-dir=.git . 2>/dev/null || true)
 
 if [[ ${#shadows[@]} -eq 0 ]]; then

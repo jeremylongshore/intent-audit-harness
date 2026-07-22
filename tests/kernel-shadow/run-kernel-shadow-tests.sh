@@ -127,15 +127,48 @@ assert_source "class implementing an interface" 'src/shadow-impl.ts' \
 assert_source "declare-d ambient interface" 'src/shadow-declare.d.ts' \
 'declare interface GateResultV1 { decision: string }' 'shadow'
 
-# A local alias over an imported schema is still a second name for a kernel
-# contract. It is the weakest case in the set — a human allowlists it if the
-# alias is deliberate — but the detector must surface it, not swallow it.
-assert_source "type alias over an imported schema" 'src/alias.ts' \
-'import { EvidenceBundlePayloadSchema } from "@intentsolutions/core";
-export type EvidenceBundle = z.infer<typeof EvidenceBundlePayloadSchema>;' 'shadow'
-
 assert_source "generic type alias" 'src/alias-generic.ts' \
 'export type EvidenceBundlePayload<T> = { rows: T[] };' 'shadow'
+
+echo "deriving FROM the kernel is NOT a shadow — but the exemption is narrow:"
+# A z.infer over a kernel-imported schema has no independent shape. It is defined
+# BY the kernel and changes when the kernel changes, so it cannot drift — which is
+# the whole harm this detector guards against. This is the shape j-rig carries at
+# packages/core/src/schemas/evidence-bundle.ts:192.
+assert_source "z.infer over a kernel-imported schema" 'src/derive.ts' \
+'import { EvidenceBundlePayloadSchema } from "@intentsolutions/core/validators/v1/evidence-statement";
+export type EvidenceBundle = z.infer<typeof EvidenceBundlePayloadSchema>;' 'clean'
+
+assert_source "z.infer over a schema pulled in by a multi-line re-export" 'src/derive-multiline.ts' \
+'export {
+  EvidenceBundlePayloadSchema,
+  type EvidenceBundlePayload,
+} from "@intentsolutions/core/validators/v1/evidence-statement";
+export type EvidenceBundle = z.infer<typeof EvidenceBundlePayloadSchema>;' 'clean'
+
+assert_source "bare alias to a kernel-imported type" 'src/derive-bare.ts' \
+'import type { GateResultV1 as KernelGateResult } from "@intentsolutions/core";
+export type GateResultV1 = KernelGateResult;' 'clean'
+
+# The three cases the exemption must NOT swallow.
+assert_source "z.infer over a LOCAL schema — not kernel-derived" 'src/derive-local.ts' \
+'const MyOwnSchema = z.object({ decision: z.string() });
+export type GateResultV1 = z.infer<typeof MyOwnSchema>;' 'shadow'
+
+assert_source "structural literal that merely mentions a kernel symbol" 'src/derive-structural.ts' \
+'import { EvidenceBundlePayloadSchema } from "@intentsolutions/core";
+export type EvidenceBundle = { rows: EvidenceBundlePayloadSchema[] };' 'shadow'
+
+assert_source "union that mentions a kernel symbol" 'src/derive-union.ts' \
+'import { GateResultV1Schema } from "@intentsolutions/core";
+export type GateResultV1 = z.infer<typeof GateResultV1Schema> | { legacy: true };' 'shadow'
+
+# A file with BOTH a derivation and a real declaration must still report — the
+# per-line triage must not let one exempt line clear the whole file.
+assert_source "exempt derivation alongside a real declaration" 'src/mixed.ts' \
+'import { EvidenceBundlePayloadSchema } from "@intentsolutions/core";
+export type EvidenceBundlePayload = z.infer<typeof EvidenceBundlePayloadSchema>;
+export interface GateResultV1 { decision: string }' 'shadow'
 
 echo "python declaration forms:"
 assert_source "pydantic model" 'models.py' \
