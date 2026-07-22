@@ -322,6 +322,19 @@ jobs:
       - name: Run regression suite
         run: bash tests/regression/run-regression.sh
 
+  escape-scan-contract:
+    name: escape-scan coverage-threshold contract suite
+    runs-on: ubuntu-latest
+    # Pins the three coverage-detection bugs that shipped in v1.3.0 — unquoted
+    # JS keys missed, only the first number on a line compared to the floor, and
+    # an incomplete tests/TESTING.md silently aborting the whole scan. All three
+    # sat on the tool's flagship advertised behaviour, and nothing tested it.
+    # Deterministic + offline: every fixture is literal text in a throwaway repo.
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run escape-scan contract suite
+        run: bash tests/escape-scan/run-escape-scan-tests.sh
+
   semver:
     name: SemVer contract suite (CLI/output surface freeze)
     runs-on: ubuntu-latest

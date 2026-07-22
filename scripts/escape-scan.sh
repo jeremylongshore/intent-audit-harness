@@ -113,13 +113,26 @@ COVERAGE_LINE_FLOOR=80
 COVERAGE_BRANCH_FLOOR=70
 MUTATION_FLOOR=70
 TESTING_MD="$ROOT/tests/TESTING.md"
+# The `|| true` on each lookup is LOAD-BEARING, not defensive noise. Under
+# `set -euo pipefail` a grep that matches nothing makes the whole command
+# substitution non-zero, and `set -e` then killed this script MID-LOAD — before
+# a single check ran, with no output, exiting 1. Exit 1 is the documented code
+# for CHALLENGE, so a repo whose tests/TESTING.md omitted any one of these three
+# keys got ZERO escape scanning while appearing to merely warn. That is a
+# silent, total bypass of the gate; a blatant `fail_under` set to 5 sailed through.
+# Same reason for the trailing `|| true` on each guarded assignment: a false
+# `[[ -n ]]` test is the last command in an && list and would trip `set -e` too.
+policy_value() {
+  grep -Ei "^[[:space:]]*$1[[:space:]]*:" "$TESTING_MD" 2>/dev/null \
+    | head -1 | sed -E 's/.*:[[:space:]]*([0-9]+).*/\1/' || true
+}
 if [[ -f "$TESTING_MD" ]]; then
-  v=$(grep -Ei '^\s*coverage\.line\s*:' "$TESTING_MD" | head -1 | sed -E 's/.*:\s*([0-9]+).*/\1/')
-  [[ -n "$v" ]] && COVERAGE_LINE_FLOOR="$v"
-  v=$(grep -Ei '^\s*coverage\.branch\s*:' "$TESTING_MD" | head -1 | sed -E 's/.*:\s*([0-9]+).*/\1/')
-  [[ -n "$v" ]] && COVERAGE_BRANCH_FLOOR="$v"
-  v=$(grep -Ei '^\s*mutation\.kill_rate\s*:' "$TESTING_MD" | head -1 | sed -E 's/.*:\s*([0-9]+).*/\1/')
-  [[ -n "$v" ]] && MUTATION_FLOOR="$v"
+  v=$(policy_value 'coverage\.line')
+  if [[ -n "$v" ]]; then COVERAGE_LINE_FLOOR="$v"; fi
+  v=$(policy_value 'coverage\.branch')
+  if [[ -n "$v" ]]; then COVERAGE_BRANCH_FLOOR="$v"; fi
+  v=$(policy_value 'mutation\.kill_rate')
+  if [[ -n "$v" ]]; then MUTATION_FLOOR="$v"; fi
 fi
 
 # Collect only added lines (prefix + but not +++)
@@ -142,8 +155,32 @@ note() {
 check_below_floor() {
   local line="$1" floor="$2"
   local n
-  n=$(printf '%s\n' "$line" | grep -oE '[0-9]+' | head -1)
+  n=$(printf '%s\n' "$line" | grep -oE '[0-9]+' | head -1 || true)
   [[ -n "$n" ]] && [[ "$n" -lt "$floor" ]]
+}
+
+# Coverage-threshold keys, checked PER KEY rather than "first number on the line".
+#
+# Two bugs this replaces:
+#   1. The old pattern required DOUBLE-QUOTED keys ("lines":<N>), so it caught
+#      package.json but missed jest.config.js — `lines:<N>` unquoted, which is
+#      the standard JS-config shape and the most common Jest form there is.
+#   2. It compared only the FIRST number on the line, so
+#      `{ branches:<hi>, lines:<lo> }` tested the FIRST value, passed, and never looked at the second.
+#      That one bit the quoted form too — the "working" case was also broken.
+#
+# Quotes are now optional and EVERY key:value pair on the line is tested. The
+# left boundary keeps `max_lines:<N>` from matching the `lines` key.
+check_coverage_keys_below_floor() {
+  local line="$1" floor="$2" pair n
+  while IFS= read -r pair; do
+    [[ -z "$pair" ]] && continue
+    n="${pair##*:}"; n="${n//[^0-9]/}"
+    if [[ -n "$n" ]] && [[ "$n" -lt "$floor" ]]; then return 0; fi
+  done < <(printf '%s\n' "$line" \
+      | grep -oE '(^|[^A-Za-z0-9_])"?(branches|lines|functions|statements)"?[[:space:]]*:[[:space:]]*[0-9]+' \
+      || true)
+  return 1
 }
 while IFS= read -r line; do
   if [[ "$line" =~ fail_under[[:space:]]*=[[:space:]]*[0-9] ]] || [[ "$line" =~ --cov-fail-under=[0-9] ]]; then
@@ -151,10 +188,8 @@ while IFS= read -r line; do
       note REFUSE "coverage fail_under lowered below policy floor ($COVERAGE_LINE_FLOOR) — escape attempt"
     fi
   fi
-  if [[ "$line" =~ \"(branches|lines|functions|statements)\"[[:space:]]*:[[:space:]]*[0-9] ]]; then
-    if check_below_floor "$line" "$COVERAGE_LINE_FLOOR"; then
-      note REFUSE "Jest/c8 coverageThreshold lowered below policy floor ($COVERAGE_LINE_FLOOR) — escape attempt"
-    fi
+  if check_coverage_keys_below_floor "$line" "$COVERAGE_LINE_FLOOR"; then
+    note REFUSE "Jest/c8 coverageThreshold lowered below policy floor ($COVERAGE_LINE_FLOOR) — escape attempt"
   fi
 done <<< "$added_lines"
 if echo "$added_lines" | grep -Eq 'coverageThreshold[[:space:]]*:[[:space:]]*0'; then

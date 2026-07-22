@@ -6,7 +6,9 @@
 
 Part of the **[Intent Eval Platform](https://github.com/intent-solutions-io/intent-eval-platform)** — the umbrella grouping the platform's six repos: five converge via a shared Evidence Bundle schema (`intent-eval-core`, `intent-eval-lab`, `audit-harness`, `j-rig-skill-binary-eval`, `intent-rollout-gate`), plus `intent-eval-dashboard` as a satellite consumer (not part of the convergence taxonomy).
 
-Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `implement-tests` Claude Code skills — but usable standalone in any repo that wants hash-pinned, escape-scanned, AI-proof quality gates.
+Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `implement-tests` Claude Code skills — but usable standalone in any repo that wants hash-pinned, escape-scanned, AI-resistant quality gates.
+
+**On "AI-resistant", precisely:** the hash-pin is a *complete* guarantee for the files you pin — they cannot change without an explicit, committed re-pin. The escape-scan is a *heuristic net* over the staged diff: it catches the common escapes (deleted tests, lowered coverage floors, new skip markers, architecture-rule bypasses), not every conceivable dodge. Deliberately not claiming bulletproof.
 
 ## What it is
 
