@@ -32,6 +32,22 @@
 #                           This is a separate, shallower contract from the
 #                           kernel authoring/v1 validity SSoT — intentionally
 #                           different, not a re-declaration.
+#   * **/dist/**, **/build/**
+#                         — compiler output. Whatever a bundle or .d.ts contains
+#                           is a mechanical restatement of source that this
+#                           detector already checks; flagging both reports one
+#                           authoring decision twice and cannot be fixed in the
+#                           generated file.
+#
+# NOT a shadow (by construction — the anchors below):
+#   * `export { type EvidenceBundle, ... } from "@intentsolutions/core/..."`
+#     A re-export entry names the kernel's type in order to FORWARD it. That is
+#     the single-source-of-truth pattern this detector exists to encourage, and
+#     matching it was a false positive that flagged three j-rig files for doing
+#     exactly the right thing. The identifier in a re-export or import list is
+#     followed by `,`, `}`, or a newline — never by declaration syntax — so the
+#     anchors require `=`, `{`, `<`, `(`, `:`, `extends`, or `implements` after
+#     the name.
 #
 # Background: iah-E02 (the architecture question — peerDep-only vs full TS port
 # vs second-emitter — that historically blocked a standing kernel-shadow check)
@@ -78,6 +94,8 @@ is_allowlisted() {
     schemas/conform/*) return 0 ;;
     node_modules/*)   return 0 ;;
     .git/*)           return 0 ;;
+    dist/*|*/dist/*)   return 0 ;;
+    build/*|*/build/*) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -88,26 +106,43 @@ shadows=()
 #    The kernel owns gate-result/<ver> and evidence-bundle/<ver> ids under
 #    evals.intentsolutions.io. conform/v1 ids are the harness's own (allowlisted
 #    structurally by the schemas/conform/ path skip below).
+#
+#    EXEMPT: a redirect stub. A document that carries an `x-redirect` marker is
+#    the ratified discoverability pattern (Blueprint B § 7.0 "Lab specs/ MAY host
+#    redirect stubs"; ISEDC Session 5 DR-018 § 6.4 Option α-minus) — it claims the
+#    id in order to $ref the kernel's schema, which is referencing, not
+#    re-declaring. The lab's own schema-drift.yml already allowlists exactly this
+#    marker; flagging it here would contradict a gate the platform ratified.
 # shellcheck disable=SC2016  # the grep pattern's $id is a literal, not a shell var
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
   rel="${f#./}"
   is_allowlisted "$rel" && continue
+  grep -qE '"x-redirect"[[:space:]]*:' "$f" && continue
   shadows+=("$rel  (re-declares a kernel-owned JSON Schema \$id)")
 done < <(grep -rIlE '"\$id"[[:space:]]*:[[:space:]]*"https://evals\.intentsolutions\.io/(gate-result|evidence-bundle)/' \
             --include='*.json' --exclude-dir=node_modules --exclude-dir=.git . 2>/dev/null || true)
 
-# 2. TS/Python source DEFINING (not importing) a kernel-owned type/class.
-#    Definitions look like `interface GateResultV1`, `class EvidenceBundle`,
-#    `type EvidenceBundlePayload = ...`. Imports (`import { GateResultV1Schema }
-#    from '@intentsolutions/core/...'`) are NOT matched by these anchors.
+# 2. TS/Python source DEFINING (not importing, not re-exporting) a kernel-owned
+#    type/class. The keyword alone is not enough to tell a definition from a
+#    re-export — `export { type EvidenceBundle } from "@intentsolutions/core"`
+#    carries `type EvidenceBundle` too. What separates them is what FOLLOWS the
+#    identifier, so the anchor requires actual declaration syntax:
+#
+#      interface X {        interface X<T>        interface X extends Y
+#      class X {            class X<T>            class X extends Y
+#      class X(Base):       class X:              class X implements Y   (py/ts)
+#      type X =             type X<T> =
+#
+#    A re-export or import entry is followed by `,`, `}`, `;`, or end-of-line and
+#    therefore cannot match. `declare`/`abstract` prefixes are tolerated.
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
   rel="${f#./}"
   is_allowlisted "$rel" && continue
   shadows+=("$rel  (defines a kernel-owned type — should import from @intentsolutions/core)")
 done < <(grep -rIlE \
-            '(^|[[:space:]])(export[[:space:]]+)?(interface|class|type)[[:space:]]+(GateResultV1|EvidenceBundle|EvidenceBundlePayload)\b' \
+            '(^|[[:space:]])((export|declare|abstract)[[:space:]]+)*(interface|class|type)[[:space:]]+(EvidenceBundlePayload|EvidenceBundle|GateResultV1)([[:space:]]*[{<(:=]|[[:space:]]+(extends|implements)[[:space:]])' \
             --include='*.ts' --include='*.py' --exclude-dir=node_modules --exclude-dir=.git . 2>/dev/null || true)
 
 if [[ ${#shadows[@]} -eq 0 ]]; then
