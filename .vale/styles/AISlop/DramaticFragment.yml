@@ -1,0 +1,10 @@
+extends: existence
+message: "AI-slop cadence: dramatic fragment ('%s'). Cut it or fold into the prior sentence."
+level: warning
+nonword: true
+link: https://github.com/petergyang/no-ai-slop
+tokens:
+  - '[Tt]hat[''’]?s it\. [Tt]hat[''’]?s the (whole|entire) '
+  - '\b[Ff]ull stop\.'
+  - '\b[Ss]imple as that\.'
+  - '\b[Ee]nd of story\.'
