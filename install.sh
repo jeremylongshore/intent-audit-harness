@@ -5,13 +5,19 @@
 # Works for Python / Go / Rust / Java / Ruby / PHP / C++ / .NET / Shell repos
 # — anything that isn't Node. (Node repos should use: pnpm add -D @intentsolutions/audit-harness)
 #
-# USAGE:
+# USAGE (installs the latest release):
 #   curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/main/install.sh | bash
 #
-# Pinned to a specific version:
-#   curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/v1.1.5/install.sh | bash
-#   # or:
-#   AUDIT_HARNESS_VERSION=v1.1.5 curl -sSL .../install.sh | bash
+# Pinned to a specific version — any of these work:
+#   curl -sSL .../install.sh | bash -s -- --version v1.3.0     # preferred: pipe-safe
+#   curl -sSL .../install.sh | AUDIT_HARNESS_VERSION=v1.3.0 bash
+#   curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/v1.3.0/install.sh | bash
+#
+# NOT this — it is the shell's most common footgun and this file used to recommend it:
+#   AUDIT_HARNESS_VERSION=v1.3.0 curl -sSL .../install.sh | bash
+# In a pipeline the assignment applies to `curl`, NOT to `bash`. The variable never
+# reaches this script, so it silently installs the default instead of what you asked
+# for — with a success message naming the version you did not get.
 #
 # INSTALLS INTO:
 #   .audit-harness/               (scripts + version marker)
@@ -24,8 +30,65 @@
 
 set -euo pipefail
 
-VERSION="${AUDIT_HARNESS_VERSION:-v1.1.5}"
 REPO="jeremylongshore/intent-audit-harness"
+
+# Floor used only when the latest release cannot be resolved (offline / API rate limit).
+# This is a FALLBACK, not the normal path — a hardcoded default is what let installs
+# silently pin to a stale version for months.
+FALLBACK_VERSION="v1.3.0"
+
+# --version/-v <tag> — the pipe-safe way to pin, since `curl | bash -s -- --version X`
+# passes the argument to THIS script rather than to curl.
+VERSION_ARG=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version|-v)
+      VERSION_ARG="${2:-}"
+      if [[ -z "${VERSION_ARG}" ]]; then
+        echo "✗ audit-harness install: --version requires a tag (e.g. --version v1.3.0)" >&2
+        exit 2
+      fi
+      shift 2
+      ;;
+    *)
+      echo "✗ audit-harness install: unknown argument '$1'" >&2
+      echo "  usage: install.sh [--version vX.Y.Z]" >&2
+      exit 2
+      ;;
+  esac
+done
+
+resolve_latest_tag() {
+  # Ask GitHub for the newest release tag. Best-effort: any failure returns empty and
+  # the caller falls back, so a network problem degrades to a pinned install rather
+  # than aborting.
+  local api="https://api.github.com/repos/${REPO}/releases/latest"
+  local body=""
+  if command -v curl >/dev/null 2>&1; then
+    body="$(curl -sSL --max-time 10 "${api}" 2>/dev/null || true)"
+  elif command -v wget >/dev/null 2>&1; then
+    body="$(wget -qO- --timeout=10 "${api}" 2>/dev/null || true)"
+  fi
+  [[ -z "${body}" ]] && return 0
+  printf '%s' "${body}" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1
+}
+
+# Precedence: explicit flag > environment variable > resolved latest > fallback floor.
+if [[ -n "${VERSION_ARG}" ]]; then
+  VERSION="${VERSION_ARG}"
+  VERSION_SOURCE="--version flag"
+elif [[ -n "${AUDIT_HARNESS_VERSION:-}" ]]; then
+  VERSION="${AUDIT_HARNESS_VERSION}"
+  VERSION_SOURCE="AUDIT_HARNESS_VERSION"
+else
+  VERSION="$(resolve_latest_tag)"
+  if [[ -n "${VERSION}" ]]; then
+    VERSION_SOURCE="latest release"
+  else
+    VERSION="${FALLBACK_VERSION}"
+    VERSION_SOURCE="fallback (could not reach the GitHub releases API)"
+  fi
+fi
 TARGET_DIR=".audit-harness"
 WRAPPER_DIR="scripts"
 WRAPPER_PATH="${WRAPPER_DIR}/audit-harness"
@@ -39,7 +102,7 @@ fi
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
-echo "→ installing @intentsolutions/audit-harness ${VERSION} into ${REPO_ROOT}"
+echo "→ installing @intentsolutions/audit-harness ${VERSION} into ${REPO_ROOT}  [version from: ${VERSION_SOURCE}]"
 
 # Clean previous install
 if [[ -d "${TARGET_DIR}" ]]; then
@@ -213,7 +276,9 @@ Next steps:
   2. Commit: "chore(test): install @intentsolutions/audit-harness ${VERSION}"
   3. Wire into your pre-commit hook + CI — see .audit-harness/README.md
 
-To upgrade later:
-  AUDIT_HARNESS_VERSION=vX.Y.Z curl -sSL \\
-    https://raw.githubusercontent.com/${REPO}/main/install.sh | bash
+To upgrade later (re-running with no arguments installs the latest release):
+  curl -sSL https://raw.githubusercontent.com/${REPO}/main/install.sh | bash
+
+To pin a specific version, pass it to bash — NOT to curl:
+  curl -sSL https://raw.githubusercontent.com/${REPO}/main/install.sh | bash -s -- --version vX.Y.Z
 EOF
