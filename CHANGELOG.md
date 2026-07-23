@@ -13,6 +13,51 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 > those events is deferred to a routine v2.1 release rather than headlined here — it
 > is additive telemetry refinement, not a 1.2.0 capability boundary.
 
+## [1.3.1] - 2026-07-23
+
+A patch release closing **five coverage-detection defects on `escape-scan`**, the
+flagship gate. No CLI surface change, no new commands, no policy change — the gate
+now detects escapes it previously let through. Adopters on 1.3.0 should upgrade:
+two of the five were **fail-open**, meaning a real threshold-lowering escape merged
+clean.
+
+### Fixed
+
+- **`set -e` killed the script mid-load, producing a silent total bypass
+  (fail-open).** Under `set -euo pipefail`, a `grep` in the policy-loading command
+  substitution that matched nothing made the substitution non-zero, and `set -e`
+  terminated `escape-scan.sh` **before a single check ran** — no output, exit 1.
+  Since exit 1 is the documented CHALLENGE code, a repo whose `tests/TESTING.md`
+  omitted any one of `coverage.line` / `coverage.branch` / `mutation.kill_rate`
+  got **zero escape scanning** while appearing to merely warn. A blatant
+  `fail_under` of 5 sailed through.
+- **A non-numeric policy value poisoned every later comparison (fail-open).** The
+  extracting `sed` left the line unchanged when it held no number, so
+  `coverage.line: eighty` became the "floor"; every subsequent comparison then died
+  on `[[: invalid arithmetic operator ]]` and the scan finished `REFUSE=0`, exit 0.
+  Non-numeric values are now discarded (built-in default stands) and reported as a
+  `[FLAG]`.
+- **Unquoted Jest coverage keys were never matched.** The pattern required
+  double-quoted keys (`"lines": <N>`), so it caught `package.json` but missed
+  `jest.config.js` — the unquoted `lines: <N>` form, which is the standard JS-config
+  shape. Single quotes were also missed, a one-character evasion.
+- **Only the first number on a line was compared.** `{ branches: <hi>, lines: <lo> }`
+  tested `branches`, passed, and never looked at `lines`. This affected the
+  previously-"working" quoted form too. Every `key: value` pair on the line is now
+  tested.
+- **False positive from making quotes optional.** A bare `lines: 3` is a coverage
+  threshold only inside a coverage config; in ordinary source it is just an object
+  key, and `const x = { lines: 3 }` would have become a `REFUSE`. Coverage-key
+  checks are now scoped to recognised coverage-config filenames, which loses no real
+  detection (a threshold written elsewhere has no effect on coverage and so cannot
+  be an escape).
+
+### Added
+
+- `tests/escape-scan/run-escape-scan-tests.sh` — a dedicated regression suite
+  covering all five defects, wired as its own CI lane. Each defect has a test that
+  fails against 1.3.0.
+
 ## [1.3.0] - 2026-07-05
 
 ### Added
