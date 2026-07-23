@@ -21,6 +21,10 @@ now detects escapes it previously let through. Adopters on 1.3.0 should upgrade:
 two of the five were **fail-open**, meaning a real threshold-lowering escape merged
 clean.
 
+**First required dogfood (2026-07-23):** CCPI (`claude-code-plugins-plus-skills`)
+made `audit-harness conform --strict` a **required** branch-protection context
+(`skill-conform`, own workflow — never inside `ci-required`). See CCPI#1118.
+
 ### Fixed
 
 - **`set -e` killed the script mid-load, producing a silent total bypass
