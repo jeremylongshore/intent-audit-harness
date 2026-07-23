@@ -163,12 +163,23 @@ jobs:
     runs-on: ubuntu-latest
     # Advisory detector (873c): flags any file that re-DECLARES a kernel-owned
     # contract (gate-result/v1 or evidence-bundle JSON Schema $id, or a TS/Python
-    # GateResultV1/EvidenceBundle type definition) instead of referencing
+    # GateResultV1/EvidenceBundle type DEFINITION) instead of referencing
     # @intentsolutions/core. Runs in advisory mode (exit 0, GitHub annotations)
     # so the lane is green; a found shadow surfaces as a warning, not a block.
     # iah-E02 (the architecture question that historically gated this) is closed.
+    #
+    # Scope note: this detector is CONSUMER-side. It has nothing useful to say
+    # about which kernel VERSION a consumer pins — lagging the kernel is the
+    # design (DR-064 FORWARD compatibility + Blueprint B § 7.0.1 Parallel Change),
+    # not drift. See intent-eval-lab 000-docs/111-AT-SPEC.
     steps:
       - uses: actions/checkout@v7
+      - name: Contract tests for the detector itself
+        # Deterministic + offline (every case is a literal source fixture in a
+        # throwaway git repo). Runs BEFORE the detector: a detector whose own
+        # tests fail should not have its "clean" believed — the false positives
+        # it shipped were invisible precisely because nothing tested it.
+        run: bash tests/kernel-shadow/run-kernel-shadow-tests.sh
       - name: Run kernel-shadow-check (advisory)
         run: bash scripts/kernel-shadow-check.sh
 
