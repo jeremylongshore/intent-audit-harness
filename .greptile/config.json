@@ -5,9 +5,27 @@
   "fixWithAI": true,
   "statusCheck": false,
   "updateExistingSummaryComment": true,
-  "excludeAuthors": ["dependabot[bot]", "github-actions[bot]", "renovate[bot]", "release-please[bot]", "semantic-release-bot", "renovate-bot"],
-  "excludeBranches": ["dependabot/**", "renovate/**", "release-please--branches--**"],
-  "disabledLabels": ["dependencies", "automated", "generated", "stats", "sync", "skip-greptile"],
+  "excludeAuthors": [
+    "dependabot[bot]",
+    "github-actions[bot]",
+    "renovate[bot]",
+    "release-please[bot]",
+    "semantic-release-bot",
+    "renovate-bot"
+  ],
+  "excludeBranches": [
+    "dependabot/**",
+    "renovate/**",
+    "release-please--branches--**"
+  ],
+  "disabledLabels": [
+    "dependencies",
+    "automated",
+    "generated",
+    "stats",
+    "sync",
+    "skip-greptile"
+  ],
   "ignoreKeywords": "chore(deps)\nchore(deps-dev)\nbuild(deps)\nbuild(deps-dev)\n[skip greptile]\n[greptile skip]",
   "ignorePatterns": "node_modules/\ndist/\nbuild/\ncoverage/\n.beads/\n.audit-harness/\npackage-lock.json\npnpm-lock.yaml\nyarn.lock\nbun.lock\nbun.lockb\n**/*.min.js\n**/*.map\n**/*.snap\nrust/target/\nrust/Cargo.lock\npython/**/__pycache__/",
   "confidenceScoreSection": { "included": true },
@@ -27,7 +45,13 @@
     {
       "id": "semver-breaking-change-discipline",
       "rule": "Any change to the public CLI surface — subcommand roster, flags, exit codes, or the stdout/stderr stream contract — is governed by SEMVER.md. Removing/renaming a subcommand or flag, changing an existing exit code for the same input, changing existing default text output, moving output between stdout and stderr for the same flag combination, or tightening an input regex/enum is a MAJOR change. Such a change MUST ship: the correct version bump per SEMVER.md (anything ambiguous → major), a CHANGELOG.md entry, and adopter-facing migration notes (a MAJOR bump ships migration notes). Flag any CLI/exit-code/output-stream change shipped without the matching SemVer bump + CHANGELOG entry + migration notes.",
-      "scope": ["bin/**", "scripts/**", "SEMVER.md", "CHANGELOG.md", "package.json"],
+      "scope": [
+        "bin/**",
+        "scripts/**",
+        "SEMVER.md",
+        "CHANGELOG.md",
+        "package.json"
+      ],
       "severity": "high"
     },
     {
@@ -57,7 +81,12 @@
     {
       "id": "frozen-predicate-uri",
       "rule": "The `emit-evidence` in-toto predicate URI `https://evals.intentsolutions.io/gate-result/v1` is FROZEN once any signed Statement referencing it is pushed to a public transparency log (Rekor). A breaking change to the predicate body must mint a new URI (`gate-result/v2`) — never silently change the body shape under the same URI. The `evals.intentsolutions.io` namespace is reserved exclusively for these predicate URIs. Flag any edit that changes the `gate-result/v1` predicate URI string or mutates the predicate body shape under the same URI.",
-      "scope": ["scripts/emit-evidence.sh", "scripts/emit-evidence.py", "bin/**", "SEMVER.md"],
+      "scope": [
+        "scripts/emit-evidence.sh",
+        "scripts/emit-evidence.py",
+        "bin/**",
+        "SEMVER.md"
+      ],
       "severity": "high"
     }
   ]
