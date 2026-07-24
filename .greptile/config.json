@@ -1,12 +1,17 @@
 {
   "strictness": 3,
   "commentTypes": ["logic", "syntax"],
-  "triggerOnUpdates": true,
+  "triggerOnUpdates": false,
   "fixWithAI": true,
   "statusCheck": false,
-  "ignorePatterns": "node_modules/\ncoverage/\npackage-lock.json\npnpm-lock.yaml\n.audit-harness/\nrust/target/\nrust/Cargo.lock\npython/**/__pycache__/",
+  "updateExistingSummaryComment": true,
+  "excludeAuthors": ["dependabot[bot]", "github-actions[bot]", "renovate[bot]", "release-please[bot]", "semantic-release-bot", "renovate-bot"],
+  "excludeBranches": ["dependabot/**", "renovate/**", "release-please--branches--**"],
+  "disabledLabels": ["dependencies", "automated", "generated", "stats", "sync", "skip-greptile"],
+  "ignoreKeywords": "chore(deps)\nchore(deps-dev)\nbuild(deps)\nbuild(deps-dev)\n[skip greptile]\n[greptile skip]",
+  "ignorePatterns": "node_modules/\ndist/\nbuild/\ncoverage/\n.beads/\n.audit-harness/\npackage-lock.json\npnpm-lock.yaml\nyarn.lock\nbun.lock\nbun.lockb\n**/*.min.js\n**/*.map\n**/*.snap\nrust/target/\nrust/Cargo.lock\npython/**/__pycache__/",
   "confidenceScoreSection": { "included": true },
-  "sequenceDiagramSection": { "included": true },
+  "sequenceDiagramSection": { "included": false },
   "rules": [
     {
       "id": "no-gate-weakening",
