@@ -1,3 +1,11 @@
+<!-- BEGIN BD-SYNC:cross-ref:v1 -->
+
+Beads: `bd_000-projects-aon3.3.1`
+GitHub: `jeremylongshore/intent-audit-harness#148`
+Projection-SHA256: 8e021a94abf84d84a4cf967517ec3b7643a8ff9050d1ccf064da55c90aa33d33
+
+<!-- END BD-SYNC:cross-ref:v1 -->
+
 # Design Notes: Evidence Bundle Gate-Result Envelope
 
 > **Status: PHASE A DESIGN NOTES.** This document is the audit-harness side of the co-designed Evidence Bundle gate-result envelope schema. The canonical schema lives at `intent-eval-lab/specs/evidence-bundle/v0.1.0-draft/schema/gate-result.json` (per `IEL-4`); this document captures the design conversation and the audit-harness adoption plan.
@@ -22,22 +30,22 @@ Define the JSON Schema 2020-12 envelope for a single Evidence Bundle gate-result
 
 ### Required fields
 
-| Field | Type | Description |
-|---|---|---|
-| `gate_id` | string | Stable identifier for the gate. Conventionally `<framework>:<gate-name>` (e.g., `"audit-harness:escape-scan"`, `"audit-harness:crap"`, `"j-rig:eval-spec"`). |
-| `result` | enum | One of: `"pass"`, `"fail"`, `"skip"`, `"error"`. `"skip"` indicates the gate was applicable but intentionally bypassed; `"error"` indicates the gate could not produce a verdict. |
-| `timestamp` | string (ISO 8601) | UTC timestamp of emission. RFC 3339 format. |
-| `schema_version` | string (SemVer) | Version of THIS schema (envelope contract). Initial value: `"1.0"`. |
+| Field            | Type              | Description                                                                                                                                                                       |
+| ---------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gate_id`        | string            | Stable identifier for the gate. Conventionally `<framework>:<gate-name>` (e.g., `"audit-harness:escape-scan"`, `"audit-harness:crap"`, `"j-rig:eval-spec"`).                      |
+| `result`         | enum              | One of: `"pass"`, `"fail"`, `"skip"`, `"error"`. `"skip"` indicates the gate was applicable but intentionally bypassed; `"error"` indicates the gate could not produce a verdict. |
+| `timestamp`      | string (ISO 8601) | UTC timestamp of emission. RFC 3339 format.                                                                                                                                       |
+| `schema_version` | string (SemVer)   | Version of THIS schema (envelope contract). Initial value: `"1.0"`.                                                                                                               |
 
 ### Optional fields
 
-| Field | Type | Description |
-|---|---|---|
-| `metadata` | object | Implementation-specific context. Recommended sub-fields below. |
-| `policy_hash` | string | SHA-256 of the policy file the gate evaluated against (e.g., `tests/TESTING.md` content hash). |
-| `input_hash` | string | SHA-256 of the input the gate evaluated (e.g., the diff content for escape-scan). |
-| `duration_ms` | integer | Wall-clock duration of gate evaluation in milliseconds. |
-| `evidence_uri` | string | URI to a more detailed evidence artifact (e.g., a JSON report file, a log dump). |
+| Field          | Type    | Description                                                                                    |
+| -------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `metadata`     | object  | Implementation-specific context. Recommended sub-fields below.                                 |
+| `policy_hash`  | string  | SHA-256 of the policy file the gate evaluated against (e.g., `tests/TESTING.md` content hash). |
+| `input_hash`   | string  | SHA-256 of the input the gate evaluated (e.g., the diff content for escape-scan).              |
+| `duration_ms`  | integer | Wall-clock duration of gate evaluation in milliseconds.                                        |
+| `evidence_uri` | string  | URI to a more detailed evidence artifact (e.g., a JSON report file, a log dump).               |
 
 ### Recommended `metadata` sub-fields
 
@@ -158,20 +166,20 @@ the accept decision from immutable inputs. (Canonical machine-readable schema:
 `@intentsolutions/core/schemas/v1/skill-refiner-pass.schema.json`,
 `additionalProperties: false`.)
 
-| Field | Type | Role in the row |
-|---|---|---|
-| `verdict` | enum `accept \| reject` | Decision verdict (closed enum). A relying party reads `verdict === "accept"`, never row-presence alone. |
-| `reason` | array of strings, `minItems: 1` | Structured reason **codes** (not free prose — avoids leaking skill content onto a public transparency log). |
-| `refiner_strategy_id` | string, `minLength: 1` | The `RefinerStrategy` that produced the verdict — REQUIRED in the signed body (mechanism-swappable must not be mechanism-untraceable). Append-only-registered; a retired id is never reused. |
-| `skill_version_id` | UUIDv7 | The accepted `SkillVersion` (kernel's 14th entity). Referenced by the kernel's existing UUIDv7 primitive. |
-| `parent_version_id` | UUIDv7 | The parent `SkillVersion` the accepted one was refined from — binds parent → child so an unrelated skill can't be laundered through a forged lineage. |
-| `source_snapshot_hash` | `sha256:`-prefixed | Content hash of the **post-edit** SkillVersion snapshot. The in-toto `subject[].digest.sha256` equals this value prefix-stripped (the § 4 binding above). |
-| `eval_set_ref` | object `{ hash, version, lineage_id }` | Reference to the **FROZEN** eval-set the verdict was derived against — the epistemic basis. `hash` (`sha256:`-prefixed) pins exact content; `version` (string, `minLength: 1`) pins which published eval-set; `lineage_id` (UUIDv7) pins the lineage. `additionalProperties: false`. |
-| `edit_proposal_hash` | `sha256:`-prefixed | Hash of the `EditProposal` (the bounded edit-ops) that earned the pass — binds WHAT changed. |
-| `behavioral_delta` | number | Observed delta on the behavioral dimension the accept gate requires significant Pareto-dominance on. |
-| `named_dimension_deltas` | array of `{ id, delta, non_regressed }` | Per-named-dimension deltas — the non-regression surface. For an `accept`, every entry's `non_regressed` MUST be `true`. MAY be empty. Each item `additionalProperties: false`. |
-| `alpha` | number, `(0, 1)` exclusive | The significance level the one-sided z-test ran at — the falsifiability anchor. |
-| `test_statistic_kind` | const `one-sided-z` | Statistical-test family. CONST for v1; changing it mints `/v2`. |
+| Field                    | Type                                    | Role in the row                                                                                                                                                                                                                                                                      |
+| ------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `verdict`                | enum `accept \| reject`                 | Decision verdict (closed enum). A relying party reads `verdict === "accept"`, never row-presence alone.                                                                                                                                                                              |
+| `reason`                 | array of strings, `minItems: 1`         | Structured reason **codes** (not free prose — avoids leaking skill content onto a public transparency log).                                                                                                                                                                          |
+| `refiner_strategy_id`    | string, `minLength: 1`                  | The `RefinerStrategy` that produced the verdict — REQUIRED in the signed body (mechanism-swappable must not be mechanism-untraceable). Append-only-registered; a retired id is never reused.                                                                                         |
+| `skill_version_id`       | UUIDv7                                  | The accepted `SkillVersion` (kernel's 14th entity). Referenced by the kernel's existing UUIDv7 primitive.                                                                                                                                                                            |
+| `parent_version_id`      | UUIDv7                                  | The parent `SkillVersion` the accepted one was refined from — binds parent → child so an unrelated skill can't be laundered through a forged lineage.                                                                                                                                |
+| `source_snapshot_hash`   | `sha256:`-prefixed                      | Content hash of the **post-edit** SkillVersion snapshot. The in-toto `subject[].digest.sha256` equals this value prefix-stripped (the § 4 binding above).                                                                                                                            |
+| `eval_set_ref`           | object `{ hash, version, lineage_id }`  | Reference to the **FROZEN** eval-set the verdict was derived against — the epistemic basis. `hash` (`sha256:`-prefixed) pins exact content; `version` (string, `minLength: 1`) pins which published eval-set; `lineage_id` (UUIDv7) pins the lineage. `additionalProperties: false`. |
+| `edit_proposal_hash`     | `sha256:`-prefixed                      | Hash of the `EditProposal` (the bounded edit-ops) that earned the pass — binds WHAT changed.                                                                                                                                                                                         |
+| `behavioral_delta`       | number                                  | Observed delta on the behavioral dimension the accept gate requires significant Pareto-dominance on.                                                                                                                                                                                 |
+| `named_dimension_deltas` | array of `{ id, delta, non_regressed }` | Per-named-dimension deltas — the non-regression surface. For an `accept`, every entry's `non_regressed` MUST be `true`. MAY be empty. Each item `additionalProperties: false`.                                                                                                       |
+| `alpha`                  | number, `(0, 1)` exclusive              | The significance level the one-sided z-test ran at — the falsifiability anchor.                                                                                                                                                                                                      |
+| `test_statistic_kind`    | const `one-sided-z`                     | Statistical-test family. CONST for v1; changing it mints `/v2`.                                                                                                                                                                                                                      |
 
 **Optional, descriptive (NOT determinants — spec 083 § 5.2):**
 `cost_record_ref` (UUIDv7 → `CostRecord.id`), `replay_fidelity_level`
@@ -231,3 +239,51 @@ runtime-chamber keyid is INVALID.
 - Audit-harness CLI dispatcher: `bin/audit-harness.js`
 - Existing subcommand that emits JSON (precedent): `scripts/crap-budget.{sh,py}` — already emits JSON, useful reference for the row-emission shape
 - Master plan: `~/.claude/plans/please-take-your-time-glimmering-stardust.md` § "audit-harness — what's needed"
+
+## 9. D9 — Evidence bundle row lifecycle for `skill-refiner-pass/v1`
+
+The D9 lifecycle makes the hand-off from a refiner decision to a rollout
+decision explicit. A refiner emits a signed predicate row; audit-harness
+places the row in the append-only bundle stream; and intent-rollout-gate
+consumes the canonical bundle against the repository's testing policy. A
+consumer evaluates the row's predicate and evidence rather than inferring a
+failure from row absence.
+
+```text
+   refiner accept()              audit-harness                intent-rollout-gate
+   ─────────────────              ─────────────                ───────────────────
+
+   SkillVersion v_new   ──emit──▶  gate-result row
+                                  ┌────────────────────────┐
+                                  │ predicate:             │
+                                  │   skill-refiner-pass/v1│
+                                  │ subject:               │
+                                  │   sha256:<v_new.hash>  │
+                                  │ result: pass | fail    │
+                                  │ score_deltas: {…}      │
+                                  │ rejected_buffer: [...] │
+                                  │ actor: <human|claude>  │
+                                  │ provenance: sigstore   │
+                                  │ spec_version: v1.0.0   │
+                                  └───────────┬────────────┘
+                                              │  bundle.jsonl
+                                              ▼
+                                  ┌────────────────────────┐
+                                  │  Evidence Bundle       │
+                                  │  (canonical, signed)   │
+                                  └───────────┬────────────┘
+                                              │
+                                              ▼  consumed
+                                  ┌────────────────────────┐
+                                  │  intent-rollout-gate   │
+                                  │  Action evaluates row  │
+                                  │  against TESTING.md    │
+                                  │  policy →              │
+                                  │  ship / no-ship verdict│
+                                  └────────────────────────┘
+```
+
+The diagram is a topology contract, not an implementation claim: the refiner
+owns acceptance, audit-harness owns bundle assembly, and the rollout gate owns
+the policy decision. The signed bundle remains the canonical hand-off between
+those responsibilities.
