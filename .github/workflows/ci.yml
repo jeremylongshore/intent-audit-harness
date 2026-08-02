@@ -184,11 +184,11 @@ jobs:
         run: bash scripts/kernel-shadow-check.sh
 
   report-lineage:
-    name: report-lineage contract suite
+    name: report-lineage + sample-balance contract suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Run deterministic Run/Grade/report lineage fixtures
+      - name: Run deterministic Run/Grade/report and sample-balance fixtures
         run: bash tests/report-lineage/run-report-lineage-tests.sh
 
   version-canonical-check:

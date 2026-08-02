@@ -18,10 +18,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`report-lineage` subcommand — deterministic Run/Grade/report verification.** The
   read-only, stdlib-only gate validates J-Rig `unified-report/v1` and
   `suite-report/v1` projections, recomputes summary and per-cell arithmetic,
-  checks selected Grader snapshot identity, and optionally cross-checks a suite
-  against its `eval-suite/v1` audit manifest. Findings are ADVISORY by default;
-  `--strict` turns unverifiable or mismatched lineage into FAIL. No SQLite,
-  network, J-Rig import, or runtime dependency is introduced.
+  checks selected Grader snapshot identity and unique per-cell `sample_index`
+  slots, and optionally cross-checks a suite against its `eval-suite/v1` audit
+  manifest. Failed/retried attempts may leave intentional index gaps; the gate
+  does not infer `target_n` from a report that does not declare it. Findings are
+  ADVISORY by default; `--strict` turns unverifiable or mismatched lineage into
+  FAIL. No SQLite, network, J-Rig import, or runtime dependency is introduced.
 
 ## [1.3.1] - 2026-07-23
 
