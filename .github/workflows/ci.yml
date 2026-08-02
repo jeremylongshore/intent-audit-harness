@@ -159,8 +159,12 @@ jobs:
         run: npx eslint "bin/**/*.js"
 
   kernel-shadow-check:
-    name: kernel-shadow-check (no local re-declaration of kernel contracts)
+    name: kernel-shadow-check (no local re-declaration or stale range)
     runs-on: ubuntu-latest
+    env:
+      # Pin the comparison so the gate and its evidence do not change merely
+      # because npm publishes a newer kernel while this workflow is running.
+      KERNEL_LATEST_VERSION: "0.10.0"
     # Advisory detector (873c): flags any file that re-DECLARES a kernel-owned
     # contract (gate-result/v1 or evidence-bundle JSON Schema $id, or a TS/Python
     # GateResultV1/EvidenceBundle type DEFINITION) instead of referencing
@@ -169,9 +173,10 @@ jobs:
     # iah-E02 (the architecture question that historically gated this) is closed.
     #
     # Scope note: this detector is CONSUMER-side. It has nothing useful to say
-    # about which kernel VERSION a consumer pins — lagging the kernel is the
-    # design (DR-064 FORWARD compatibility + Blueprint B § 7.0.1 Parallel Change),
-    # not drift. See intent-eval-lab 000-docs/111-AT-SPEC.
+    # about which kernel VERSION a consumer pins — this gate now checks that
+    # dependency ranges can resolve to the current kernel as a second shadow class.
+    # A stale 0.x caret range is a compatibility shadow, not forward-compatible
+    # currency. The range check remains advisory unless --strict is requested.
     steps:
       - uses: actions/checkout@v7
       - name: Contract tests for the detector itself

@@ -11,7 +11,8 @@
  * published surface. `ci/` is excluded from `files`, so nothing here ships to npm
  * consumers and the published package stays zero-dep. CI installs the kernel with
  * `npm i --no-save @intentsolutions/core@<v>` (never written to package.json)
- * just for this emit job — see `.github/workflows/release.yml`.
+ * just for this emit job — see `.github/workflows/release.yml`, which pins the
+ * current canonical kernel version exactly rather than using a floating range.
  *
  * This is the DETERMINISTIC half of the emit. It runs audit-harness's real
  * deterministic self-gate, shapes the outcome into a kernel `gate-result/v1`
