@@ -30,6 +30,7 @@ const COMMANDS = {
   'fp-rate':       { script: 'fp-rate.py',       args: [] },
   'currency':      { script: 'currency.py',      args: [] },
   'migration-notes': { script: 'migration-notes.py', args: [] },
+  'report-lineage': { script: 'report-lineage.py', args: [] },
   'gen-layer-applicability': { script: 'gen-layer-applicability.py', args: [] },
 };
 
@@ -111,6 +112,11 @@ Commands:
                            a minor/patch boundary reports "no action required".
                            --json emits a migration-notes/v1 envelope. Exit 1 =
                            version/range not in CHANGELOG; 2 = CHANGELOG unreadable.
+  report-lineage            Verify J-Rig unified/suite Run/Grade/report lineage
+                           and arithmetic. Read-only, offline, advisory by default;
+                           --strict turns unverifiable reports into FAIL. Use
+                           --report PATH --audit-manifest PATH --json for a
+                           machine-readable gate-result/v1 row.
   gen-layer-applicability  Project schemas/audit-profile/registry.v1.json into
                            schemas/audit-profile/layer-applicability.md. --write to
                            regenerate, --check to fail on drift (CI gate). The doc
