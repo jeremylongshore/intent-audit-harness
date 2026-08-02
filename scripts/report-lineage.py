@@ -4,9 +4,9 @@ audit-harness report-lineage — verify generic Run/Grade/report projections.
 
 This gate validates the read-only report projection emitted by J-Rig without
 importing J-Rig, opening SQLite, fetching schemas, or changing the inspected
-filesystem. It checks both the report's internal arithmetic and, for a suite
-report, the optional source audit manifest that records the jobs that produced
-the projection.
+filesystem. It checks the report's internal arithmetic and per-cell sample-slot
+lineage and, for a suite report, the optional source audit manifest that records
+the jobs that produced the projection.
 
 Usage:
   audit-harness report-lineage --report report.json [--json] [--strict]
@@ -390,11 +390,35 @@ def validate_unified(report, errors):
         parsed = validate_run(run, selector, errors, path_key("report", "runs", index))
         if parsed is None:
             continue
+        # Keep the source-array position for deterministic diagnostics without
+        # making callers depend on a second, synthetic Run identity.
+        parsed["_report_index"] = index
         raw_id = parsed.get("raw_run_id")
         if raw_id in seen_ids:
             add_error(errors, "lineage", path_key("report", "runs", index, "raw_run_id"), "duplicate Raw Run id")
         seen_ids.add(raw_id)
         parsed_runs.append(parsed)
+
+    sample_slots = {}
+    duplicate_sample_indexes = 0
+    for run in parsed_runs:
+        sample_index = run.get("sample_index")
+        if not nonnegative_int(sample_index):
+            continue
+        cell_key = tuple(run.get(item) for item in ("task_id", "task_version", "config_id", "config_version", "model"))
+        slots = sample_slots.setdefault(cell_key, {})
+        previous_index = slots.get(sample_index)
+        if previous_index is not None:
+            duplicate_sample_indexes += 1
+            add_error(
+                errors,
+                "lineage",
+                path_key("report", "runs", run["_report_index"], "sample_index"),
+                f"duplicate sample_index {sample_index} in sampling cell; first seen at "
+                f"report.runs.{previous_index}.sample_index",
+            )
+        else:
+            slots[sample_index] = run["_report_index"]
 
     grouped = {}
     for run in parsed_runs:
@@ -455,6 +479,12 @@ def validate_unified(report, errors):
         "selector": selector,
         "runs": parsed_runs,
         "run_ids": [run.get("raw_run_id") for run in parsed_runs],
+        "sample_balance": {
+            "sampling_cell_count": len(sample_slots),
+            "unique_sample_slot_count": sum(len(slots) for slots in sample_slots.values()),
+            "duplicate_sample_index_count": duplicate_sample_indexes,
+            "target_n_verified": False,
+        },
     }
 
 
@@ -575,7 +605,7 @@ def version():
         return "unknown"
 
 
-def build_row(result, errors, report_path, source_path, report_schema, input_hash, commit_sha):
+def build_row(result, errors, report_path, source_path, report_schema, input_hash, commit_sha, sample_balance=None):
     def display_path(path):
         if not path:
             return None
@@ -601,6 +631,8 @@ def build_row(result, errors, report_path, source_path, report_schema, input_has
             "errors": errors[:20],
         },
     }
+    if sample_balance is not None:
+        row["metadata"]["sample_balance"] = sample_balance
     if errors:
         row["advisory_severity"] = "error"
         row["failure_mode"] = "report-lineage:unverifiable"
@@ -667,8 +699,16 @@ def main():
         input_bytes += b"\0" + source_raw
     input_hash = sha256_bytes(input_bytes)
     result = "PASS" if not errors else ("FAIL" if args.strict else "ADVISORY")
+    sample_balance = unified.get("sample_balance") if unified is not None else None
     row = build_row(
-        result, errors, args.report, args.audit_manifest, report_schema, input_hash, git_commit(args.report),
+        result,
+        errors,
+        args.report,
+        args.audit_manifest,
+        report_schema,
+        input_hash,
+        git_commit(args.report),
+        sample_balance,
     )
 
     if args.json:

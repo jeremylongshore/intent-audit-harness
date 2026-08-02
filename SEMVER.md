@@ -55,7 +55,7 @@ the cost of a silent CI breakage across N adopter repositories.
 | `emit-evidence` | 3 | Rekor push failed | v0.3.0 |
 | `emit-evidence` | 4 | production DNSSEC/CAA pre-flight failed — REFUSE to sign (fail-closed; nothing anchored) | v1.2.0 |
 | `report-lineage` | 0 | report is clean, or findings remain advisory | unreleased |
-| `report-lineage` | 1 | `--strict` found unverifiable or mismatched lineage | unreleased |
+| `report-lineage` | 1 | `--strict` found unverifiable or mismatched lineage, including duplicate sample slots | unreleased |
 | `report-lineage` | 2 | command-line usage error | unreleased |
 
 ### Stream contracts
@@ -119,7 +119,7 @@ If you are an adopter pinning `@intentsolutions/audit-harness@^0.x.y`:
 | 0.3.0 | 2026-05 (Milestone 2) | `--json` on all 6 gates; new `emit-evidence` subcommand; SemVer doc; backward-compat regression suite. Additive minor. |
 | 1.1.8+ | 2026-06 | new `cred-gate` subcommand (provider credential PASS/FAIL gate, iah-E08); `emit-evidence` now also fires the `gate.decision.emitted` OTel event (iah-E07b, per NORMATIVE intent-eval-lab `067-AT-SPEC` § 2.2: `gate.decision` enum `{pass, fail, advisory, error}` + `gate.name` + `gate.policy_ref`). Both additive. |
 | (unreleased) | 2026-06 | new `migration-notes` subcommand (adopter-facing migration-notes generator, iah-E05d) — read-only, stdlib, emits Markdown or a `migration-notes/v1` envelope from this file + `CHANGELOG.md`. Additive. |
-| (unreleased) | 2026-08 | new `report-lineage` subcommand — read-only, stdlib, emits a `gate-result/v1` row while verifying J-Rig Run/Grade/report projections and optional suite audit manifests. Additive. |
+| (unreleased) | 2026-08 | new `report-lineage` subcommand — read-only, stdlib, emits a `gate-result/v1` row while verifying J-Rig Run/Grade/report projections, per-cell sample-slot uniqueness, and optional suite audit manifests. Additive. |
 
 Future minor bumps add new gates, new flags, new optional fields in JSON metadata. Future major
 bumps will be rare; we will hold a major-bump as a last resort.

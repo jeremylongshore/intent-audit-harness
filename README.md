@@ -32,7 +32,7 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 | `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner (gitleaks / osv-scanner / Semgrep / syft / markdownlint / lychee) |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
 | `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
-| `audit-harness report-lineage` | Verify generic Run/Grade/report lineage and arithmetic; optionally cross-check a J-Rig suite audit manifest |
+| `audit-harness report-lineage` | Verify generic Run/Grade/report lineage, arithmetic, and per-cell sample-slot uniqueness; optionally cross-check a J-Rig suite audit manifest |
 | `audit-harness gen-layer-applicability` | Project the canonical audit-profile registry into `layer-applicability.md` |
 
 ## Install
