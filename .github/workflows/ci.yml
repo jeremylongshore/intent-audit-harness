@@ -183,6 +183,14 @@ jobs:
       - name: Run kernel-shadow-check (advisory)
         run: bash scripts/kernel-shadow-check.sh
 
+  report-lineage:
+    name: report-lineage contract suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run deterministic Run/Grade/report lineage fixtures
+        run: bash tests/report-lineage/run-report-lineage-tests.sh
+
   version-canonical-check:
     name: Manifest version + license alignment
     # Per IEP Convergence Debt Plan Priority 3 (iah-version-canonical-check,
