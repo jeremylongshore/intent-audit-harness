@@ -27,6 +27,14 @@ A gate may be promoted to `blocking` for a repo when **all** hold:
    git add .harness-hash tests/TESTING.md     # commit policy + manifest together
    ```
 
+4. **Producer coverage, when the rule is producer-sensitive.** A deny-list or
+   pattern gate calibrated on one model, author, or generator is not proven for
+   a new producer merely because the old corpus still meets the FP bar. Record
+   the producer population, corpus hash, rule version, metrics, and human
+   disposition, then run the new-producer vetting procedure in
+   [`producer-calibration.md`](./producer-calibration.md). An unvetted
+   population is `needs-recalibration`, not a green coverage claim.
+
 ## Why FP-rate, not FN-rate, is the promotion gate
 
 A false **negative** (a real problem the gate misses) is a coverage gap — annoying, but advisory output still surfaces it elsewhere and the gate can tighten over time. A false **positive** on a blocking gate halts a correct build, and the human response is to route around the gate permanently. So promotion is gated on FP-rate; FN-rate is reported for visibility but does not block promotion.

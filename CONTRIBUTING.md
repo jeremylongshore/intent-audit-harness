@@ -89,6 +89,17 @@ python3 scripts/crap-score.py --help
 - Keep PRs focused — one feature or fix per PR
 - Document any policy-file changes — if the change requires consumer repos to re-run `audit-harness init` to refresh their `.harness-hash` manifest, **state that explicitly in the PR description**
 
+### Producer-sensitive pattern rules
+
+If a contribution adds or changes a deny-list, slop list, bias pattern, or
+other rule learned from observed output, include the producer population and
+calibration scope in the PR. Add labeled fixtures for the new failure mode and
+follow [`docs/producer-calibration.md`](docs/producer-calibration.md) before
+claiming coverage for another producer. The harness cannot infer producer
+identity from an artifact; the provenance record and human disposition are part
+of the gate owner's contract. Never place private or credential-bearing samples
+in the repository just to improve calibration.
+
 ## Style Guides
 
 ### Commit Messages
