@@ -21,7 +21,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   checks selected Grader snapshot identity and unique per-cell `sample_index`
   slots, and optionally cross-checks a suite against its `eval-suite/v1` audit
   manifest. Failed/retried attempts may leave intentional index gaps; the gate
-  does not infer `target_n` from a report that does not declare it. Findings are
+  does not infer `target_n` from a report that does not declare it. Clean rows
+  now use the kernel-valid `audit-harness:ci:report-lineage` gate ID and carry
+  selected Grader identity, deterministic Run counts, report schema, and
+  sample-balance metadata for exact-byte promotion binding. Findings are
   ADVISORY by default; `--strict` turns unverifiable or mismatched lineage into
   FAIL. No SQLite, network, J-Rig import, or runtime dependency is introduced.
 
