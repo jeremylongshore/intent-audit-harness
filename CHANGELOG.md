@@ -6,6 +6,17 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Expanded the default `harness-hash` denominator to include package test
+  scripts, `tests/TESTING.md`, common JavaScript and Python coverage/mutation
+  configs, and primary CI workflow files. Previously an edit could weaken the
+  command or workflow that enforced a pinned threshold without changing one of
+  the few files protected by the manifest.
+- Added an offline contract suite proving those files are pinned, their edits
+  or removal produce `HARNESS_TAMPERED` (exit 2), and ordinary source changes do
+  not require a policy re-pin.
+
 > **Riding a future v2.1 routine release (descoped from 1.2.0):** OTel event-name
 > polish (iah-E07b/c). The `agent.rollout.gate.evaluated` and `gate.decision.emitted`
 > event names are already locked + tested on main (PRs #78, #81 per NORMATIVE

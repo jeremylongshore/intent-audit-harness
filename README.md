@@ -108,7 +108,11 @@ git commit -m "chore(test): lower coverage floor to 75"
 
 The harness enforces this rule: **policy changes must be conscious, not silent.**
 
-Engineer-owned files (`tests/TESTING.md`, `features/*.feature`, `.dependency-cruiser.cjs`, `stryker.conf.json`, etc.) are hashed into a manifest. Any diff that changes their content without a fresh `audit-harness init` is caught by pre-commit / CI and **REFUSED**.
+Engineer-owned files (`tests/TESTING.md`, package test scripts, CI workflows,
+coverage and mutation configs, acceptance features, and architecture rules) are
+hashed into a manifest. Any diff that changes their content without a fresh
+`audit-harness init` is caught by pre-commit / CI and **REFUSED**. Ordinary
+application source is deliberately outside this denominator.
 
 AI agents remain useful (they can read policy, they can implement within constraints). What they can't do is silently weaken the constraints. That's the entire design.
 

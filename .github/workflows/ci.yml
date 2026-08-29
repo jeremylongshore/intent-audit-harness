@@ -346,6 +346,14 @@ jobs:
       - name: Run escape-scan contract suite
         run: bash tests/escape-scan/run-escape-scan-tests.sh
 
+  harness-hash-contract:
+    name: harness-hash protected-denominator contract suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prove package scripts, threshold configs, and CI stay protected
+        run: bash tests/harness-hash/run-harness-hash-tests.sh
+
   semver:
     name: SemVer contract suite (CLI/output surface freeze)
     runs-on: ubuntu-latest
