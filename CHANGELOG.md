@@ -16,6 +16,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added an offline contract suite proving those files are pinned, their edits
   or removal produce `HARNESS_TAMPERED` (exit 2), and ordinary source changes do
   not require a policy re-pin.
+- Accessibility detection now recognises dedicated a11y/accessibility test
+  files and directories for native, QML, CLI/TUI, and other non-web stacks.
+  Previously it recognised only four web dependencies and falsely advised
+  projects to add irrelevant tooling despite executable accessibility tests.
 
 > **Riding a future v2.1 routine release (descoped from 1.2.0):** OTel event-name
 > polish (iah-E07b/c). The `agent.rollout.gate.evaluated` and `gate.decision.emitted`
