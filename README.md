@@ -116,6 +116,14 @@ application source is deliberately outside this denominator.
 
 AI agents remain useful (they can read policy, they can implement within constraints). What they can't do is silently weaken the constraints. That's the entire design.
 
+The same walls can close the loop **before a push leaves the machine**:
+`audit-harness worktree-run --pre-push` checks the exact ref being pushed in a
+disposable `git worktree` — `verify` + `escape-scan` on the push range stay
+fail-closed, `conform` + `audit` contribute advisory gate-result/v1 rows — then
+removes the worktree. It has no push authority, no LLM stage, and never writes
+to the repo. Wire it as a lefthook `pre-push` job (this repo's `lefthook.yml`
+is the reference) so CI becomes confirmation instead of discovery.
+
 See `audit-tests/references/philosophy.md` in the companion skill for the full rationale.
 
 ## The 7-layer testing taxonomy
