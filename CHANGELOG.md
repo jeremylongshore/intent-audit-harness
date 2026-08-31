@@ -6,8 +6,30 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `worktree-run` — pre-push gate runner that checks the exact ref being pushed
+  in a disposable `git worktree`: `verify` + `escape-scan --range` on the push
+  range fail-closed, `conform` + `audit --fast` advisory, gate-result/v1 rows
+  written outside the repo. No push authority, no LLM stage, no repo writes.
+  Wired as a lefthook `pre-push` job in this repo (reference recipe for
+  consumers). Extracted from the no-mistakes discovery (2026-08-30): the
+  isolated-worktree pre-push loop was the one idea worth keeping; the LLM
+  review stage, auto-fix authority, and proxy-push were deliberately not
+  adopted. Honors `AUDIT_HARNESS_DISABLE=1`.
+- `bias-count` now counts source-introspection tests — a test whose only
+  evidence is reading the implementation source (`inspect.getsource`, reading
+  files under `src/`) instead of asserting observable behaviour of a public
+  interface. Deterministic counterpart of the prose rule in the
+  implement-tests auto-remediation reference; advisory like every bias
+  pattern (promotion to blocking goes through `fp-rate`).
+
 ### Fixed
 
+- `bias-count` no longer dies mid-report on a clean directory: under
+  `pipefail`, a zero-match grep exited 1 and aborted the scan (truncated
+  output, exit 1) before the summary — the "gate that looks like it ran"
+  failure class from 1.3.1. Zero-match patterns now count as 0.
 - Expanded the default `harness-hash` denominator to include package test
   scripts, `tests/TESTING.md`, common JavaScript and Python coverage/mutation
   configs, and primary CI workflow files. Previously an edit could weaken the

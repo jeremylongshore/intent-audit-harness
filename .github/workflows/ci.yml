@@ -346,6 +346,18 @@ jobs:
       - name: Run escape-scan contract suite
         run: bash tests/escape-scan/run-escape-scan-tests.sh
 
+  worktree-run-contract:
+    name: worktree-run pre-push gate contract suite
+    runs-on: ubuntu-latest
+    # Pins the pre-push worktree gate's advertised behaviour: clean range passes
+    # and emits rows outside the repo, a threshold-lowering range is blocked,
+    # the kill-switch skips, and no run leaves worktrees or dirties the tree.
+    # Deterministic + offline: every case runs in a throwaway repo under mktemp.
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run worktree-run contract suite
+        run: bash tests/worktree-run/run-worktree-run-tests.sh
+
   harness-hash-contract:
     name: harness-hash protected-denominator contract suite
     runs-on: ubuntu-latest
