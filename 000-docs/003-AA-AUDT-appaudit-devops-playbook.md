@@ -110,7 +110,7 @@ before any registry publish.
 | P1 | The signing-reconciler’s 23 tests existed but no workflow ran them | Fixed in this branch with a locked `npm ci` CI job |
 | P1 | Release manual dispatch could publish arbitrary branch bytes without a matching tag | Removed; release is tag-only and tag/package version equality is mandatory |
 | P2 | `arch-check`, `bias-count`, and Python/Rust dispatch surfaces lack behavioral coverage | Follow-up `bd_000-projects-wcze.5`, GitHub #163 |
-| P2 | Root `npm test` was `escape-scan --staged || true`, a misleading green on clean checkouts | Replaced by `tests/run-core-tests.sh`; `npm run check` now composes lint, aggregate tests, projection drift, and hash verification |
+| P2 | Root `npm test` was `escape-scan --staged \|\| true`, a misleading green on clean checkouts | Replaced by `tests/run-core-tests.sh`; `npm run check` now composes lint, aggregate tests, projection drift, and hash verification |
 
 The P0 historical-secret item requires provider authority and possibly a
 history-rewrite decision, so this code branch deliberately does not pretend it
