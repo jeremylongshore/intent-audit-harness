@@ -452,7 +452,9 @@ jobs:
         run: bash tests/audit/run-audit-tests.sh
 
   scan:
-    name: scan contract + live fail-closed dependency gate
+    # Keep this status context stable: main-branch protection requires it.
+    # The job now includes both the golden contract and a live fail-closed scan.
+    name: scan golden suite (security/hygiene/skill-quality)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
