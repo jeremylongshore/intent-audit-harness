@@ -152,6 +152,16 @@ Activation needs owner secret actions: repo secret `MINIMAX_API_KEY` + repo
 variable `ENABLE_MINIMAX_REVIEW=true` (+ `MINIMAX_MODEL`). Until then this repo
 is CI-only, deliberately.
 
+## Canonical Beads workspace
+
+This repository is one member of the six-repo Intent Eval Platform workspace.
+The tracked `.beads/redirect` resolves the supported workspace layout to
+`~/000-projects/.beads/`, the canonical umbrella Dolt store. The former member
+store's `issues.jsonl`, backups, and Git history remain recovery artifacts; the
+removed member metadata prevents `bd` from silently opening a second database.
+Verify with `bd where` and `bd info`, and use `bd-sync` from the umbrella
+workspace for bead↔GitHub↔Plane changes. Do not run `bd init` here.
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
 
