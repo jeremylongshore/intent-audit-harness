@@ -1,6 +1,6 @@
 {
   "name": "@intentsolutions/audit-harness",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Deterministic test-enforcement harness — escape-scan, hash-pinning, CRAP, architecture checks, bias detection, Gherkin lint. Companion to the audit-tests and implement-tests Claude Code skills.",
   "license": "Apache-2.0",
   "author": "Jeremy Longshore <jeremy@intentsolutions.io>",
@@ -39,7 +39,8 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "bash scripts/escape-scan.sh --staged || true",
+    "test": "bash tests/run-core-tests.sh",
+    "check": "npm run lint && npm test && python3 scripts/gen-layer-applicability.py --check && bash scripts/harness-hash.sh --verify",
     "lint": "eslint \"bin/**/*.js\"",
     "lint:fix": "eslint --fix \"bin/**/*.js\"",
     "prepublishOnly": "node bin/audit-harness.js --version"

@@ -31,7 +31,7 @@ A small CLI dispatching 17 released deterministic commands (shell + stdlib-Pytho
 | `audit-harness classify` | Read-only repo classifier → an `audit-profile/v1` value (never writes) |
 | `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas |
 | `audit-harness audit` | Read-only testing-depth gate-runner → coverage presence per pyramid layer + crap-score |
-| `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner (gitleaks / osv-scanner / Semgrep / syft / markdownlint / lychee) |
+| `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner; `--fail-closed` makes applicable OSV measurement release-blocking |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
 | `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
 | `audit-harness gen-layer-applicability` | Project the canonical audit-profile registry into `layer-applicability.md` |
@@ -93,6 +93,27 @@ pnpm exec audit-harness verify
       - run: pnpm exec audit-harness escape-scan --range origin/main..HEAD
 ```
 
+### Dependency security in CI
+
+Install the repository-pinned, checksum-verified OSV binary and run the
+dependency gate in fail-closed mode:
+
+```bash
+OSV_BIN="$RUNNER_TEMP/osv-bin"
+bash node_modules/@intentsolutions/audit-harness/scripts/install-osv-scanner.sh "$OSV_BIN"
+export PATH="$OSV_BIN:$PATH"
+pnpm exec audit-harness scan --fail-closed --osv-severity-threshold HIGH . \
+  > dependency-gate-results.json
+```
+
+A supported lockfile requires a measured scan. Missing/crashed scanners and
+unparseable results fail. No supported dependency input emits `NOT_APPLICABLE`
+only when the repository also declares no dependencies; an unlocked declared
+graph fails closed. Production or unknown-exposure findings at HIGH or above
+block, while proven development-only findings remain visible for triage. See
+[Dependency vulnerability gate](docs/dependency-scanning.md) for the exact
+contract, evidence fields, and policy exceptions.
+
 ### Engineer workflow — change a policy threshold
 
 ```bash
@@ -153,6 +174,7 @@ Important for CI scripting:
 | 2 | verify | `HARNESS_TAMPERED` — pinned file changed |
 | 2 | escape-scan | REFUSE — pipeline halted |
 | 3 | verify | No manifest (fresh repo, not an error) |
+| 1 | scan `--fail-closed` | Required dependency measurement failed or policy-blocking OSV findings exist |
 
 ## Language support
 

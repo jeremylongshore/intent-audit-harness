@@ -6,6 +6,43 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-13
+
+### Added
+
+- `scan --fail-closed` now makes OSV dependency measurement mandatory whenever
+  a supported lockfile or manifest exists. The gate emits honest
+  `NOT_APPLICABLE` only when no dependencies are declared, fails an unlocked
+  declared graph in required mode, separates vulnerability results from
+  scanner failures, records scanner/input/policy provenance, distinguishes
+  production, development-only, and unknown exposure, and blocks
+  production/unknown findings at a configurable severity threshold (HIGH by
+  default).
+- A shipped, checksum-pinned OSV-Scanner 2.5.1 installer for ephemeral CI
+  runners, plus deterministic golden coverage for clean, vulnerable,
+  unavailable, crashed, malformed, and not-applicable paths.
+
+### Security
+
+- Release and pull-request dependency lanes now install OSV-Scanner and execute
+  the harness fail-closed instead of accepting an unmeasured advisory result.
+- The 23-test signing-reconciler state-machine suite now runs in CI; it was
+  previously present but unwired despite protecting append-only Rekor outbox
+  and fail-closed persistence behavior.
+
+### Fixed
+
+- Root `npm test` now runs the aggregate deterministic suite instead of a
+  staged-diff command followed by `|| true`; `npm run check` is the contributor
+  gate for lint, tests, projection drift, and hash-manifest verification.
+- The self-pin denominator now includes delegated shell/Python test runners and
+  JSON policy schemas, closing routes that could weaken a suite or applicability
+  contract while leaving the pinned package command unchanged.
+- Root development dependencies now have a committed lockfile; CI and release
+  jobs use `npm ci` rather than resolving a fresh graph with `npm install`.
+- The release workflow is tag-only. The manual-dispatch path that could publish
+  arbitrary branch bytes without a matching version tag has been removed.
+
 ## [1.4.0] - 2026-09-01
 
 ### Added
