@@ -88,11 +88,18 @@ Commands:
   scan [repo]              Read-only security/hygiene/skill-quality gate-runner.
                            hygiene-readme is a local presence check; every tool-
                            backed gate (gitleaks/osv-scanner/semgrep/syft/
-                           markdownlint/lychee) shells out (clean->PASS, findings->
-                           ADVISORY, tool absent->INDETERMINATE); skill-behavioral
+                           markdownlint/lychee) shells out. OSV detects supported
+                           lockfiles/manifests before invocation: no dependency
+                           graph->NOT_APPLICABLE; declared but unlocked graph->
+                           unmeasured; clean->PASS; findings->ADVISORY;
+                           skill-behavioral
                            CONSUMES a j-rig verdict (--jrig-verdict PATH), never
                            reimplementing judgment. Emits gate-result/v1 rows.
-                           Advisory by default; --strict turns findings into FAIL.
+                           Advisory by default; --strict turns every finding into
+                           FAIL. --fail-closed requires OSV to run when dependency
+                           inputs exist and blocks production/unknown findings at
+                           --osv-severity-threshold (HIGH by default); proven
+                           development-only findings remain advisory.
   fp-rate                  Measure each gate's false-positive / false-negative rate
                            over a labeled corpus (valid/ should be clean, malformed/
                            should flag). The metric that gates advisory->blocking

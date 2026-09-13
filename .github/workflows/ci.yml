@@ -28,14 +28,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
 
       - name: Install
-        run: npm install
+        run: npm ci
 
       - name: audit-harness verify (self-check via dispatcher)
-        run: node bin/audit-harness.js verify || true
-        # exit 0 expected for now — verify subcommand prints info, doesn't gate
-        # tighten to fail-on-non-zero once verify produces deterministic output
+        run: node bin/audit-harness.js verify
 
       - name: audit-harness list (self-check enumeration)
         # Self-pin landed via iep-P3 iah-self-pin (bd_000-projects-itpl).
@@ -153,8 +152,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 20
+          cache: npm
       - name: "Install (devDeps: eslint + @eslint/js)"
-        run: npm install
+        run: npm ci
       - name: eslint
         run: npx eslint "bin/**/*.js"
 
@@ -452,7 +452,7 @@ jobs:
         run: bash tests/audit/run-audit-tests.sh
 
   scan:
-    name: scan golden suite (security/hygiene/skill-quality)
+    name: scan contract + live fail-closed dependency gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -463,6 +463,40 @@ jobs:
         run: pip install jsonschema
       - name: Run scan golden suite
         run: bash tests/scan/run-scan-tests.sh
+      - name: Install checksum-pinned OSV-Scanner
+        run: |
+          bash scripts/install-osv-scanner.sh "$RUNNER_TEMP/osv-bin"
+          echo "$RUNNER_TEMP/osv-bin" >> "$GITHUB_PATH"
+      - name: Run live dependency scan (fail-closed)
+        run: |
+          set -o pipefail
+          mkdir -p build/security
+          python3 scripts/scan.py --fail-closed --osv-severity-threshold HIGH . \
+            | tee build/security/dependency-gate-results.json
+      - name: Preserve dependency evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-gate-results
+          path: build/security/dependency-gate-results.json
+          if-no-files-found: error
+
+  signing-reconciler:
+    name: signing reconciler security-state suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ci/signing-reconciler/package-lock.json
+      - name: Install locked signing-reconciler dependencies
+        working-directory: ci/signing-reconciler
+        run: npm ci
+      - name: Run signing-reconciler tests
+        working-directory: ci/signing-reconciler
+        run: npm test
 
   currency:
     name: currency advisory report suite
