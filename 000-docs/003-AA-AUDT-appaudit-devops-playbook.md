@@ -1,7 +1,7 @@
 # @intentsolutions/audit-harness: Operator-Grade System Analysis
 
 *Generated: 2026-05-20; security/operations revalidation: 2026-09-13*
-*Baseline: v1.0.1 (`483945a`); revalidated against v1.4.0 (`1003196`) plus the v1.5.0 release candidate on `feat/fail-closed-dependency-scan`*
+*Baseline: v1.0.1 (`483945a`); revalidated against v1.5.0 source (`b0ee154`)*
 
 ---
 
@@ -11,11 +11,12 @@ This section is the current operator handoff. Sections 1–13 preserve the full
 May 2026 architecture analysis and decision history; when a current-state fact
 below conflicts with that baseline, this section wins. The stable architectural
 claims remain correct: scripts are the product, the Node executable is a thin
-dispatcher, gate-result/v1 is the evidence row, and the package ships through
-npm/PyPI/crates wrappers. The scale and operational posture have changed
-materially: the dispatcher now exposes 18 commands, the repository self-pins 38
-policy and implementation files, CI has more than twenty independent jobs, npm
-is at v1.4.0, and signed release evidence is produced and verified in-repo.
+dispatcher, and gate-result/v1 is the evidence row. npm is the canonical
+distribution, crates.io remains optional, and PyPI is frozen at v1.4.0. The
+scale and operational posture have changed materially: the dispatcher now
+exposes 19 commands, the repository self-pins 65 policy and implementation
+files, CI has more than twenty independent jobs, and signed release evidence is
+produced and verified in-repo.
 
 ### Why this revalidation happened
 
@@ -147,10 +148,11 @@ kill-switch only under documented break-glass governance.
 The GitHub release workflow now verifies the tag/version pair, installs the
 locked root graph, validates the self-pin, runs the aggregate deterministic
 suite, installs and verifies OSV, preserves dependency evidence, and only then
-publishes npm provenance. PyPI/crates jobs remain downstream of the npm release
-job and retain their existing token guards and attestations. The remaining
-architectural concern is that the npm publish occurs before downstream signed
-evidence/Python/Rust jobs complete; operators should treat a downstream failure
+publishes npm provenance. The optional crates.io job remains downstream of the
+npm release job with its existing token guard and attestation; PyPI publishing
+is removed starting with v1.5.0. The remaining architectural concern is that
+the npm publish occurs before downstream signed evidence/Rust jobs complete;
+operators should treat a downstream failure
 as a partial-release incident, not a fully atomic rollback.
 
 ### Superseded baseline facts

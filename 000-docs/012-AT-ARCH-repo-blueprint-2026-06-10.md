@@ -309,7 +309,7 @@ N/A — this repo does not touch LLM providers. Section present per Class-1 ISED
 
 ### 8.5 Threat model
 
-An adversary with write access to the npm/PyPI/crates registry could publish a poisoned harness version; defended by sigstore provenance on publish, pinned-version vendored installs, and the hash-pin manifest that detects byte-tampering of the policy scripts. An adversary editing a gate script to weaken a threshold is caught by `harness-hash --verify` (the edit fails CI until the manifest is re-`init`'d and committed, which is a reviewable diff). An adversary supplying a malicious `.feature` or source fixture cannot achieve code execution — the gates parse, they do not execute the target.
+An adversary with write access to the active npm or crates.io registry could publish a poisoned harness version; a stale credential could also threaten the frozen PyPI namespace. Defenses are provenance on active publishes, revocation of retired registry credentials, pinned-version vendored installs, and the hash-pin manifest that detects byte-tampering of the policy scripts. An adversary editing a gate script to weaken a threshold is caught by `harness-hash --verify` (the edit fails CI until the manifest is re-`init`'d and committed, which is a reviewable diff). An adversary supplying a malicious `.feature` or source fixture cannot achieve code execution — the gates parse, they do not execute the target.
 
 ---
 

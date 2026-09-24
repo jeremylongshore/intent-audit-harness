@@ -14,7 +14,8 @@ Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `impl
 
 ## What it is
 
-A small CLI dispatching 17 released deterministic commands (shell + stdlib-Python scripts) — an 18th, `audit-harness migration-notes`, is on disk and staged for the next release (see CHANGELOG `[Unreleased]`):
+A small CLI dispatching 19 released deterministic commands implemented as shell
+and standard-library Python scripts:
 
 | Command | Purpose |
 |---|---|
@@ -34,11 +35,14 @@ A small CLI dispatching 17 released deterministic commands (shell + stdlib-Pytho
 | `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner; `--fail-closed` makes applicable OSV measurement release-blocking |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
 | `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
+| `audit-harness migration-notes` | Generate deterministic adopter-facing migration notes from the changelog and SemVer policy |
 | `audit-harness gen-layer-applicability` | Project the canonical audit-profile registry into `layer-applicability.md` |
+| `audit-harness worktree-run` | Run pre-push gates against an exact ref in a disposable worktree |
 
 ## Install
 
-Pick the install flavor that matches your repo's ecosystem — all three publish the same CLI surface.
+The npm package is the canonical, actively released distribution. The Rust
+wrapper remains an optional crates.io distribution.
 
 **Node / JS / TS** (from npm):
 
@@ -48,13 +52,9 @@ pnpm add -D @intentsolutions/audit-harness
 # or: yarn add --dev @intentsolutions/audit-harness
 ```
 
-**Python** (from PyPI):
-
-```bash
-pip install intent-audit-harness
-# or inside a project venv:
-python -m pip install intent-audit-harness
-```
+**Python:** the PyPI package is frozen at `1.4.0` and does not receive releases
+starting with `1.5.0`. Do not use it for new estate rollouts; install the npm
+package above or use the vendored-script path below.
 
 **Rust** (from crates.io):
 

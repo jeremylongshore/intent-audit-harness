@@ -3,7 +3,7 @@
  * audit-harness CLI dispatcher
  *
  * Thin wrapper that invokes the canonical shell/python implementations in scripts/.
- * Keeping the scripts as-is (not a TS port) for v0.x — they're battle-tested
+ * Keeping the scripts as-is (not a TS port) across stable releases — they're battle-tested
  * and language-portable. The CLI just adds discoverability + cross-platform-ish shell resolution.
  */
 const { spawn } = require('node:child_process');
