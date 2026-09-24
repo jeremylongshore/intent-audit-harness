@@ -6,23 +6,22 @@ name: Release
 # stuck at 0.1.0 while the code had advanced to 1.1.x — there was no workflow to
 # publish the CHANGELOG-documented work. This closes that gap.
 #
-# Triggered by:
-#   - pushing a tag matching `v*.*.*` (e.g., v1.1.5), OR
-#   - manual `workflow_dispatch` (publishes whatever version package.json carries)
+# Triggered only by pushing a tag matching `v*.*.*` (e.g., v1.1.5). Failed
+# runs can be re-run in GitHub; there is no untagged/manual publish escape hatch.
 #
 # The job:
-#   1. Verifies package.json#version matches the pushed tag (skipped on manual
-#      dispatch, where there is no tag to compare against).
-#   2. Runs the self-check (`audit-harness --version`) and the repo's `test`
-#      script (escape-scan on the staged diff — non-blocking when nothing is
-#      staged, which is the case in CI).
-#   3. `npm publish --provenance --access public` (requires id-token: write for
+#   1. Verifies package.json#version matches the pushed tag.
+#   2. Verifies the hash-pinned release policy, runs the scanner contract suite,
+#      installs checksum-pinned OSV-Scanner, and executes the live dependency
+#      gate fail-closed with machine-readable evidence.
+#   3. `npm publish --provenance --access public` only after those gates pass
+#      (requires id-token: write for
 #      the Sigstore OIDC token).
 #
 # This is a zero-runtime-dependency polyglot CLI: Node >=18 dispatcher + bash/
-# python scripts. There is NO lockfile, NO TypeScript build, NO coverage step —
-# so this workflow deliberately omits pnpm, --frozen-lockfile, build, and
-# coverage steps that the intent-eval-core release workflow carries.
+# python scripts. The repository contains a nested lockfile for the signing
+# reconciler even though the published package has zero runtime dependencies;
+# the release gate scans every supported input recursively.
 #
 # Provenance attestation lands at https://registry.npmjs.org/@intentsolutions/audit-harness
 # alongside the published tarball. Consumers can verify with `npm audit signatures`.
@@ -31,7 +30,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
 
 permissions:
   contents: write  # create the GitHub Release + upload the dashboard manifest asset
@@ -53,22 +51,23 @@ jobs:
           # the pushed tag on a tag release — instead of relying on
           # actions/checkout's implicit default. Provenance is a one-way door; a
           # wrong-bytes attestation is unrecoverable, so the bytes we publish +
-          # sign MUST be the bytes of the tag, never main. On workflow_dispatch
-          # github.ref is the dispatched branch ref (the deliberate escape hatch,
-          # which publishes whatever package.json carries).
+          # sign MUST be the bytes of the tag, never main.
           ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
 
       - name: Verify tag matches package.json version
-        # Only meaningful on a tag push. On workflow_dispatch there is no tag,
-        # so skip the comparison and publish whatever version package.json holds.
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           tag_version="${GITHUB_REF#refs/tags/v}"
           pkg_version=$(node -p "require('./package.json').version")
@@ -81,8 +80,34 @@ jobs:
       - name: Self-check (audit-harness --version)
         run: node bin/audit-harness.js --version
 
-      - name: Test (escape-scan on staged diff; non-blocking in CI)
-        run: bash scripts/escape-scan.sh --staged || true
+      - name: Install locked development dependencies
+        run: npm ci
+
+      - name: Verify hash-pinned release policy
+        run: bash scripts/harness-hash.sh --verify
+
+      - name: Run deterministic core test suite
+        run: npm test
+
+      - name: Install checksum-pinned OSV-Scanner
+        run: |
+          bash scripts/install-osv-scanner.sh "$RUNNER_TEMP/osv-bin"
+          echo "$RUNNER_TEMP/osv-bin" >> "$GITHUB_PATH"
+
+      - name: Run live dependency scan (fail-closed)
+        run: |
+          set -o pipefail
+          mkdir -p build/security
+          python3 scripts/scan.py --fail-closed --osv-severity-threshold HIGH . \
+            | tee build/security/dependency-gate-results.json
+
+      - name: Preserve dependency evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-dependency-gate-results
+          path: build/security/dependency-gate-results.json
+          if-no-files-found: error
 
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
@@ -91,7 +116,7 @@ jobs:
 
       # Create the GitHub Release on a tag push so the emit-evidence job below can
       # attach the dashboard's report-manifest.json to it. (Only meaningful on a
-      # tag; workflow_dispatch has no tag to release.)
+      # tag; the workflow itself is tag-only.)
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -118,7 +143,7 @@ jobs:
   # (Fulcio OIDC + Rekor), assembles report-manifest.json, and uploads it onto
   # this tag's Release. The dashboard re-verifies OIDC subject + Rekor inclusion +
   # DSSE + kernel schema at ingest. Only runs on a tag push (the dashboard pins
-  # refs/tags/* — a workflow_dispatch main-ref manifest would not verify).
+  # refs/tags/* — a non-tag manifest would not verify).
   emit-evidence:
     name: Emit signed gate-result evidence for the dashboard
     needs: release
@@ -142,7 +167,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           # Node >= 22.6 — the emit scripts run under `--experimental-strip-types`
           # (TS without a build step), which Node 20 does NOT support (exit 9).
@@ -264,7 +289,7 @@ jobs:
   # exits 0 with an explanatory log instead of failing the release. This lets the
   # job ship wired-but-dormant; it activates automatically the moment the secret
   # is set, with no further code change. NEVER publishes on a PR (PRs don't push
-  # tags, and the `on:` trigger is tag/dispatch only).
+  # tags, and the workflow trigger is tag-only).
   publish-pypi:
     name: Publish Python wrapper to PyPI (guarded on PYPI_TOKEN)
     needs: release
@@ -284,7 +309,7 @@ jobs:
           ref: ${{ github.ref }}
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -322,7 +347,7 @@ jobs:
       # bytes that actually ship, so we sign exactly when (and only when) we publish.
       - name: Sign wheel + sdist (sigstore-python keyless → Rekor)
         if: steps.guard.outputs.token_present == 'true'
-        uses: sigstore/gh-action-sigstore-python@v3.4.0
+        uses: sigstore/gh-action-sigstore-python@v3.5.0
         with:
           inputs: ./python/dist/*.whl ./python/dist/*.tar.gz
           # We attach the bundles onto the GitHub Release ourselves below, so
@@ -428,7 +453,7 @@ jobs:
 
       - name: Attest crate build provenance (SLSA → Sigstore/Rekor)
         if: steps.guard.outputs.token_present == 'true'
-        uses: actions/attest-build-provenance@v4.1.1
+        uses: actions/attest-build-provenance@v4.2.2
         with:
           subject-path: ${{ env.CRATE_TARBALL }}
 
@@ -446,8 +471,8 @@ jobs:
   # Fires ONLY when one of the release jobs above fails (`if: failure()`),
   # joining the tailnet via Tailscale OIDC and pushing a high-priority ntfy
   # alert to the tailnet-only `prod-deploys` topic. TAG-TRIGGERED ONLY — the
-  # parent workflow runs on `push: tags v*.*.*` / `workflow_dispatch`, so this
-  # job NEVER runs on a PR; it only fires on a future failed tag-release.
+  # parent workflow runs only on `push: tags v*.*.*`, so this job NEVER runs on
+  # a PR; it only fires on a future failed tag-release.
   alert-on-failure:
     name: alert-on-failure
     needs: [release, emit-evidence, publish-pypi, publish-crates]

@@ -4,6 +4,8 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Provenance](https://img.shields.io/badge/sigstore-provenance-066da5)](https://www.npmjs.com/package/@intentsolutions/audit-harness)
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U5S225PTME)
+
 Part of the **[Intent Eval Platform](https://github.com/intent-solutions-io/intent-eval-platform)** — the umbrella grouping the platform's six repos: five converge via a shared Evidence Bundle schema (`intent-eval-core`, `intent-eval-lab`, `audit-harness`, `j-rig-skill-binary-eval`, `intent-rollout-gate`), plus `intent-eval-dashboard` as a satellite consumer (not part of the convergence taxonomy).
 
 Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `implement-tests` Claude Code skills — but usable standalone in any repo that wants hash-pinned, escape-scanned, AI-resistant quality gates.
@@ -29,7 +31,7 @@ A small CLI dispatching 17 released deterministic commands (shell + stdlib-Pytho
 | `audit-harness classify` | Read-only repo classifier → an `audit-profile/v1` value (never writes) |
 | `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas |
 | `audit-harness audit` | Read-only testing-depth gate-runner → coverage presence per pyramid layer + crap-score |
-| `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner (gitleaks / osv-scanner / Semgrep / syft / markdownlint / lychee) |
+| `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner; `--fail-closed` makes applicable OSV measurement release-blocking |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
 | `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
 | `audit-harness gen-layer-applicability` | Project the canonical audit-profile registry into `layer-applicability.md` |
@@ -91,6 +93,27 @@ pnpm exec audit-harness verify
       - run: pnpm exec audit-harness escape-scan --range origin/main..HEAD
 ```
 
+### Dependency security in CI
+
+Install the repository-pinned, checksum-verified OSV binary and run the
+dependency gate in fail-closed mode:
+
+```bash
+OSV_BIN="$RUNNER_TEMP/osv-bin"
+bash node_modules/@intentsolutions/audit-harness/scripts/install-osv-scanner.sh "$OSV_BIN"
+export PATH="$OSV_BIN:$PATH"
+pnpm exec audit-harness scan --fail-closed --osv-severity-threshold HIGH . \
+  > dependency-gate-results.json
+```
+
+A supported lockfile requires a measured scan. Missing/crashed scanners and
+unparseable results fail. No supported dependency input emits `NOT_APPLICABLE`
+only when the repository also declares no dependencies; an unlocked declared
+graph fails closed. Production or unknown-exposure findings at HIGH or above
+block, while proven development-only findings remain visible for triage. See
+[Dependency vulnerability gate](docs/dependency-scanning.md) for the exact
+contract, evidence fields, and policy exceptions.
+
 ### Engineer workflow — change a policy threshold
 
 ```bash
@@ -106,9 +129,21 @@ git commit -m "chore(test): lower coverage floor to 75"
 
 The harness enforces this rule: **policy changes must be conscious, not silent.**
 
-Engineer-owned files (`tests/TESTING.md`, `features/*.feature`, `.dependency-cruiser.cjs`, `stryker.conf.json`, etc.) are hashed into a manifest. Any diff that changes their content without a fresh `audit-harness init` is caught by pre-commit / CI and **REFUSED**.
+Engineer-owned files (`tests/TESTING.md`, package test scripts, CI workflows,
+coverage and mutation configs, acceptance features, and architecture rules) are
+hashed into a manifest. Any diff that changes their content without a fresh
+`audit-harness init` is caught by pre-commit / CI and **REFUSED**. Ordinary
+application source is deliberately outside this denominator.
 
 AI agents remain useful (they can read policy, they can implement within constraints). What they can't do is silently weaken the constraints. That's the entire design.
+
+The same walls can close the loop **before a push leaves the machine**:
+`audit-harness worktree-run --pre-push` checks the exact ref being pushed in a
+disposable `git worktree` — `verify` + `escape-scan` on the push range stay
+fail-closed, `conform` + `audit` contribute advisory gate-result/v1 rows — then
+removes the worktree. It has no push authority, no LLM stage, and never writes
+to the repo. Wire it as a lefthook `pre-push` job (this repo's `lefthook.yml`
+is the reference) so CI becomes confirmation instead of discovery.
 
 See `audit-tests/references/philosophy.md` in the companion skill for the full rationale.
 
@@ -139,6 +174,7 @@ Important for CI scripting:
 | 2 | verify | `HARNESS_TAMPERED` — pinned file changed |
 | 2 | escape-scan | REFUSE — pipeline halted |
 | 3 | verify | No manifest (fresh repo, not an error) |
+| 1 | scan `--fail-closed` | Required dependency measurement failed or policy-blocking OSV findings exist |
 
 ## Language support
 
