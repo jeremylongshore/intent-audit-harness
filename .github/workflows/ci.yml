@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # No `branches:` filter on purpose: with `branches: [main]` a stacked PR whose
+  # base is another feature branch gets no checks at all. Push builds stay on main.
   pull_request:
-    branches: [main]
   schedule:
     # nightly self-check at 06:00 UTC
     - cron: '0 6 * * *'
@@ -25,17 +26,16 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
 
       - name: Install
-        run: npm install
+        run: npm ci
 
       - name: audit-harness verify (self-check via dispatcher)
-        run: node bin/audit-harness.js verify || true
-        # exit 0 expected for now — verify subcommand prints info, doesn't gate
-        # tighten to fail-on-non-zero once verify produces deterministic output
+        run: node bin/audit-harness.js verify
 
       - name: audit-harness list (self-check enumeration)
         # Self-pin landed via iep-P3 iah-self-pin (bd_000-projects-itpl).
@@ -120,7 +120,7 @@ jobs:
     # to confirm nothing new fires + commit as part of an explicit PR.
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install ruff (pinned)
@@ -135,7 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Compile-check Python scripts
@@ -150,11 +150,12 @@ jobs:
     # Correctness floor, not a style enforcer. Per rnpy.
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
+          cache: npm
       - name: "Install (devDeps: eslint + @eslint/js)"
-        run: npm install
+        run: npm ci
       - name: eslint
         run: npx eslint "bin/**/*.js"
 
@@ -311,7 +312,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install jsonschema (for SPEC validation)
@@ -346,6 +347,26 @@ jobs:
       - name: Run escape-scan contract suite
         run: bash tests/escape-scan/run-escape-scan-tests.sh
 
+  worktree-run-contract:
+    name: worktree-run pre-push gate contract suite
+    runs-on: ubuntu-latest
+    # Pins the pre-push worktree gate's advertised behaviour: clean range passes
+    # and emits rows outside the repo, a threshold-lowering range is blocked,
+    # the kill-switch skips, and no run leaves worktrees or dirties the tree.
+    # Deterministic + offline: every case runs in a throwaway repo under mktemp.
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run worktree-run contract suite
+        run: bash tests/worktree-run/run-worktree-run-tests.sh
+
+  harness-hash-contract:
+    name: harness-hash protected-denominator contract suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prove package scripts, threshold configs, and CI stay protected
+        run: bash tests/harness-hash/run-harness-hash-tests.sh
+
   semver:
     name: SemVer contract suite (CLI/output surface freeze)
     runs-on: ubuntu-latest
@@ -360,10 +381,10 @@ jobs:
     # and the golden suite (raw stdout shape).
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Run SemVer contract suite
@@ -383,7 +404,7 @@ jobs:
     # touch argv. Failure-mode docs: docs/cred-gate.md.
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Run cred-gate + OTel-event suite
@@ -394,7 +415,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install jsonschema (for audit-profile/v1 validation)
@@ -407,7 +428,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install jsonschema + PyYAML
@@ -423,7 +444,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install jsonschema
@@ -432,24 +453,60 @@ jobs:
         run: bash tests/audit/run-audit-tests.sh
 
   scan:
+    # Keep this status context stable: main-branch protection requires it.
+    # The job now includes both the golden contract and a live fail-closed scan.
     name: scan golden suite (security/hygiene/skill-quality)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install jsonschema
         run: pip install jsonschema
       - name: Run scan golden suite
         run: bash tests/scan/run-scan-tests.sh
+      - name: Install checksum-pinned OSV-Scanner
+        run: |
+          bash scripts/install-osv-scanner.sh "$RUNNER_TEMP/osv-bin"
+          echo "$RUNNER_TEMP/osv-bin" >> "$GITHUB_PATH"
+      - name: Run live dependency scan (fail-closed)
+        run: |
+          set -o pipefail
+          mkdir -p build/security
+          python3 scripts/scan.py --fail-closed --osv-severity-threshold HIGH . \
+            | tee build/security/dependency-gate-results.json
+      - name: Preserve dependency evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-gate-results
+          path: build/security/dependency-gate-results.json
+          if-no-files-found: error
+
+  signing-reconciler:
+    name: signing reconciler security-state suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ci/signing-reconciler/package-lock.json
+      - name: Install locked signing-reconciler dependencies
+        working-directory: ci/signing-reconciler
+        run: npm ci
+      - name: Run signing-reconciler tests
+        working-directory: ci/signing-reconciler
+        run: npm test
 
   currency:
     name: currency advisory report suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Run currency golden suite
@@ -468,10 +525,10 @@ jobs:
     # read-only, no network — same discipline as classify/conform/audit/currency.
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Run migration-notes generator suite
@@ -487,7 +544,7 @@ jobs:
     # JS coverage join.
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Run crap-score join-regression suite
@@ -504,7 +561,7 @@ jobs:
     # captures crap-score's no-provider envelope shape (deterministic).
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Run golden-master suite
@@ -515,7 +572,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Verify layer-applicability.md is in sync with the registry datum
@@ -529,7 +586,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install PyYAML (conform frontmatter parser)
