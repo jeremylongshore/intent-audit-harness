@@ -80,6 +80,29 @@ if python3 "$AUDIT" "$FIX/no-tests" >"$out2" 2>/dev/null; then ec=0; else ec=$?;
 if assert_row "$out2" "ci:unit" ADVISORY advisory_severity warn 2>"$TMP/e"; then
   pass "no-tests: unit -> ADVISORY(warn) gap, exit 0"
 else fail "no-tests unit gap: $(cat "$TMP/e")"; fi
+# ---- 2b: non-web accessibility tests are real infrastructure ----
+qml="$TMP/qml-a11y"
+mkdir -p "$qml/tests"
+printf '%s\n' '{"scripts":{"test":"node --test tests/*.test.js"}}' > "$qml/package.json"
+printf '%s\n' 'classify_pins:' '  - frontend' > "$qml/.audit-harness.yml"
+printf '%s\n' 'const test = require("node:test"); test("QML role and focus", () => {});' > "$qml/tests/a11y.test.js"
+printf '%s\n' '# Accessibility design only; not executable evidence.' > "$qml/accessibility.md"
+outa="$TMP/a11y.json"
+python3 "$AUDIT" "$qml" >"$outa" 2>/dev/null
+if assert_row "$outa" "ci:a11y" PASS 2>"$TMP/e"; then
+  pass "QML-style tests/a11y.test.js: a11y -> PASS without web dependencies"
+else fail "QML a11y test signal: $(cat "$TMP/e")"; fi
+
+docs="$TMP/a11y-doc-only"
+mkdir -p "$docs"
+printf '%s\n' '{"scripts":{"test":"node --test"}}' > "$docs/package.json"
+printf '%s\n' 'classify_pins:' '  - frontend' > "$docs/.audit-harness.yml"
+printf '%s\n' '# Accessibility design only; not executable evidence.' > "$docs/accessibility.md"
+outdocs="$TMP/a11y-doc.json"
+python3 "$AUDIT" "$docs" >"$outdocs" 2>/dev/null
+if assert_row "$outdocs" "ci:a11y" ADVISORY advisory_severity warn 2>"$TMP/e"; then
+  pass "accessibility.md alone remains ADVISORY without executable evidence"
+else fail "a11y design-doc false-positive guard: $(cat "$TMP/e")"; fi
 
 # ---- 3: no-tests --strict -> unit FAIL, exit 1 ----
 out3="$TMP/no-strict.json"
