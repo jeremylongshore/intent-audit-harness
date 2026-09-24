@@ -1,7 +1,169 @@
 # @intentsolutions/audit-harness: Operator-Grade System Analysis
 
-*Generated: 2026-05-20*
-*Version: v1.0.1 (commit `483945a`)*
+*Generated: 2026-05-20; security/operations revalidation: 2026-09-13*
+*Baseline: v1.0.1 (`483945a`); revalidated against v1.4.0 (`1003196`) plus the v1.5.0 release candidate on `feat/fail-closed-dependency-scan`*
+
+---
+
+## 0. 2026-09-13 Security and Operations Revalidation
+
+This section is the current operator handoff. Sections 1–13 preserve the full
+May 2026 architecture analysis and decision history; when a current-state fact
+below conflicts with that baseline, this section wins. The stable architectural
+claims remain correct: scripts are the product, the Node executable is a thin
+dispatcher, gate-result/v1 is the evidence row, and the package ships through
+npm/PyPI/crates wrappers. The scale and operational posture have changed
+materially: the dispatcher now exposes 18 commands, the repository self-pins 38
+policy and implementation files, CI has more than twenty independent jobs, npm
+is at v1.4.0, and signed release evidence is produced and verified in-repo.
+
+### Why this revalidation happened
+
+A release-readiness review exposed a dependency-security contract that existed
+in the registry but did not execute reliably. `schemas/audit-profile/registry.v1.json`
+included `audit-harness:ci:cve-osv`, yet `scripts/scan.py` treated an absent
+`osv-scanner` as an advisory result and exited zero. It invoked the older
+`osv-scanner -r .` surface, assigned an empty input digest to every result, and
+treated every non-zero scanner exit as a vulnerability finding. That erased the
+difference between a vulnerable dependency, a scanner crash, malformed output,
+and an unsupported/no-package input. The release workflow compounded the gap:
+it published after `escape-scan --staged || true`, which is a no-op on a clean CI
+checkout and was explicitly non-blocking.
+
+The repository is not dependency-free. The published CLI has zero runtime npm
+dependencies, but the root has development dependencies and
+`ci/signing-reconciler/package-lock.json` contains the security-sensitive
+signing-state helper graph. Before this revalidation, the root development graph
+had no committed lockfile and CI used `npm install`, so the test toolchain was
+resolved afresh. “Zero runtime dependencies” had incorrectly become “no
+dependency gate required.”
+
+### Current dependency security contract
+
+The branch under review makes dependency measurement explicit and opt-in
+fail-closed without breaking default CLI behavior:
+
+```text
+recursive supported-input + dependency-declaration discovery
+        |
+        +-- zero inputs + zero declarations --> NOT_APPLICABLE
+        +-- zero inputs + dependencies declared
+        |       +-- default ------------------> ADVISORY (unmeasured)
+        |       +-- --fail-closed ------------> FAIL (lockfile missing)
+        |
+        +-- one or more inputs
+                 |
+                 +-- scanner missing/crash/bad JSON/no packages
+                 |       +-- default ----------> ADVISORY (unmeasured)
+                 |       +-- --fail-closed ----> FAIL
+                 |
+                 +-- measured JSON
+                         +-- clean -------------> PASS
+                         +-- proven dev-only ---> ADVISORY (triage)
+                         +-- prod/unknown below threshold -> ADVISORY
+                         +-- prod/unknown at threshold ---> FAIL in --fail-closed
+                         +-- unknown severity -----------> FAIL in --fail-closed
+```
+
+`scripts/scan.py` now uses the OSV-Scanner v2 source command and JSON output. It
+detects the upstream-supported lockfiles/manifests statically before checking
+the binary, preventing a missing tool from manufacturing `NOT_APPLICABLE`.
+Each row records a combined digest of sorted input paths and bytes; the policy
+digest includes the HIGH-by-default severity contract and every discovered
+`osv-scanner.toml`. Metadata records the exact command, OSV version/build,
+source paths, exit code, finding counts, bounded finding details, and exposure
+classification. OSV-provided `dependency_groups` prove development-only npm,
+Packagist, PyPI, Pub, Maven-test, and Conan build requirements. Ecosystems that
+cannot prove a group are `unknown`, not guessed into production safety.
+
+`scripts/install-osv-scanner.sh` pins OSV-Scanner 2.5.1 for Linux and macOS
+amd64/arm64, verifies an architecture-specific upstream SHA-256, and installs
+only into an explicit caller-provided directory. `scan` remains read-only; the
+network/filesystem mutation is isolated in the named installer. CI and release
+jobs add the resulting directory to `PATH`, execute `scan --fail-closed
+--osv-severity-threshold HIGH`, and retain the gate-result JSON as a workflow
+artifact. The main CI workflow already runs on pull requests, pushes to main,
+and a nightly schedule; the tag-only release workflow repeats the measurement
+before any registry publish.
+
+### Verified behavior on 2026-09-13
+
+| Check | Result | Evidence |
+|---|---|---|
+| Baseline reproduction | FAIL-OPEN reproduced | With a real nested lockfile and no OSV binary, v1.4.0 emitted advisory/unmeasured and exit 0 |
+| Pinned installer | PASS | OSV-Scanner 2.5.1 binary SHA-256 matched the published release digest; `--version` reported scanner, Scalibr, commit, and build time |
+| Live repository scan | PASS | Root and signing-reconciler lockfiles measured; zero known findings; non-empty combined `input_hash` |
+| Golden dependency matrix | PASS | 25 scan assertions cover no input, missing tool in default/required modes, clean, production-high, production-medium, development-critical, unknown exposure, crash, exit 128, invalid JSON, result error, and version error |
+| Signing reconciler | PASS | `npm ci && npm test`: 23/23 state-machine and persistence tests passed |
+| Python syntax/lint | PASS | `python3 -m py_compile scripts/scan.py`; Ruff current repository configuration |
+| Node dispatcher lint | PASS | ESLint against `bin/**/*.js` |
+| Package graph reproducibility | PASS | Root `package-lock.json` generated at lockfileVersion 3; npm audit reported zero vulnerabilities at generation time |
+
+### Security findings and disposition
+
+| Priority | Finding | Disposition |
+|---|---|---|
+| P0 | Applicable OSV scans could silently become unmeasured advisories; releases did not call a real dependency gate | Implemented on `feat/fail-closed-dependency-scan`; tracked by `bd_000-projects-wcze.1` and GitHub #162 |
+| P0 | Gitleaks still identifies a generic API key in historical commit `9b97217`, `python/PUBLISH.md:24`; current HEAD is redacted but rotation evidence is absent | Incident/rotation decision isolated as `bd_000-projects-wcze.4`, GitHub #166. Never copy the value into logs or issue bodies |
+| P1 | Generic gitleaks/Semgrep/Syft adapters still conflate tool errors with findings or discard generated artifacts | Follow-up `bd_000-projects-wcze.2`, GitHub #164 defines per-tool exit/evidence contracts |
+| P1 | Most third-party Actions use mutable version tags; shellcheck/actionlint/schema downloads are versioned but not digest-verified | Follow-up `bd_000-projects-wcze.3`, GitHub #165 covers immutable pins and a regression policy |
+| P1 | The signing-reconciler’s 23 tests existed but no workflow ran them | Fixed in this branch with a locked `npm ci` CI job |
+| P1 | Release manual dispatch could publish arbitrary branch bytes without a matching tag | Removed; release is tag-only and tag/package version equality is mandatory |
+| P2 | `arch-check`, `bias-count`, and Python/Rust dispatch surfaces lack behavioral coverage | Follow-up `bd_000-projects-wcze.5`, GitHub #163 |
+| P2 | Root `npm test` was `escape-scan --staged \|\| true`, a misleading green on clean checkouts | Replaced by `tests/run-core-tests.sh`; `npm run check` now composes lint, aggregate tests, projection drift, and hash verification |
+
+The P0 historical-secret item requires provider authority and possibly a
+history-rewrite decision, so this code branch deliberately does not pretend it
+is resolved. The current redaction prevents a new HEAD leak; only a confirmed
+provider revocation/rotation can close the incident. Likewise, mutable Action
+pins are not mixed into the dependency-scanner patch because the correct fix is
+an inventory-wide mechanical change with its own enforcement test, not a few
+opportunistic pins that create a false “done” signal.
+
+### Release and operator procedure after this change
+
+From a clean checkout, install root dependencies with `npm ci`, never `npm
+install`. Run `npm run check`; if a hash verification failure names an intended
+policy/script/workflow edit, inspect the diff and re-pin with `audit-harness
+init`, then rerun the whole check. For the live dependency lane, use an explicit
+temporary bin directory:
+
+```bash
+OSV_BIN="$(mktemp -d)/bin"
+bash scripts/install-osv-scanner.sh "$OSV_BIN"
+PATH="$OSV_BIN:$PATH" python3 scripts/scan.py \
+  --fail-closed --osv-severity-threshold HIGH . \
+  > dependency-gate-results.json
+```
+
+A release candidate is not ready merely because OSV returns no vulnerabilities.
+The output must be a `PASS` row with both lockfiles listed, a non-empty input
+digest, a non-empty scanner version, and exit code zero. Preserve the JSON. A
+`NOT_APPLICABLE` row is legitimate only for a repository with none of the
+supported inputs. An advisory row with `metadata.indeterminate=true` is useful
+locally but is never release evidence. Do not append `|| true`; use the explicit
+kill-switch only under documented break-glass governance.
+
+The GitHub release workflow now verifies the tag/version pair, installs the
+locked root graph, validates the self-pin, runs the aggregate deterministic
+suite, installs and verifies OSV, preserves dependency evidence, and only then
+publishes npm provenance. PyPI/crates jobs remain downstream of the npm release
+job and retain their existing token guards and attestations. The remaining
+architectural concern is that the npm publish occurs before downstream signed
+evidence/Python/Rust jobs complete; operators should treat a downstream failure
+as a partial-release incident, not a fully atomic rollback.
+
+### Superseded baseline facts
+
+Do not use the May 2026 version counts, CI-job counts, self-pin status, signing
+status, or version-drift warnings in the historical sections as current facts.
+Version alignment and self-pinning were subsequently implemented; npm
+provenance, Cosign verification, and dashboard evidence are now present. The
+May threat model and architectural explanations remain valuable, particularly
+the stream contract, script-as-source-of-truth rule, hash-pin mechanics, and
+rollback cautions. The current backlog is the Beads epic
+`bd_000-projects-wcze`; Beads is authoritative and GitHub issues are its public
+projection.
 
 ---
 
