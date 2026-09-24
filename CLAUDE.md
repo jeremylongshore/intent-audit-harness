@@ -14,6 +14,12 @@ The canonical implementation of the test-enforcement scripts used by the `audit-
 4. **Policy-driven, never hardcoded.** Thresholds (coverage floor, CRAP limits, mutation kill rate) read from the target repo's `tests/TESTING.md`. Never hardcode a number in a script.
 5. **The harness tests itself.** Run `bash scripts/escape-scan.sh --staged` on any proposed diff before committing.
 
+6. **Kernel validation is exact and current.** The CI-only evidence emitter
+   installs `@intentsolutions/core@0.10.0` in the release workflow; the
+   published harness remains zero-runtime-dependency. `kernel-shadow-check`
+   treats a dependency range that cannot resolve to that canonical surface as
+   the same compatibility risk as a local contract re-declaration.
+
 ## Read-only brain: `classify` + `conform` (PP-PLAN-040)
 
 The "comprehensive audit, on any repo" build (master plan: `intent-eval-lab/000-docs/040-PP-PLAN-audit-trio-comprehensive-2026-06-04.md`) adds two **read-only** verbs that determine and check a repo's audit profile without Claude. Both are stdlib-Python, emit JSON to stdout, and **never write to the repo**:
