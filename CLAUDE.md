@@ -14,6 +14,12 @@ The canonical implementation of the test-enforcement scripts used by the `audit-
 4. **Policy-driven, never hardcoded.** Thresholds (coverage floor, CRAP limits, mutation kill rate) read from the target repo's `tests/TESTING.md`. Never hardcode a number in a script.
 5. **The harness tests itself.** Run `bash scripts/escape-scan.sh --staged` on any proposed diff before committing.
 
+6. **Kernel validation is exact and current.** The CI-only evidence emitter
+   installs `@intentsolutions/core@0.10.0` in the release workflow; the
+   published harness remains zero-runtime-dependency. `kernel-shadow-check`
+   treats a dependency range that cannot resolve to that canonical surface as
+   the same compatibility risk as a local contract re-declaration.
+
 ## Read-only brain: `classify` + `conform` (PP-PLAN-040)
 
 The "comprehensive audit, on any repo" build (master plan: `intent-eval-lab/000-docs/040-PP-PLAN-audit-trio-comprehensive-2026-06-04.md`) adds two **read-only** verbs that determine and check a repo's audit profile without Claude. Both are stdlib-Python, emit JSON to stdout, and **never write to the repo**:
@@ -152,6 +158,16 @@ repo the reviewer should be pointed at this repo's gate semantics — the univer
 Activation needs owner secret actions: repo secret `MINIMAX_API_KEY` + repo
 variable `ENABLE_MINIMAX_REVIEW=true` (+ `MINIMAX_MODEL`). Until then this repo
 is CI-only, deliberately.
+
+## Canonical Beads workspace
+
+This repository is one member of the six-repo Intent Eval Platform workspace.
+The tracked `.beads/redirect` resolves the supported workspace layout to
+`~/000-projects/.beads/`, the canonical umbrella Dolt store. The former member
+store's `issues.jsonl`, backups, and Git history remain recovery artifacts; the
+removed member metadata prevents `bd` from silently opening a second database.
+Verify with `bd where` and `bd info`, and use `bd-sync` from the umbrella
+workspace for bead↔GitHub↔Plane changes. Do not run `bd init` here.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker

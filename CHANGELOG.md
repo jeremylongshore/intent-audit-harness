@@ -6,13 +6,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-> **Riding a future v2.1 routine release (descoped from 1.2.0):** OTel event-name
-> polish (iah-E07b/c). The `agent.rollout.gate.evaluated` and `gate.decision.emitted`
-> event names are already locked + tested on main (PRs #78, #81 per NORMATIVE
-> `intent-eval-lab/000-docs/067-AT-SPEC`). Any further attribute-schema polish on
-> those events is deferred to a routine v2.1 release rather than headlined here — it
-> is additive telemetry refinement, not a 1.2.0 capability boundary.
-
 ### Added
 
 - **`report-lineage` subcommand — deterministic Run/Grade/report verification.** The
@@ -24,6 +17,98 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   does not infer `target_n` from a report that does not declare it. Findings are
   ADVISORY by default; `--strict` turns unverifiable or mismatched lineage into
   FAIL. No SQLite, network, J-Rig import, or runtime dependency is introduced.
+
+### Changed
+
+- **Kernel currency and shadow detection:** the kernel-shadow gate now checks
+  both local re-declarations and dependency ranges that cannot resolve to the
+  current `@intentsolutions/core@0.10.0`. Its offline contract suite covers
+  the 0.x caret trap, lower-bound SemVer behavior, unknown-range surfacing,
+  and fail-closed lookup messaging. Release-time Evidence Bundle validation is
+  pinned to the same exact kernel version.
+
+## [1.5.0] - 2026-09-13
+
+### Added
+
+- `scan --fail-closed` now makes OSV dependency measurement mandatory whenever
+  a supported lockfile or manifest exists. The gate emits honest
+  `NOT_APPLICABLE` only when no dependencies are declared, fails an unlocked
+  declared graph in required mode, separates vulnerability results from
+  scanner failures, records scanner/input/policy provenance, distinguishes
+  production, development-only, and unknown exposure, and blocks
+  production/unknown findings at a configurable severity threshold (HIGH by
+  default).
+- A shipped, checksum-pinned OSV-Scanner 2.5.1 installer for ephemeral CI
+  runners, plus deterministic golden coverage for clean, vulnerable,
+  unavailable, crashed, malformed, and not-applicable paths.
+
+### Security
+
+- Release and pull-request dependency lanes now install OSV-Scanner and execute
+  the harness fail-closed instead of accepting an unmeasured advisory result.
+- The 23-test signing-reconciler state-machine suite now runs in CI; it was
+  previously present but unwired despite protecting append-only Rekor outbox
+  and fail-closed persistence behavior.
+
+### Fixed
+
+- Root `npm test` now runs the aggregate deterministic suite instead of a
+  staged-diff command followed by `|| true`; `npm run check` is the contributor
+  gate for lint, tests, projection drift, and hash-manifest verification.
+- The self-pin denominator now includes delegated shell/Python test runners and
+  JSON policy schemas, closing routes that could weaken a suite or applicability
+  contract while leaving the pinned package command unchanged.
+- Root development dependencies now have a committed lockfile; CI and release
+  jobs use `npm ci` rather than resolving a fresh graph with `npm install`.
+- The release workflow is tag-only. The manual-dispatch path that could publish
+  arbitrary branch bytes without a matching version tag has been removed.
+
+## [1.4.0] - 2026-09-01
+
+### Added
+
+- `worktree-run` — pre-push gate runner that checks the exact ref being pushed
+  in a disposable `git worktree`: `verify` + `escape-scan --range` on the push
+  range fail-closed, `conform` + `audit --fast` advisory, gate-result/v1 rows
+  written outside the repo. No push authority, no LLM stage, no repo writes.
+  Wired as a lefthook `pre-push` job in this repo (reference recipe for
+  consumers). Extracted from the no-mistakes discovery (2026-08-30): the
+  isolated-worktree pre-push loop was the one idea worth keeping; the LLM
+  review stage, auto-fix authority, and proxy-push were deliberately not
+  adopted. Honors `AUDIT_HARNESS_DISABLE=1`.
+- `bias-count` now counts source-introspection tests — a test whose only
+  evidence is reading the implementation source (`inspect.getsource`, reading
+  files under `src/`) instead of asserting observable behaviour of a public
+  interface. Deterministic counterpart of the prose rule in the
+  implement-tests auto-remediation reference; advisory like every bias
+  pattern (promotion to blocking goes through `fp-rate`).
+
+### Fixed
+
+- `bias-count` no longer dies mid-report on a clean directory: under
+  `pipefail`, a zero-match grep exited 1 and aborted the scan (truncated
+  output, exit 1) before the summary — the "gate that looks like it ran"
+  failure class from 1.3.1. Zero-match patterns now count as 0.
+- Expanded the default `harness-hash` denominator to include package test
+  scripts, `tests/TESTING.md`, common JavaScript and Python coverage/mutation
+  configs, and primary CI workflow files. Previously an edit could weaken the
+  command or workflow that enforced a pinned threshold without changing one of
+  the few files protected by the manifest.
+- Added an offline contract suite proving those files are pinned, their edits
+  or removal produce `HARNESS_TAMPERED` (exit 2), and ordinary source changes do
+  not require a policy re-pin.
+- Accessibility detection now recognises dedicated a11y/accessibility test
+  files and directories for native, QML, CLI/TUI, and other non-web stacks.
+  Previously it recognised only four web dependencies and falsely advised
+  projects to add irrelevant tooling despite executable accessibility tests.
+
+> **Riding a future v2.1 routine release (descoped from 1.2.0):** OTel event-name
+> polish (iah-E07b/c). The `agent.rollout.gate.evaluated` and `gate.decision.emitted`
+> event names are already locked + tested on main (PRs #78, #81 per NORMATIVE
+> `intent-eval-lab/000-docs/067-AT-SPEC`). Any further attribute-schema polish on
+> those events is deferred to a routine v2.1 release rather than headlined here — it
+> is additive telemetry refinement, not a 1.2.0 capability boundary.
 
 ## [1.3.1] - 2026-07-23
 
@@ -430,7 +515,8 @@ Initial release. Extracted from the `audit-tests` Claude Code skill v7.0.0 to en
 - **`audit-harness gherkin-lint`** — advisory Gherkin quality check.
 - **`audit-harness crap`** — CRAP (Complexity × Coverage) scorer for Python, JS/TS, Go, Rust.
 
-[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.3.1...v1.4.0
 [1.2.2]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.1.8...v1.2.0
