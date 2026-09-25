@@ -35,7 +35,7 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
 | `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
 | `audit-harness migration-notes` | Generate deterministic adopter-facing migration notes from the changelog and SemVer policy |
-| `audit-harness report-lineage` | Verify generic Run/Grade/report lineage and arithmetic; optionally cross-check a J-Rig suite audit manifest |
+| `audit-harness report-lineage` | Verify generic Run/Grade/report lineage, arithmetic, and per-cell sample-slot uniqueness; optionally cross-check a J-Rig suite audit manifest; emit promotion metadata for downstream binding |
 | `audit-harness gen-layer-applicability` | Project the canonical audit-profile registry into `layer-applicability.md` |
 | `audit-harness worktree-run` | Run pre-push gates against an exact ref in a disposable worktree |
 
