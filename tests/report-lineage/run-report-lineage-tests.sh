@@ -230,6 +230,34 @@ assert_result "suite/source Raw Run mismatch is advisory" "$TMP/suite-valid.json
 assert_result "unsealed source status is advisory" "$TMP/suite-valid.json" 0 ADVISORY "$TMP/audit-unsealed.json"
 assert_result "strict mode gates source mismatch" "$TMP/suite-valid.json" 1 FAIL "$TMP/audit-drift.json" 1
 
+valid_diagnostic="$TMP/valid-diagnostic.json"
+if python3 "$CHECK" --report "$TMP/unified-valid.json" --json >"$valid_diagnostic" \
+  && python3 - "$valid_diagnostic" <<'PY'
+import json, sys
+row = json.load(open(sys.argv[1], encoding="utf-8"))
+assert row["gate_id"] == "audit-harness:ci:report-lineage"
+metadata = row["metadata"]
+assert metadata["selected_grader"] == {
+    "grader_id": "answer-checker",
+    "grader_version": "1.0.0",
+    "grader_snapshot_sha256": "sha256:" + "a" * 64,
+}
+assert metadata["run_counts"] == {
+    "cell_count": 1,
+    "attempted_runs": 3,
+    "completed_runs": 2,
+    "active_runs": 0,
+    "harness_failure_count": 1,
+    "graded_runs": 2,
+    "ungraded_completed_runs": 0,
+    "pass_count": 1,
+    "fail_count": 1,
+}
+assert metadata["sample_balance"]["duplicate_sample_index_count"] == 0
+PY
+then pass "clean row carries canonical gate identity, Grader, Run counts, and sample metadata"
+else fail "clean row omitted promotion binding metadata"; fi
+
 sample_diagnostic="$TMP/sample-diagnostic.json"
 if python3 "$CHECK" --report "$TMP/sample-duplicate.json" --json >"$sample_diagnostic" \
   && python3 - "$sample_diagnostic" <<'PY'
@@ -257,6 +285,7 @@ if node "$ROOT/bin/audit-harness.js" report-lineage --report "$TMP/unified-empty
 import json, sys
 statement = json.load(open(sys.argv[1], encoding="utf-8"))
 assert statement["predicateType"].endswith("/gate-result/v1")
+assert statement["predicate"]["gate_id"] == "audit-harness:ci:report-lineage"
 PY
 then pass "report-lineage JSON pipes through emit-evidence"
 else fail "report-lineage JSON did not emit a valid gate-result Statement"; fi

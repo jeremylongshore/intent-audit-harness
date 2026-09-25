@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 POLICY = "report-lineage/v1:run-grade-report-invariants"
-GATE_ID = "audit-harness:report-lineage"
+GATE_ID = "audit-harness:ci:report-lineage"
 REPORT_SCHEMAS = {"j-rig/unified-report/v1", "j-rig/suite-report/v1"}
 RUN_STATUSES = {"pending", "running", "completed", "runner_error", "timed_out"}
 SOURCE_STATUSES = RUN_STATUSES | {"planned", "failed"}
@@ -479,6 +479,7 @@ def validate_unified(report, errors):
         "selector": selector,
         "runs": parsed_runs,
         "run_ids": [run.get("raw_run_id") for run in parsed_runs],
+        "run_counts": summary_expected,
         "sample_balance": {
             "sampling_cell_count": len(sample_slots),
             "unique_sample_slot_count": sum(len(slots) for slots in sample_slots.values()),
@@ -605,7 +606,18 @@ def version():
         return "unknown"
 
 
-def build_row(result, errors, report_path, source_path, report_schema, input_hash, commit_sha, sample_balance=None):
+def build_row(
+    result,
+    errors,
+    report_path,
+    source_path,
+    report_schema,
+    input_hash,
+    commit_sha,
+    selected_grader=None,
+    run_counts=None,
+    sample_balance=None,
+):
     def display_path(path):
         if not path:
             return None
@@ -631,6 +643,10 @@ def build_row(result, errors, report_path, source_path, report_schema, input_has
             "errors": errors[:20],
         },
     }
+    if selected_grader is not None:
+        row["metadata"]["selected_grader"] = selected_grader
+    if run_counts is not None:
+        row["metadata"]["run_counts"] = run_counts
     if sample_balance is not None:
         row["metadata"]["sample_balance"] = sample_balance
     if errors:
@@ -699,6 +715,8 @@ def main():
         input_bytes += b"\0" + source_raw
     input_hash = sha256_bytes(input_bytes)
     result = "PASS" if not errors else ("FAIL" if args.strict else "ADVISORY")
+    selected_grader = unified.get("selector") if unified is not None else None
+    run_counts = unified.get("run_counts") if unified is not None else None
     sample_balance = unified.get("sample_balance") if unified is not None else None
     row = build_row(
         result,
@@ -708,6 +726,8 @@ def main():
         report_schema,
         input_hash,
         git_commit(args.report),
+        selected_grader,
+        run_counts,
         sample_balance,
     )
 
