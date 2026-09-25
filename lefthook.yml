@@ -38,3 +38,13 @@ pre-commit:
     - name: eslint
       glob: "bin/*.js"
       run: npx eslint {staged_files}
+
+# Pre-push worktree gate: re-runs verify + escape-scan (fail-closed) plus
+# conform + audit (advisory) against the exact ref being pushed, in a disposable
+# git worktree — the working tree is never touched. Extracted from the
+# no-mistakes discovery; the loop closes before the remote sees the push, so CI
+# is confirmation rather than discovery. AUDIT_HARNESS_DISABLE=1 skips it.
+pre-push:
+  jobs:
+    - name: worktree-gate
+      run: bash scripts/worktree-run.sh --pre-push
