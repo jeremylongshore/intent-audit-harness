@@ -6,6 +6,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`report-lineage` subcommand — deterministic Run/Grade/report verification.** The
+  read-only, stdlib-only gate validates J-Rig `unified-report/v1` and
+  `suite-report/v1` projections, recomputes summary and per-cell arithmetic,
+  checks selected Grader snapshot identity, and optionally cross-checks a suite
+  against its `eval-suite/v1` audit manifest. Findings are ADVISORY by default;
+  `--strict` turns unverifiable or mismatched lineage into FAIL. No SQLite,
+  network, J-Rig import, or runtime dependency is introduced.
+
 ### Changed
 
 - **Kernel currency and shadow detection:** the kernel-shadow gate now checks

@@ -14,7 +14,7 @@ Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `impl
 
 ## What it is
 
-A small CLI dispatching 17 released deterministic commands (shell + stdlib-Python scripts) — an 18th, `audit-harness migration-notes`, is on disk and staged for the next release (see CHANGELOG `[Unreleased]`):
+A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), including read-only evidence and report verification:
 
 | Command | Purpose |
 |---|---|
@@ -34,6 +34,7 @@ A small CLI dispatching 17 released deterministic commands (shell + stdlib-Pytho
 | `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner; `--fail-closed` makes applicable OSV measurement release-blocking |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
 | `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
+| `audit-harness report-lineage` | Verify generic Run/Grade/report lineage and arithmetic; optionally cross-check a J-Rig suite audit manifest |
 | `audit-harness gen-layer-applicability` | Project the canonical audit-profile registry into `layer-applicability.md` |
 
 ## Install
