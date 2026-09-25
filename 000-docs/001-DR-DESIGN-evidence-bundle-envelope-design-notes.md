@@ -1,8 +1,8 @@
 <!-- BEGIN BD-SYNC:cross-ref:v1 -->
 
-Beads: `bd_000-projects-aon3.3.1`
-GitHub: `jeremylongshore/intent-audit-harness#148`
-Projection-SHA256: 8e021a94abf84d84a4cf967517ec3b7643a8ff9050d1ccf064da55c90aa33d33
+Beads: `bd_000-projects-aon3.3.1, bd_000-projects-pu35.4`
+GitHub: `jeremylongshore/intent-audit-harness#148, jeremylongshore/intent-audit-harness#150`
+Projection-SHA256: 9c5afc521b2e248ae4012e6887e7955b1795df838132a815f155f81d7a7c52a8
 
 <!-- END BD-SYNC:cross-ref:v1 -->
 
@@ -13,6 +13,10 @@ Projection-SHA256: 8e021a94abf84d84a4cf967517ec3b7643a8ff9050d1ccf064da55c90aa33
 > **Issue:** [`jeremylongshore/audit-harness#7`](https://github.com/jeremylongshore/audit-harness/issues/7) (`AH-4`)
 > **Umbrella:** [`jeremylongshore/intent-eval-lab#5`](https://github.com/jeremylongshore/intent-eval-lab/issues/5) (`IEL-CONV-2`) → [`#4`](https://github.com/jeremylongshore/intent-eval-lab/issues/4) (`IEL-CONV-1`)
 > **Master plan:** `~/.claude/plans/please-take-your-time-glimmering-stardust.md` § "audit-harness — what's needed" #3
+
+| Beads  | `bd_000-projects-pu35.4`, `bd_000-projects-aon3` (`RC-IAH`) |
+| ------ | ----------------------------------------------------------- |
+| GitHub | `jeremylongshore/intent-audit-harness#150`                  |
 
 ## Goal
 
