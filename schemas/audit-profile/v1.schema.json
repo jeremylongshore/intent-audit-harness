@@ -236,7 +236,7 @@
         },
         "tool": {
           "type": "string",
-          "description": "External tool this gate shells out to, if any (e.g. 'gitleaks', 'osv-scanner', 'spectral', 'ajv', 'markdownlint', 'lychee'). Absent for native/policy gates. A missing tool at run-time yields an 'unmeasured' gate-result, not a FAIL.",
+          "description": "External tool this gate shells out to, if any (e.g. 'gitleaks', 'osv-scanner', 'spectral', 'ajv', 'markdownlint', 'lychee'). Absent for native/policy gates. Missing tools are unmeasured/advisory by default. A runner's explicit fail-closed mode may instead FAIL when the gate is applicable; scan --fail-closed does this for OSV when a supported dependency input exists.",
           "examples": [
             "gitleaks",
             "osv-scanner",
