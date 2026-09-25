@@ -14,8 +14,7 @@ Deterministic test-enforcement toolkit. Companion to the `audit-tests` and `impl
 
 ## What it is
 
-A small CLI dispatching 19 released deterministic commands implemented as shell
-and standard-library Python scripts:
+A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), including read-only evidence and report verification:
 
 | Command | Purpose |
 |---|---|
@@ -36,6 +35,7 @@ and standard-library Python scripts:
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
 | `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
 | `audit-harness migration-notes` | Generate deterministic adopter-facing migration notes from the changelog and SemVer policy |
+| `audit-harness report-lineage` | Verify generic Run/Grade/report lineage and arithmetic; optionally cross-check a J-Rig suite audit manifest |
 | `audit-harness gen-layer-applicability` | Project the canonical audit-profile registry into `layer-applicability.md` |
 | `audit-harness worktree-run` | Run pre-push gates against an exact ref in a disposable worktree |
 

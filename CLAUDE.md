@@ -9,10 +9,16 @@ The canonical implementation of the test-enforcement scripts used by the `audit-
 ## Core design rules
 
 1. **Scripts are the source of truth.** The Node CLI (`bin/audit-harness.js`) is a thin dispatcher. All logic lives in `scripts/*.sh` and `scripts/*.py`. Don't port to TypeScript unless there's a concrete reason (cross-platform Windows bug, etc.).
-2. **Zero runtime deps.** Node ≥18, bash, python3 (used by 9 script verbs: crap-score, classify, conform, audit, scan, currency, fp-rate, migration-notes, gen-layer-applicability). Adding any npm dependency requires strong justification in the PR.
+2. **Zero runtime deps.** Node ≥18, bash, python3 (used by 10 script verbs: crap-score, classify, conform, audit, scan, currency, fp-rate, migration-notes, report-lineage, gen-layer-applicability). Adding any npm dependency requires strong justification in the PR.
 3. **Backward compatibility on CLI surface.** Once shipped, commands don't get renamed or repurposed. Add new ones; deprecate before removing (2 minor versions warning minimum).
 4. **Policy-driven, never hardcoded.** Thresholds (coverage floor, CRAP limits, mutation kill rate) read from the target repo's `tests/TESTING.md`. Never hardcode a number in a script.
 5. **The harness tests itself.** Run `bash scripts/escape-scan.sh --staged` on any proposed diff before committing.
+
+6. **Kernel validation is exact and current.** The CI-only evidence emitter
+   installs `@intentsolutions/core@0.10.0` in the release workflow; the
+   published harness remains zero-runtime-dependency. `kernel-shadow-check`
+   treats a dependency range that cannot resolve to that canonical surface as
+   the same compatibility risk as a local contract re-declaration.
 
 ## Read-only brain: `classify` + `conform` (PP-PLAN-040)
 
@@ -20,6 +26,7 @@ The "comprehensive audit, on any repo" build (master plan: `intent-eval-lab/000-
 
 - **`classify [repo]`** (`scripts/classify.py`) → an `audit-profile/v1` value. Detects the UNION of repo-type + Claude-artifact classifications, resolves the gate set against the canonical `schemas/audit-profile/registry.v1.json` datum, records `registry_hash`. `unresolved[]` is the only surface a Claude inspector may later refine.
 - **`conform [repo]`** (`scripts/conform.py`) → `gate-result/v1` rows. For each `dimension: conformance` gate, validates the artifact against a content-addressed schema **bundled** in `schemas/conform/v1/` (never live-fetched) and records that schema's sha256 in `policy_hash`. Bundled JSON-Schemas are checked by an **embedded subset validator** (not ajv) on purpose: reproducibility of signed evidence beats per-box ajv availability. Genuinely-external formats shell out (OpenAPI→spectral, Action→yamllint); missing tool → ADVISORY indeterminate, never a false FAIL. Advisory-first; `--strict` turns violations into FAIL.
+- **`report-lineage --report PATH`** (`scripts/report-lineage.py`) → one `gate-result/v1` row. Validates J-Rig `unified-report/v1` and `suite-report/v1` projections, checks Run/Grade identity and per-cell arithmetic, and optionally proves a suite's Run set against its `eval-suite/v1` audit manifest. stdlib-only, offline, read-only, advisory-first; `--strict` turns unverifiable lineage into FAIL. It never opens SQLite or imports J-Rig, so the published harness remains zero-runtime-dependency.
 
 Design boundaries that travel with these verbs: the harness stays **read-only** (no `apply` — provisioning is `/implement-tests`'s job); conform's bundled schemas are the deterministic **structural floor**, distinct from the IS rubric / SAK authoring kernel (judgment, stays in `/validate-*`); new gates ship `enforcement: advisory` until an engineer promotes them in `tests/TESTING.md`. `scripts/classify.py` + `scripts/conform.py` are hash-pinned in `.harness-hash` — edits REFUSE at escape-scan until re-pinned via `audit-harness init`.
 
@@ -151,6 +158,16 @@ repo the reviewer should be pointed at this repo's gate semantics — the univer
 Activation needs owner secret actions: repo secret `MINIMAX_API_KEY` + repo
 variable `ENABLE_MINIMAX_REVIEW=true` (+ `MINIMAX_MODEL`). Until then this repo
 is CI-only, deliberately.
+
+## Canonical Beads workspace
+
+This repository is one member of the six-repo Intent Eval Platform workspace.
+The tracked `.beads/redirect` resolves the supported workspace layout to
+`~/000-projects/.beads/`, the canonical umbrella Dolt store. The former member
+store's `issues.jsonl`, backups, and Git history remain recovery artifacts; the
+removed member metadata prevents `bd` from silently opening a second database.
+Verify with `bd where` and `bd info`, and use `bd-sync` from the umbrella
+workspace for bead↔GitHub↔Plane changes. Do not run `bd init` here.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
