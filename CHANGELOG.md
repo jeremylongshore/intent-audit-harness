@@ -16,6 +16,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `--strict` turns unverifiable or mismatched lineage into FAIL. No SQLite,
   network, J-Rig import, or runtime dependency is introduced.
 
+### Changed
+
+- **Kernel currency and shadow detection:** the kernel-shadow gate now checks
+  both local re-declarations and dependency ranges that cannot resolve to the
+  current `@intentsolutions/core@0.10.0`. Its offline contract suite covers
+  the 0.x caret trap, lower-bound SemVer behavior, unknown-range surfacing,
+  and fail-closed lookup messaging. Release-time Evidence Bundle validation is
+  pinned to the same exact kernel version.
+
 ## [1.5.0] - 2026-09-13
 
 ### Added

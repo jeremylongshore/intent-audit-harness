@@ -49,6 +49,29 @@
 #     anchors require `=`, `{`, `<`, `(`, `:`, `extends`, or `implements` after
 #     the name.
 #
+# ## Third class: a STALE KERNEL RANGE is a shadow too
+#
+# Re-declaring a kernel type is only ONE way to end up validating against a stale
+# contract. The other is to declare a dependency range that cannot resolve forward
+# to the kernel everyone else is on. The harm is identical — the consumer validates
+# against a contract copy the platform has moved past — so it belongs in the same
+# detector rather than in a separate tool nobody remembers to run.
+#
+# This is not hypothetical. bobs-big-brain-compiler pinned
+# `"@intentsolutions/core": "^0.1.1"` while the kernel shipped 0.10.0. A caret range
+# on a 0.x major is capped at that MINOR (`^0.1.1` == `>=0.1.1 <0.2.0`), so it could
+# never reach 0.10.0 on its own — nine minor versions of silent drift. This detector
+# reported that repo CLEAN, because it only looked for re-declared types. It was
+# blind to the exact failure mode it exists to prevent.
+#
+# Range forms understood (anything else is reported as UNKNOWN, never assumed OK):
+#   ^0.Y.Z / ~0.Y.Z  -> admits 0.Y.* only          (0.x caret does NOT cross minors)
+#   ^X.Y.Z (X>=1)    -> admits X.*
+#   ~X.Y.Z (X>=1)    -> admits X.Y.*
+#   X.Y.Z            -> exact; admits only itself
+#   >=… / * / x      -> open; admits latest
+#   workspace:…      -> monorepo link; not a published-range concern
+#
 # Background: iah-E02 (the architecture question — peerDep-only vs full TS port
 # vs second-emitter — that historically blocked a standing kernel-shadow check)
 # is now CLOSED, so this detector ships.
@@ -76,8 +99,12 @@ while [[ $# -gt 0 ]]; do
     --root) ROOT="${2:-.}"; shift 2 ;;
     --help|-h)
       echo "Usage: kernel-shadow-check.sh [--strict] [--root DIR]"
-      echo "  Flags local re-declarations of kernel-owned gate-result/evidence-bundle contracts."
+      echo "  Flags local re-declarations of kernel-owned gate-result/evidence-bundle contracts,"
+      echo "  AND @intentsolutions/core dependency ranges that cannot resolve to the current kernel."
       echo "  Default: advisory (exit 0). --strict: exit 1 on any shadow."
+      echo ""
+      echo "  KERNEL_LATEST_VERSION=X.Y.Z  skip the npm lookup and compare against X.Y.Z"
+      echo "                               (used by the test suite; also lets CI pin the check)"
       exit 0 ;;
     *) echo "kernel-shadow-check: unknown arg '$1'" >&2; exit 2 ;;
   esac
@@ -218,8 +245,194 @@ while IFS= read -r f; do
 done < <(grep -rIlE "$CLASS2_PATTERN" \
             --include='*.ts' --include='*.py' --exclude-dir=node_modules --exclude-dir=.git . 2>/dev/null || true)
 
+# 3. @intentsolutions/core dependency ranges that cannot resolve to the current
+#    kernel. See the header — a stale range and a re-declared type produce the same
+#    outcome (validating against a contract the platform has moved past), so both
+#    are shadows.
+
+KERNEL_PKG="@intentsolutions/core"
+
+# Resolve the current published kernel. KERNEL_LATEST_VERSION short-circuits the
+# network (deterministic tests, pinned CI). A failed lookup SKIPS this class loudly
+# — it never silently passes, because "we could not check" and "it is fine" are
+# different answers and only one of them is safe to report as clean.
+kernel_latest="${KERNEL_LATEST_VERSION:-}"
+kernel_lookup_note=""
+if [[ -z "$kernel_latest" ]]; then
+  if command -v npm >/dev/null 2>&1; then
+    kernel_latest="$(npm view "$KERNEL_PKG" version 2>/dev/null | tr -d '[:space:]' || true)"
+  fi
+  if [[ -z "$kernel_latest" ]]; then
+    kernel_lookup_note="could not resolve ${KERNEL_PKG} from npm (offline, or npm unavailable)"
+  fi
+fi
+
+# Compare strict MAJOR.MINOR.PATCH values. Echoes -1, 0, or 1 and ignores
+# build metadata because SemVer precedence ignores it. Callers validate the
+# shape before invoking this helper.
+version_cmp() {
+  local a="${1%%+*}" b="${2%%+*}" ai bi
+  local -a av bv
+  IFS='.' read -r -a av <<< "$a"
+  IFS='.' read -r -a bv <<< "$b"
+  for i in 0 1 2; do
+    ai="${av[$i]}"; bi="${bv[$i]}"
+    if (( 10#$ai < 10#$bi )); then echo -1; return; fi
+    if (( 10#$ai > 10#$bi )); then echo 1; return; fi
+  done
+  echo 0
+}
+
+# Does RANGE admit VERSION? Echoes: admits | stale | unknown
+# Deliberately narrow: every form it does not positively understand returns
+# "unknown" and is surfaced, never assumed OK.
+range_admits() {
+  local range="$1" latest="$2"
+
+  case "$range" in
+    workspace:*|link:*|file:*|portal:*) echo "admits"; return ;;   # local link, not a published range
+    ""|"*"|x|X|latest)                  echo "admits"; return ;;
+  esac
+
+  # Compound / hyphen / wildcard-inside ranges (`0.1.x || ^0.2.0`, `1.2.0 - 1.4.0`,
+  # `^0.1 <0.3`) are NOT evaluated. Composing them correctly is a real semver
+  # implementation, and half-parsing one produces a confident wrong answer — the
+  # earlier draft classified `0.1.x || ^0.2.0` as STALE because the leading digit
+  # made it look exact. Report unknown and let a human read it.
+  if [[ "$range" == *"||"* || "$range" == *" "* || "$range" == *"x"* || "$range" == *"X"* || "$range" == *"-"* ]]; then
+    echo "unknown"; return
+  fi
+
+  local op="" spec="$range"
+  case "$range" in
+    ^*) op="caret"; spec="${range#^}" ;;
+    ~*) op="tilde"; spec="${range#\~}" ;;
+    ">="*) op="gte"; spec="${range#>=}" ;;
+    ">"*) op="gt"; spec="${range#>}" ;;
+    [0-9]*) op="exact" ;;
+    *) echo "unknown"; return ;;
+  esac
+
+  # spec must be strictly MAJOR.MINOR.PATCH (an optional +build suffix is fine;
+  # a `-prerelease` is excluded above with the hyphen ranges). Anchored, so a
+  # trailing surprise cannot slip through the way a glob let it.
+  if [[ ! "$spec" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9A-Za-z.]+)?$ ]]; then
+    echo "unknown"; return
+  fi
+
+  local smaj smin cmp latest_major latest_minor spec_plain
+  spec_plain="${spec%%+*}"
+  smaj="${spec%%.*}"
+  smin="${spec#*.}"; smin="${smin%%.*}"
+  latest_major="${latest%%.*}"
+  latest_minor="${latest#*.}"; latest_minor="${latest_minor%%.*}"
+  cmp="$(version_cmp "$latest" "$spec_plain")"
+
+  if [[ "$op" == "exact" ]]; then
+    [[ "$cmp" == "0" ]] && echo "admits" || echo "stale"
+    return
+  fi
+
+  if [[ "$op" == "gte" ]]; then
+    [[ "$cmp" -ge 0 ]] && echo "admits" || echo "stale"
+    return
+  fi
+
+  if [[ "$op" == "gt" ]]; then
+    [[ "$cmp" -gt 0 ]] && echo "admits" || echo "stale"
+    return
+  fi
+
+  if [[ "$op" == "tilde" ]]; then
+    # `~X.Y.Z` admits [X.Y.Z, X.(Y+1).0). The lower-bound comparison matters:
+    # ~0.10.1 must NOT admit an older 0.10.0 kernel.
+    if [[ "$smaj" == "$latest_major" && "$smin" == "$latest_minor" && "$cmp" -ge 0 ]]; then
+      echo "admits"
+    else
+      echo "stale"
+    fi
+    return
+  fi
+
+  # THE 0.x TRAP: ^0.1.1 admits [0.1.1, 0.2.0), never 0.10.0. For ^0.0.Z,
+  # semver narrows the upper bound to the next patch, so only the exact patch
+  # is admitted. A caret on >=1.0.0 admits the same major, but still respects
+  # the lower bound.
+  if [[ "$smaj" == "0" ]]; then
+    if [[ "$smin" == "0" ]]; then
+      [[ "$cmp" == "0" ]] && echo "admits" || echo "stale"
+    elif [[ "$smaj" == "$latest_major" && "$smin" == "$latest_minor" && "$cmp" -ge 0 ]]; then
+      echo "admits"
+    else
+      echo "stale"
+    fi
+    return
+  fi
+
+  if [[ "$smaj" == "$latest_major" && "$cmp" -ge 0 ]]; then echo "admits"; else echo "stale"; fi
+}
+
+stale_ranges=()
+unknown_ranges=()
+skipped_note=""
+
+if [[ -n "$kernel_lookup_note" ]]; then
+  skipped_note="$kernel_lookup_note"
+else
+  while IFS= read -r pkgjson; do
+    [[ -z "$pkgjson" ]] && continue
+    rel="${pkgjson#./}"
+    is_allowlisted "$rel" && continue
+    # Extract the declared range for the kernel from any dependency block.
+    declared="$(grep -oE "\"${KERNEL_PKG}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$pkgjson" 2>/dev/null \
+                 | head -n1 | sed -E 's/.*:[[:space:]]*"([^"]*)".*/\1/' || true)"
+    [[ -z "$declared" ]] && continue
+    verdict="$(range_admits "$declared" "$kernel_latest")"
+    case "$verdict" in
+      stale)
+        stale_ranges+=("$rel  (${KERNEL_PKG}: \"${declared}\" cannot resolve to ${kernel_latest})") ;;
+      unknown)
+        unknown_ranges+=("$rel  (${KERNEL_PKG}: \"${declared}\" — range form not understood; verify by hand)") ;;
+    esac
+  done < <(grep -rIl "\"${KERNEL_PKG}\"" --include='package.json' \
+              --exclude-dir=node_modules --exclude-dir=.git . 2>/dev/null || true)
+fi
+
+if [[ ${#shadows[@]} -eq 0 && ${#stale_ranges[@]} -eq 0 && ${#unknown_ranges[@]} -eq 0 ]]; then
+  if [[ -n "$skipped_note" ]]; then
+    echo "kernel-shadow-check: no re-declarations found."
+    echo "kernel-shadow-check: SKIPPED the kernel-range check — ${skipped_note}." >&2
+    echo "  Set KERNEL_LATEST_VERSION=X.Y.Z to check offline. Not reporting fully clean." >&2
+    exit 0
+  fi
+  echo "kernel-shadow-check: clean — no re-declarations, and every ${KERNEL_PKG} range resolves to ${kernel_latest}."
+  exit 0
+fi
+
+if [[ ${#stale_ranges[@]} -gt 0 ]]; then
+  echo "kernel-shadow-check: found ${#stale_ranges[@]} stale kernel range(s) — current kernel is ${kernel_latest}:" >&2
+  for r in "${stale_ranges[@]}"; do
+    echo "  - $r" >&2
+    file_only="${r%%  *}"
+    echo "::warning file=${file_only}::stale kernel range — this range cannot resolve to ${KERNEL_PKG}@${kernel_latest}; the package validates against a contract the platform has moved past"
+  done
+fi
+
+if [[ ${#unknown_ranges[@]} -gt 0 ]]; then
+  echo "kernel-shadow-check: ${#unknown_ranges[@]} kernel range(s) could not be evaluated:" >&2
+  for r in "${unknown_ranges[@]}"; do
+    echo "  - $r" >&2
+    file_only="${r%%  *}"
+    echo "::warning file=${file_only}::kernel range not understood by kernel-shadow-check — verify by hand"
+  done
+fi
+
 if [[ ${#shadows[@]} -eq 0 ]]; then
-  echo "kernel-shadow-check: clean — no local re-declarations of kernel-owned contracts."
+  if [[ "$STRICT" -eq 1 ]]; then
+    echo "kernel-shadow-check: --strict — failing the build." >&2
+    exit 1
+  fi
+  echo "kernel-shadow-check: advisory mode — not failing the build (pass --strict to gate)." >&2
   exit 0
 fi
 
