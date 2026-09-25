@@ -54,6 +54,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   previously present but unwired despite protecting append-only Rekor outbox
   and fail-closed persistence behavior.
 
+### Changed
+
+- PyPI publishing is retired starting with this release. The
+  `intent-audit-harness` PyPI package remains frozen at `1.4.0`; npm is the
+  canonical distribution and crates.io remains an optional Rust wrapper.
+
 ### Fixed
 
 - Root `npm test` now runs the aggregate deterministic suite instead of a
@@ -518,7 +524,8 @@ Initial release. Extracted from the `audit-tests` Claude Code skill v7.0.0 to en
 - **`audit-harness gherkin-lint`** — advisory Gherkin quality check.
 - **`audit-harness crap`** — CRAP (Complexity × Coverage) scorer for Python, JS/TS, Go, Rust.
 
-[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.3.1...v1.4.0
 [1.2.2]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.2.0...v1.2.1

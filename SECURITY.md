@@ -6,8 +6,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| v1.2.x (current) | Yes |
-| < v1.2 | Best effort — upgrade to the current line |
+| v1.x (current) | Yes |
+| < v1 | Best effort — upgrade to the current line |
 
 ## Reporting a Vulnerability
 
@@ -46,7 +46,7 @@ Email **<security@intentsolutions.io>** with:
 audit-harness sits in CI as a quality gate. Its security posture must consider:
 
 - **Adversary inside the repo** — AI agent or contributor attempting to lower test thresholds, delete tests, or silently weaken the harness. Mitigation: `.harness-hash` manifest pins policy files; `escape-scan` detects common tampering patterns; modifying these requires committer to also re-run `init` and explicitly commit the new manifest.
-- **Adversary upstream** — supply-chain attack on the npm/PyPI/crates package. Mitigation: minimal dependencies in the dispatcher; signed releases shipped (npm `--provenance` SLSA attestation, sigstore-python keyless signing on PyPI wheels/sdists, SLSA build-provenance attestation on the crates tarball); cosign keyless OIDC signing on emitted evidence bundles, all wired in `.github/workflows/release.yml`.
+- **Adversary upstream** — supply-chain attack on an active npm or crates.io package, or takeover of the frozen PyPI namespace. Mitigation: minimal dependencies in the dispatcher; npm `--provenance` and crates.io SLSA build-provenance attestations; cosign keyless OIDC signing on emitted evidence bundles; and revocation of historical PyPI upload credentials. PyPI publishing was removed starting with v1.5.0, and its final package version is frozen at v1.4.0.
 - **Adversary in consumer repo's CI** — attempt to forge `verify` output to claim manifest passed. Mitigation: the harness emits structured output that downstream collectors can re-verify against the on-disk manifest.
 
 ## Disclosure Process
@@ -54,7 +54,7 @@ audit-harness sits in CI as a quality gate. Its security posture must consider:
 1. **Report** — You email the details to <security@intentsolutions.io>
 2. **Triage** — We assess severity and impact
 3. **Fix** — We develop and test a patch
-4. **Notify** — We inform affected users (consumer repos via the npm/PyPI/crates advisory feeds + a CHANGELOG entry tagged `SECURITY`)
+4. **Notify** — We inform affected users through active npm/crates.io advisory feeds and a CHANGELOG entry tagged `SECURITY`; frozen PyPI users receive an explicit migration notice when affected
 5. **Release** — We publish the fix
 6. **Post-Mortem** — We document lessons learned
 

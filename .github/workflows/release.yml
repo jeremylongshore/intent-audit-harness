@@ -282,116 +282,10 @@ jobs:
           fi
           echo "✓ report-manifest.json published to release $tag"
 
-  # ── Publish the Python wrapper to PyPI (polyglot parity with npm) ──
-  #
-  # Tag-only (v*.*.*). GUARDED: the publish step no-ops when PYPI_TOKEN is not
-  # configured as a repo secret — the job runs, detects the missing token, and
-  # exits 0 with an explanatory log instead of failing the release. This lets the
-  # job ship wired-but-dormant; it activates automatically the moment the secret
-  # is set, with no further code change. NEVER publishes on a PR (PRs don't push
-  # tags, and the workflow trigger is tag-only).
-  publish-pypi:
-    name: Publish Python wrapper to PyPI (guarded on PYPI_TOKEN)
-    needs: release
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: write # attach the .sigstore bundles onto the Release
-      id-token: write # sigstore-python keyless signing (Fulcio OIDC)
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
-          # the PyPI sdist/wheel is built from this checkout, so the bytes MUST
-          # be the pushed tag's bytes. This job is tag-only.
-          ref: ${{ github.ref }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-
-      # Guard: surface whether the publish token exists. secrets.* cannot be read
-      # in a job-level `if`, so we gate the publish step on this step's output.
-      - name: Check for PyPI token
-        id: guard
-        env:
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          if [ -n "${PYPI_TOKEN}" ]; then
-            echo "token_present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "token_present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::PYPI_TOKEN secret is not set — skipping PyPI publish. Set it in repo secrets to activate this job automatically (see python/PUBLISH.md)."
-          fi
-
-      - name: Build sdist + wheel
-        if: steps.guard.outputs.token_present == 'true'
-        run: |
-          python -m pip install --upgrade build twine
-          cd python
-          python -m build
-          twine check dist/*
-
-      # ── Keyless-sign the wheel + sdist with sigstore-python (bead kyk1) ──
-      #
-      # Per DR-010 Q2 hybrid language allowance, Python signing surfaces use
-      # sigstore-python (the PyPI-ecosystem-native signer) rather than cosign —
-      # mirroring how the npm leg uses npm --provenance and the emit-evidence job
-      # uses cosign. Produces a `<artifact>.sigstore` Sigstore bundle (Fulcio OIDC
-      # cert + Rekor inclusion proof) next to each dist artifact. The signing
-      # identity is this workflow's reusable-workflow ref. Guarded on the same
-      # PYPI_TOKEN gate as the publish: a signature only has meaning alongside the
-      # bytes that actually ship, so we sign exactly when (and only when) we publish.
-      - name: Sign wheel + sdist (sigstore-python keyless → Rekor)
-        if: steps.guard.outputs.token_present == 'true'
-        uses: sigstore/gh-action-sigstore-python@v3.5.0
-        with:
-          inputs: ./python/dist/*.whl ./python/dist/*.tar.gz
-          # We attach the bundles onto the GitHub Release ourselves below, so
-          # don't let the action upload its own duplicate workflow artifacts.
-          upload-signing-artifacts: false
-
-      - name: Publish to PyPI
-        if: steps.guard.outputs.token_present == 'true'
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          cd python
-          # Upload ONLY the built distributions — NOT the .sigstore.json bundles
-          # the signing step drops into dist/ (twine rejects them as
-          # "Unknown distribution format"). The Sigstore bundles are attached to
-          # the GitHub Release in the next step. (fix: v1.2.1 PyPI publish failure)
-          twine upload --non-interactive dist/*.whl dist/*.tar.gz
-          echo "✓ published Python wrapper to PyPI"
-
-      # Attach the Sigstore bundles onto this tag's Release so consumers can
-      # `python -m sigstore verify identity ...` the downloaded wheel/sdist. The
-      # `release` job above already created the Release on this tag.
-      - name: Publish .sigstore bundles onto the Release
-        if: steps.guard.outputs.token_present == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          tag="${GITHUB_REF#refs/tags/}"
-          bundles=(python/dist/*.sigstore python/dist/*.sigstore.json)
-          if [ "${#bundles[@]}" -eq 0 ]; then
-            echo "::error::sigstore signing produced no bundles to attach"
-            exit 1
-          fi
-          gh release upload "$tag" "${bundles[@]}" --clobber
-          echo "✓ attached ${#bundles[@]} Sigstore bundle(s) to release $tag"
-
   # ── Publish the Rust wrapper to crates.io (polyglot parity with npm) ──
   #
   # Tag-only (v*.*.*). GUARDED: the publish step no-ops when CARGO_REGISTRY_TOKEN
-  # is not configured as a repo secret — same wired-but-dormant pattern as the
-  # PyPI job. NEVER publishes on a PR.
+  # is not configured as a repo secret. NEVER publishes on a PR.
   publish-crates:
     name: Publish Rust wrapper to crates.io (guarded on CARGO_REGISTRY_TOKEN)
     needs: release
@@ -416,7 +310,7 @@ jobs:
           rustup toolchain install stable --profile minimal --no-self-update
           rustup default stable
 
-      # Guard: surface whether the publish token exists (see PyPI job note).
+      # Guard: surface whether the publish token exists.
       - name: Check for crates.io token
         id: guard
         env:
@@ -475,7 +369,7 @@ jobs:
   # a PR; it only fires on a future failed tag-release.
   alert-on-failure:
     name: alert-on-failure
-    needs: [release, emit-evidence, publish-pypi, publish-crates]
+    needs: [release, emit-evidence, publish-crates]
     if: failure()
     runs-on: ubuntu-latest
     timeout-minutes: 5

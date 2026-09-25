@@ -16,7 +16,7 @@ Thank you for your interest in contributing to **audit-harness** — the determi
 ```bash
 git clone https://github.com/jeremylongshore/intent-audit-harness.git
 cd audit-harness
-npm install        # only dev-deps; the package itself has no runtime deps
+npm ci             # locked dev-deps; the package itself has no runtime deps
 ```
 
 ### Quick self-check
@@ -50,8 +50,8 @@ node bin/audit-harness.js verify        # verify against pinned hashes
    ```
 
 3. Make your changes — keep additive when possible (the harness has a stable CLI surface across 5+ language ecosystems)
-4. Write or update tests in `test/` if behavior changes
-5. Verify locally: `npm test` (when test suite exists) + `node bin/audit-harness.js list` should still exit 0
+4. Write or update tests in `tests/` if behavior changes
+5. Verify locally with `npm run check`
 6. Commit with [conventional commit messages](#commit-messages)
 7. Push and open a pull request
 
@@ -74,8 +74,8 @@ audit-harness is consumed by many other Intent Solutions repos (via npm / PyPI /
 ### Testing
 
 ```bash
-# When a test suite lands, this will run it:
-npm test
+# Full contributor gate: lint, deterministic suites, projection drift, and hash verification
+npm run check
 
 # Polyglot script smoke checks:
 bash scripts/escape-scan.sh --help
@@ -84,8 +84,8 @@ python3 scripts/crap-score.py --help
 
 ### Code Review
 
-- All PRs require at least 1 maintainer approval
-- CI must pass (currently: self-check across Node 18/20/22)
+- All PRs must satisfy branch protection and every required status check
+- CI must pass, including Node 18/20/22 self-checks and the security/contract lanes
 - Keep PRs focused — one feature or fix per PR
 - Document any policy-file changes — if the change requires consumer repos to re-run `audit-harness init` to refresh their `.harness-hash` manifest, **state that explicitly in the PR description**
 
@@ -131,7 +131,9 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### License-aware contributions
 
-The package is MIT-licensed. By contributing, you agree to license your contributions under the same MIT terms. Don't introduce dependencies under copyleft licenses (GPL/AGPL) without prior discussion.
+The package is Apache-2.0-licensed. By contributing, you agree to license your
+contributions under the same terms. Don't introduce dependencies under copyleft
+licenses (GPL/AGPL) without prior discussion.
 
 ## Community
 
@@ -142,7 +144,7 @@ The package is MIT-licensed. By contributing, you agree to license your contribu
 ## License
 
 By contributing, you agree that your contributions will be licensed under the
-project's [MIT License](LICENSE).
+project's [Apache License 2.0](LICENSE).
 
 ---
 
