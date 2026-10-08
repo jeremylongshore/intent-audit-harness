@@ -8,6 +8,21 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`emit-evidence --append-to BUNDLE` — assemble the Evidence Bundle the rollout
+  gate consumes.** Appends the unsigned Statement to a JSON array (created on the
+  first row), the plain-array form `intent-rollout-gate`'s `bundle-path` reads.
+  `scripts/bundle-append.py` validates every existing row and the new row: the
+  predicate against a frozen kernel `gate-result/v1` snapshot shipped at
+  `schemas/kernel-snapshot/` (a small keyword interpreter that refuses any
+  keyword it does not implement), the envelope against SPEC R8/R9. A duplicate
+  row id (gate_id) is refused; the write is atomic (temp file + rename) under an
+  exclusive lock, so every refusal leaves the bundle byte-identical. Refused with
+  `--output` or any signing flag. Contract suite:
+  `tests/emit-evidence/run-emit-evidence-tests.sh` (CI job
+  `emit-evidence-contract`), which also requires the snapshot to stay
+  byte-identical to the regression suite's kernel fixture and cross-checks rows
+  with `jsonschema`.
+
 - **`conform --tier marketplace` — full kernel skill-frontmatter validation.**
   SKILL.md frontmatter can now be checked against the kernel's complete
   `authoring/v1` skill-frontmatter contract (`@intentsolutions/core@0.11.0`):
@@ -53,6 +68,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the 0.x caret trap, lower-bound SemVer behavior, unknown-range surfacing,
   and fail-closed lookup messaging. Release-time Evidence Bundle validation is
   pinned to the same exact kernel version.
+
+### Deprecated
+
+- **`emit-evidence --out`**: newly accepted, and deprecated on arrival. It behaves
+  exactly like the documented `--output` and prints a deprecation warning.
+  Downstream docs had advertised `--out`, which the script previously rejected as
+  an unknown flag; migrate to `--output`. A path flag given without a
+  value (`--input`, `--output`, `--out`, `--append-to`) now exits 1 instead of
+  aborting on an unbound variable.
 
 ## [1.5.0] - 2026-09-13
 

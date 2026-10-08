@@ -16,10 +16,24 @@
 #   bash emit-evidence.sh --sign --keyless < gate.json             # cosign keyless (Fulcio OIDC)
 #   bash emit-evidence.sh --sign --rekor-url https://rekor.sigstore.dev < gate.json
 #   bash emit-evidence.sh --output bundle/row.json < gate.json
+#   <gate> --json | bash emit-evidence.sh --append-to evidence/bundle.json
 #
 # Flags:
 #   --input PATH       Read gate-result JSON from PATH instead of stdin
 #   --output PATH      Write Statement (DSSE envelope if --sign) to PATH instead of stdout
+#   --out PATH         DEPRECATED alias of --output (warns on stderr; removal no
+#                      earlier than two minor versions after the release that adds the warning)
+#   --append-to PATH   Append the unsigned Statement to the Evidence Bundle at PATH
+#                      (a JSON array of Statements — the plain-array form
+#                      intent-rollout-gate's bundle-path consumes). Creates the
+#                      file as a one-row array when absent. Every existing row and
+#                      the new row are validated (predicate against the frozen
+#                      kernel snapshot in schemas/kernel-snapshot/, envelope
+#                      against SPEC R8/R9); a row whose id (subject name ==
+#                      gate_id) is already present is REFUSED. The write is atomic (temp
+#                      file + rename) under an exclusive lock on PATH.lock, so a
+#                      refused append leaves the bundle byte-identical. Not
+#                      combinable with --output or --sign (exit 1).
 #   --sign             Sign the Statement via cosign. Default: --keyless.
 #   --keyless          Force cosign keyless signing (OIDC). Default when --sign and no --key.
 #   --key PATH         Cosign keyref. Use instead of --keyless.
@@ -32,7 +46,8 @@
 #
 # Exit codes:
 #   0 — Statement emitted successfully
-#   1 — input JSON malformed or missing required fields
+#   1 — input JSON malformed or missing required fields; --append-to refused
+#       (invalid bundle, invalid row, duplicate row id, or a flag conflict)
 #   2 — signing requested but cosign not available
 #   3 — Rekor push requested but failed
 #   4 — production DNSSEC/CAA pre-flight FAILED (fail-closed; nothing was signed)
@@ -59,6 +74,7 @@ set -euo pipefail
 
 INPUT="-"
 OUTPUT=""
+APPEND_TO=""
 SIGN=0
 KEYLESS=0
 KEYREF=""
@@ -71,10 +87,23 @@ STATEMENT_TYPE="https://in-toto.io/Statement/v1"
 # from the predicate URI host; overridable for testing via EVIDENCE_PREDICATE_DOMAIN.
 PREDICATE_DOMAIN="${EVIDENCE_PREDICATE_DOMAIN:-evals.intentsolutions.io}"
 
+# A path-taking flag with no value (or another flag in its place) is malformed
+# input: exit 1, the frozen code, instead of an unbound-variable abort.
+need_arg() {
+  if [[ $# -lt 2 || -z "$2" || "$2" == --* ]]; then
+    echo "emit-evidence: $1 needs a PATH" >&2
+    exit 1
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --input)       INPUT="$2"; shift 2 ;;
-    --output)      OUTPUT="$2"; shift 2 ;;
+    --input)       need_arg "$@"; INPUT="$2"; shift 2 ;;
+    --output)      need_arg "$@"; OUTPUT="$2"; shift 2 ;;
+    --out)
+                   echo "emit-evidence: --out is deprecated; use --output (same behavior)" >&2
+                   need_arg "$@"; OUTPUT="$2"; shift 2 ;;
+    --append-to)   need_arg "$@"; APPEND_TO="$2"; shift 2 ;;
     --sign)        SIGN=1; shift ;;
     --keyless)     SIGN=1; KEYLESS=1; shift ;;
     --key)         SIGN=1; KEYREF="$2"; shift 2 ;;
@@ -91,10 +120,24 @@ while [[ $# -gt 0 ]]; do
     --no-sign)     SIGN=0; shift ;;
     --runner-version) RUNNER_VERSION_OVERRIDE="$2"; shift 2 ;;
     --commit-sha)  COMMIT_SHA_OVERRIDE="$2"; shift 2 ;;
-    --help|-h)     sed -n '2,40p' "$0"; exit 0 ;;
+    --help|-h)     sed -n '2,53p' "$0"; exit 0 ;;
     *) echo "emit-evidence: unknown flag $1" >&2; exit 1 ;;
   esac
 done
+
+if [[ -n "$APPEND_TO" ]]; then
+  if [[ -n "$OUTPUT" ]]; then
+    echo "emit-evidence: --append-to cannot be combined with --output/--out" >&2
+    exit 1
+  fi
+  if [[ "$SIGN" -eq 1 ]]; then
+    # The bundle the rollout gate reads is an array of in-toto Statements; a
+    # signed DSSE envelope is a different shape, so appending one would hand the
+    # gate a row it rejects. Signed rows ship per-file via --output.
+    echo "emit-evidence: --append-to writes unsigned Statements; it cannot be combined with --sign/--key/--keyless/--rekor-url" >&2
+    exit 1
+  fi
+fi
 
 # --- Read input ---
 if [[ "$INPUT" == "-" ]]; then
@@ -401,6 +444,14 @@ emit() {
     printf '%s\n' "$content"
   fi
 }
+
+if [[ -n "$APPEND_TO" ]]; then
+  # scripts/bundle-append.py validates the predicate against the frozen kernel
+  # snapshot (schemas/kernel-snapshot/), checks the SPEC R8/R9 envelope rules,
+  # refuses duplicate row ids, and writes atomically under a lock.
+  printf '%s' "$STATEMENT" | python3 "$SCRIPT_DIR/bundle-append.py" "$APPEND_TO"
+  exit $?
+fi
 
 if [[ "$SIGN" -eq 0 ]]; then
   emit "$STATEMENT"

@@ -137,6 +137,10 @@ Commands:
   emit-evidence            Wrap a gate-result JSON envelope in an in-toto
                            Statement v1 (predicate https://evals.intentsolutions.io/gate-result/v1)
                            Read JSON on stdin: <gate> --json | audit-harness emit-evidence
+                           --output FILE writes one Statement (--out: deprecated
+                           alias). --append-to BUNDLE appends the unsigned row to
+                           the JSON-array bundle intent-rollout-gate consumes
+                           (validated, duplicate row ids refused, atomic write).
   worktree-run             Pre-push gate runner: checks the ref being pushed in
                            a disposable git worktree (verify + escape-scan on
                            the push range fail-closed; conform + audit advisory)
