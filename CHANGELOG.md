@@ -11,14 +11,17 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`emit-evidence --append-to BUNDLE` — assemble the Evidence Bundle the rollout
   gate consumes.** Appends the unsigned Statement to a JSON array (created on the
   first row), the plain-array form `intent-rollout-gate`'s `bundle-path` reads.
-  Every existing row and the new row are checked against the kernel
-  `gate-result/v1` Statement rules (subject == gate_id, digest == input_hash,
-  closed predicate keys and patterns, advisory severity, non-empty reasons); a
-  duplicate row id (gate_id) is refused; the write is atomic (temp file + rename)
-  under an exclusive lock, so every refusal leaves the bundle byte-identical.
-  Refused with `--output` or any signing flag. Contract suite:
+  `scripts/bundle-append.py` validates every existing row and the new row: the
+  predicate against a frozen kernel `gate-result/v1` snapshot shipped at
+  `schemas/kernel-snapshot/` (a small keyword interpreter that refuses any
+  keyword it does not implement), the envelope against SPEC R8/R9. A duplicate
+  row id (gate_id) is refused; the write is atomic (temp file + rename) under an
+  exclusive lock, so every refusal leaves the bundle byte-identical. Refused with
+  `--output` or any signing flag. Contract suite:
   `tests/emit-evidence/run-emit-evidence-tests.sh` (CI job
-  `emit-evidence-contract`).
+  `emit-evidence-contract`), which also requires the snapshot to stay
+  byte-identical to the regression suite's kernel fixture and cross-checks rows
+  with `jsonschema`.
 
 - **`report-lineage` subcommand — deterministic Run/Grade/report verification.** The
   read-only, stdlib-only gate validates J-Rig `unified-report/v1` and
@@ -46,7 +49,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - **`emit-evidence --out`** is now an accepted alias of the documented `--output`
   and prints a deprecation warning. Downstream docs had advertised `--out`, which
-  the script previously rejected as an unknown flag.
+  the script previously rejected as an unknown flag. A path flag given without a
+  value (`--input`, `--output`, `--out`, `--append-to`) now exits 1 instead of
+  aborting on an unbound variable.
 
 ## [1.5.0] - 2026-09-13
 

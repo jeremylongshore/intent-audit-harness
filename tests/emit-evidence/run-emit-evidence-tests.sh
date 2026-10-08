@@ -11,8 +11,9 @@
 #   2. --output is the documented file flag; --out still works but warns.
 #
 # Deterministic + offline: every case runs under mktemp, no network, no cosign.
-# When python3 has jsonschema, every appended row is also validated against the
-# kernel gate-result/v1 fixture (tests/fixtures/gate-result-v1.schema.json).
+# Requires python3 jsonschema: every appended row is cross-checked against the
+# kernel gate-result/v1 fixture (self-contained, local $refs only), and the
+# shipped snapshot must be byte-identical to that fixture.
 #
 # Run from anywhere:  bash tests/emit-evidence/run-emit-evidence-tests.sh
 
@@ -21,6 +22,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 EMIT="$ROOT/scripts/emit-evidence.sh"
 SCHEMA="$ROOT/tests/fixtures/gate-result-v1.schema.json"
+SNAPSHOT="$ROOT/schemas/kernel-snapshot/gate-result-v1.schema.json"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -64,20 +66,21 @@ PY
 )
 assert_eq "ok" "$shape" "bundle holds both Statements in append order, subject == gate_id"
 
-if python3 -c "import jsonschema" 2>/dev/null && [[ -f "$SCHEMA" ]]; then
-  kernel=$(python3 - "$B" "$SCHEMA" 2>&1 <<'PY'
-import json, sys, jsonschema
+# The cross-check is mandatory: a missing fixture or jsonschema is a FAIL, never
+# a skip, so the snapshot-driven validator cannot drift from the kernel quietly.
+check "kernel fixture is present" test -f "$SCHEMA"
+check "shipped kernel snapshot is byte-identical to the kernel fixture" cmp -s "$SNAPSHOT" "$SCHEMA"
+kernel=$(python3 - "$B" "$SCHEMA" 2>&1 <<'PY'
+import json, sys
+import jsonschema
 rows = json.load(open(sys.argv[1]))
 schema = json.load(open(sys.argv[2]))
 for r in rows:
     jsonschema.validate(r["predicate"], schema)
 print("ok")
 PY
-  )
-  assert_eq "ok" "$kernel" "every appended predicate validates against the kernel gate-result/v1 schema"
-else
-  echo "  (skip) jsonschema not installed — kernel cross-check skipped"
-fi
+)
+assert_eq "ok" "$kernel" "every appended predicate validates against the kernel gate-result/v1 schema (jsonschema)"
 
 before=$(sha "$B")
 ec=0; err=$(envelope "audit-harness:ci:escape-scan" PASS | emit --append-to "$B" 2>&1 >/dev/null) || ec=$?
@@ -124,6 +127,26 @@ assert_eq "1" "$ec" "--append-to with --sign is refused (a DSSE envelope is not 
 check "conflicting flags write nothing" test ! -e "$WORK/x.json"
 ec=0; envelope "audit-harness:ci:arch" PASS | emit --append-to >/dev/null 2>&1 || ec=$?
 assert_eq "1" "$ec" "--append-to without a PATH exits 1 (frozen malformed-input code)"
+ec=0; bash "$EMIT" --input >/dev/null 2>&1 </dev/null || ec=$?
+assert_eq "1" "$ec" "--input without a PATH exits 1 (no unbound-variable abort)"
+
+echo "== --append-to: the validator refuses a snapshot it cannot interpret =="
+
+# Copy the package layout, plant an unimplemented keyword in the snapshot, and
+# confirm the append fails closed instead of under-validating.
+PKG="$WORK/pkg"
+mkdir -p "$PKG/scripts" "$PKG/schemas/kernel-snapshot"
+cp "$ROOT/scripts/emit-evidence.sh" "$ROOT/scripts/bundle-append.py" "$PKG/scripts/"
+python3 - "$SNAPSHOT" "$PKG/schemas/kernel-snapshot/gate-result-v1.schema.json" <<'PY'
+import json, sys
+s = json.load(open(sys.argv[1]))
+s["properties"]["gate_name"]["maxLength"] = 64
+json.dump(s, open(sys.argv[2], "w"))
+PY
+ec=0; err=$(envelope "audit-harness:ci:arch" PASS | bash "$PKG/scripts/emit-evidence.sh" --runner-version "audit-harness@9.9.9" --commit-sha "abcdef1" --append-to "$WORK/planted.json" 2>&1 >/dev/null) || ec=$?
+assert_eq "1" "$ec" "an unimplemented schema keyword makes --append-to refuse (fail closed)"
+check "the refusal names the unsupported keyword" grep -q "maxLength" <<<"$err"
+check "nothing was written" test ! -e "$WORK/planted.json"
 
 echo "== --output is documented; --out is a deprecated alias =="
 

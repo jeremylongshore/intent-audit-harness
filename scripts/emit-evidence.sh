@@ -22,14 +22,15 @@
 #   --input PATH       Read gate-result JSON from PATH instead of stdin
 #   --output PATH      Write Statement (DSSE envelope if --sign) to PATH instead of stdout
 #   --out PATH         DEPRECATED alias of --output (warns on stderr; removal no
-#                      earlier than two minor versions after 1.6.0, per SEMVER.md)
+#                      earlier than two minor versions after the release that adds the warning)
 #   --append-to PATH   Append the unsigned Statement to the Evidence Bundle at PATH
 #                      (a JSON array of Statements — the plain-array form
 #                      intent-rollout-gate's bundle-path consumes). Creates the
 #                      file as a one-row array when absent. Every existing row and
-#                      the new row are validated against the kernel gate-result/v1
-#                      Statement rules; a row whose id (subject name == gate_id)
-#                      is already present is REFUSED. The write is atomic (temp
+#                      the new row are validated (predicate against the frozen
+#                      kernel snapshot in schemas/kernel-snapshot/, envelope
+#                      against SPEC R8/R9); a row whose id (subject name ==
+#                      gate_id) is already present is REFUSED. The write is atomic (temp
 #                      file + rename) under an exclusive lock on PATH.lock, so a
 #                      refused append leaves the bundle byte-identical. Not
 #                      combinable with --output or --sign (exit 1).
@@ -97,7 +98,7 @@ need_arg() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --input)       INPUT="$2"; shift 2 ;;
+    --input)       need_arg "$@"; INPUT="$2"; shift 2 ;;
     --output)      need_arg "$@"; OUTPUT="$2"; shift 2 ;;
     --out)
                    echo "emit-evidence: --out is deprecated; use --output (same behavior)" >&2
@@ -119,7 +120,7 @@ while [[ $# -gt 0 ]]; do
     --no-sign)     SIGN=0; shift ;;
     --runner-version) RUNNER_VERSION_OVERRIDE="$2"; shift 2 ;;
     --commit-sha)  COMMIT_SHA_OVERRIDE="$2"; shift 2 ;;
-    --help|-h)     sed -n '2,52p' "$0"; exit 0 ;;
+    --help|-h)     sed -n '2,53p' "$0"; exit 0 ;;
     *) echo "emit-evidence: unknown flag $1" >&2; exit 1 ;;
   esac
 done
@@ -445,134 +446,10 @@ emit() {
 }
 
 if [[ -n "$APPEND_TO" ]]; then
-  STATEMENT="$STATEMENT" APPEND_TO="$APPEND_TO" PREDICATE_URI="$PREDICATE_URI" \
-    STATEMENT_TYPE="$STATEMENT_TYPE" python3 - <<'PY'
-import fcntl, json, os, re, sys, tempfile
-
-path = os.environ["APPEND_TO"]
-PREDICATE_URI = os.environ["PREDICATE_URI"]
-STATEMENT_TYPE = os.environ["STATEMENT_TYPE"]
-
-# Structural mirror of the kernel contract the rollout gate enforces
-# (@intentsolutions/core gate-result/v1 schema + Evidence Bundle SPEC R8/R9).
-# The harness is zero-dependency, so the rules are restated here; the contract
-# suite (tests/emit-evidence/) cross-checks accepted rows against the kernel
-# JSON Schema with jsonschema whenever it is installed.
-SUBJECT_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*:(client|server|ci|sandbox|local):[a-zA-Z0-9][a-zA-Z0-9.-]*$")
-KEBAB = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-SEMVER = r"[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?(\+[A-Za-z0-9.-]+)?"
-SEMVER_RE = re.compile(rf"^{SEMVER}$")
-RUNNER_RE = re.compile(rf"^[a-z0-9][a-z0-9-]*@{SEMVER}$")
-SHA256_PREFIXED = re.compile(r"^sha256:[a-f0-9]{64}$")
-SHA256_HEX = re.compile(r"^[a-f0-9]{64}$")
-POLICY_REF = re.compile(r"^sha256:[a-f0-9]{64}:.+$")
-COMMIT_SHA = re.compile(r"^[a-f0-9]{7,40}$")
-RFC3339 = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
-REQUIRED = ("gate_id", "gate_name", "gate_version", "gate_decision", "gate_reasons",
-            "coverage", "policy_ref", "policy_hash", "input_hash", "evaluated_at",
-            "runner", "commit_sha")
-OPTIONAL = ("metadata", "failure_mode", "advisory_severity", "cost_record_ref",
-            "replay_fidelity_level", "coverage_detail")
-
-
-def row_errors(row):
-    if not isinstance(row, dict):
-        return ["row is not a JSON object"]
-    errs = []
-    if row.get("_type") != STATEMENT_TYPE:
-        errs.append(f"_type must be {STATEMENT_TYPE}")
-    if row.get("predicateType") != PREDICATE_URI:
-        errs.append(f"predicateType must be {PREDICATE_URI}")
-    subject = row.get("subject")
-    if not (isinstance(subject, list) and len(subject) == 1 and isinstance(subject[0], dict)):
-        errs.append("subject must be a one-element array")
-        subject = [{}]
-    pred = row.get("predicate")
-    if not isinstance(pred, dict):
-        return errs + ["predicate must be an object"]
-    missing = [k for k in REQUIRED if k not in pred]
-    if missing:
-        errs.append(f"predicate missing required keys {missing}")
-    extra = sorted(set(pred) - set(REQUIRED) - set(OPTIONAL))
-    if extra:
-        errs.append(f"predicate has keys the kernel schema forbids {extra}")
-    checks = (("gate_id", SUBJECT_NAME), ("gate_name", KEBAB), ("gate_version", SEMVER_RE),
-              ("policy_ref", POLICY_REF), ("policy_hash", SHA256_PREFIXED),
-              ("input_hash", SHA256_PREFIXED), ("evaluated_at", RFC3339),
-              ("runner", RUNNER_RE), ("commit_sha", COMMIT_SHA))
-    for key, rx in checks:
-        if key in pred and not (isinstance(pred[key], str) and rx.match(pred[key])):
-            errs.append(f"predicate.{key} is malformed: {pred[key]!r}")
-    decision = pred.get("gate_decision")
-    if decision not in ("pass", "fail", "advisory", "error"):
-        errs.append(f"predicate.gate_decision must be pass|fail|advisory|error, got {decision!r}")
-    reasons = pred.get("gate_reasons")
-    if not (isinstance(reasons, list) and all(isinstance(r, str) for r in reasons)):
-        errs.append("predicate.gate_reasons must be an array of strings")
-    elif decision in ("fail", "advisory", "error") and not reasons:
-        errs.append(f"predicate.gate_reasons must be non-empty when gate_decision is {decision}")
-    if decision == "advisory" and pred.get("advisory_severity") not in ("info", "warn", "error"):
-        errs.append("predicate.advisory_severity (info|warn|error) is required for an advisory row")
-    cov = pred.get("coverage")
-    if not (isinstance(cov, dict) and set(cov) == {"dimensions_evaluated", "dimensions_skipped"}
-            and all(isinstance(cov[k], list) and all(isinstance(x, str) for x in cov[k]) for k in cov)):
-        errs.append("predicate.coverage must hold exactly dimensions_evaluated + dimensions_skipped string arrays")
-    name = subject[0].get("name")
-    if name != pred.get("gate_id"):
-        errs.append("subject[0].name must equal predicate.gate_id (SPEC R8)")
-    digest = (subject[0].get("digest") or {}).get("sha256") if isinstance(subject[0].get("digest"), dict) else None
-    if not (isinstance(digest, str) and SHA256_HEX.match(digest)):
-        errs.append("subject[0].digest.sha256 must be 64 lowercase hex")
-    elif pred.get("input_hash") != f"sha256:{digest}":
-        errs.append("subject[0].digest.sha256 must equal predicate.input_hash (SPEC R9)")
-    return errs
-
-
-def refuse(msg):
-    sys.stderr.write(f"emit-evidence: --append-to refused: {msg}\n")
-    sys.exit(1)
-
-
-new_row = json.loads(os.environ["STATEMENT"])
-errs = row_errors(new_row)
-if errs:
-    refuse("the new row is not a valid gate-result/v1 Statement: " + "; ".join(errs))
-
-directory = os.path.dirname(os.path.abspath(path))
-os.makedirs(directory, exist_ok=True)
-with open(path + ".lock", "a") as lock:
-    fcntl.flock(lock, fcntl.LOCK_EX)
-    rows = []
-    if os.path.exists(path):
-        try:
-            with open(path, encoding="utf-8") as fh:
-                rows = json.load(fh)
-        except (OSError, ValueError) as exc:
-            refuse(f"{path} is not readable JSON ({exc})")
-        if not isinstance(rows, list):
-            refuse(f"{path} must be a JSON array of Statements (the v1 container form is read-only)")
-        for i, row in enumerate(rows):
-            row_errs = row_errors(row)
-            if row_errs:
-                refuse(f"{path} row {i} is invalid: " + "; ".join(row_errs))
-    row_id = new_row["predicate"]["gate_id"]
-    if any(r["predicate"]["gate_id"] == row_id for r in rows):
-        refuse(f"{path} already holds a row with id {row_id}")
-    rows.append(new_row)
-    fd, tmp = tempfile.mkstemp(prefix=".emit-evidence-", suffix=".json", dir=directory)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(rows, fh, indent=2)
-            fh.write("\n")
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
-    except BaseException:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
-    sys.stderr.write(f"emit-evidence: appended {row_id} to {path} ({len(rows)} row(s))\n")
-PY
+  # scripts/bundle-append.py validates the predicate against the frozen kernel
+  # snapshot (schemas/kernel-snapshot/), checks the SPEC R8/R9 envelope rules,
+  # refuses duplicate row ids, and writes atomically under a lock.
+  printf '%s' "$STATEMENT" | python3 "$SCRIPT_DIR/bundle-append.py" "$APPEND_TO"
   exit $?
 fi
 
