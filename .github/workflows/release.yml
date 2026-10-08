@@ -86,6 +86,14 @@ jobs:
       - name: Verify hash-pinned release policy
         run: bash scripts/harness-hash.sh --verify
 
+      # `npm test` runs every suite, including the conform suite (PyYAML is
+      # its frontmatter parser) and the jsonschema parity cross-checks. ci.yml
+      # installs these per job; without them here the v1.5.0 tag run failed
+      # 13 conform cases and never reached `npm publish`. Exact pins keep the
+      # release lane reproducible.
+      - name: Install test-suite Python dependencies (PyYAML, jsonschema)
+        run: python3 -m pip install 'pyyaml==6.0.3' 'jsonschema==4.26.0'
+
       - name: Run deterministic core test suite
         run: npm test
 

@@ -6,6 +6,20 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-08
+
+Ships the 1.5.0 content to npm and crates.io. The `v1.5.0` tag and GitHub
+Release exist, but its release run failed before `npm publish`, so no
+registry carries 1.5.0; install 1.5.1.
+
+### Fixed
+
+- The release workflow now installs PyYAML and jsonschema (exact pins) before
+  `npm test`. The conform suite added in 1.5.0 parses SKILL.md frontmatter with
+  PyYAML; the release lane had neither package, so the `v1.5.0` tag run failed
+  13 conform cases and stopped before publishing. `.harness-hash` is re-pinned
+  for the workflow change and the version bump.
+
 ## [1.5.0] - 2026-10-08
 
 First release since 1.4.0. The 1.5.0 version bump and the `scan --fail-closed`
@@ -572,7 +586,8 @@ Initial release. Extracted from the `audit-tests` Claude Code skill v7.0.0 to en
 - **`audit-harness gherkin-lint`** — advisory Gherkin quality check.
 - **`audit-harness crap`** — CRAP (Complexity × Coverage) scorer for Python, JS/TS, Go, Rust.
 
-[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.3.1...v1.4.0
 [1.2.2]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.2.1...v1.2.2
