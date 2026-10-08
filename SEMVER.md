@@ -51,6 +51,7 @@ the cost of a silent CI breakage across N adopter repositories.
 | `bias` | 1 | test directory not found | v0.1.0 |
 | `emit-evidence` | 0 | Statement emitted | v0.3.0 |
 | `emit-evidence` | 1 | input malformed | v0.3.0 |
+| `emit-evidence` | 1 | `--append-to` refused: invalid bundle or row, duplicate row id, or a flag conflict (bundle left byte-identical) | unreleased |
 | `emit-evidence` | 2 | cosign not installed (when --sign) | v0.3.0 |
 | `emit-evidence` | 3 | Rekor push failed | v0.3.0 |
 | `emit-evidence` | 4 | production DNSSEC/CAA pre-flight failed — REFUSE to sign (fail-closed; nothing anchored) | v1.2.0 |
@@ -79,6 +80,14 @@ log (Rekor). The path is also reserved exclusively for this predicate per the
 
 Breaking changes to the predicate body would mint a new URI (`gate-result/v2`); both URIs may
 coexist. We will never silently change the body shape under the same URI.
+
+### `emit-evidence` file flags (unreleased)
+
+`--output PATH` is the documented flag for writing one Statement (or DSSE envelope) to a file.
+`--out PATH` is accepted as a **deprecated** alias: same behavior plus a stderr warning. Per the
+deprecation rule it stays for at least two minor versions after the release that introduces the
+warning. `--append-to PATH` appends the unsigned Statement to a JSON-array Evidence Bundle (the
+plain-array form `intent-rollout-gate`'s `bundle-path` consumes); it is additive (minor).
 
 ### `emit-evidence` production DNSSEC + CAA pre-flight (v1.2.0)
 

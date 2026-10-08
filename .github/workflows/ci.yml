@@ -380,6 +380,24 @@ jobs:
       - name: Prove package scripts, threshold configs, and CI stay protected
         run: bash tests/harness-hash/run-harness-hash-tests.sh
 
+  emit-evidence-contract:
+    name: emit-evidence bundle-assembly contract suite
+    runs-on: ubuntu-latest
+    # Pins --append-to (the plain-array Evidence Bundle intent-rollout-gate
+    # consumes: create, append, refuse duplicate row ids / invalid rows / flag
+    # conflicts, byte-identical bundle on every refusal) and the --output /
+    # deprecated --out alias. Offline; jsonschema cross-checks appended rows
+    # against the committed kernel gate-result/v1 fixture.
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install jsonschema (kernel cross-check)
+        run: pip install jsonschema
+      - name: Run emit-evidence contract suite
+        run: bash tests/emit-evidence/run-emit-evidence-tests.sh
+
   semver:
     name: SemVer contract suite (CLI/output surface freeze)
     runs-on: ubuntu-latest

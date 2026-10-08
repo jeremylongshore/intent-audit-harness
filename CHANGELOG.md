@@ -8,6 +8,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`emit-evidence --append-to BUNDLE` — assemble the Evidence Bundle the rollout
+  gate consumes.** Appends the unsigned Statement to a JSON array (created on the
+  first row), the plain-array form `intent-rollout-gate`'s `bundle-path` reads.
+  Every existing row and the new row are checked against the kernel
+  `gate-result/v1` Statement rules (subject == gate_id, digest == input_hash,
+  closed predicate keys and patterns, advisory severity, non-empty reasons); a
+  duplicate row id (gate_id) is refused; the write is atomic (temp file + rename)
+  under an exclusive lock, so every refusal leaves the bundle byte-identical.
+  Refused with `--output` or any signing flag. Contract suite:
+  `tests/emit-evidence/run-emit-evidence-tests.sh` (CI job
+  `emit-evidence-contract`).
+
 - **`report-lineage` subcommand — deterministic Run/Grade/report verification.** The
   read-only, stdlib-only gate validates J-Rig `unified-report/v1` and
   `suite-report/v1` projections, recomputes summary and per-cell arithmetic,
@@ -29,6 +41,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the 0.x caret trap, lower-bound SemVer behavior, unknown-range surfacing,
   and fail-closed lookup messaging. Release-time Evidence Bundle validation is
   pinned to the same exact kernel version.
+
+### Deprecated
+
+- **`emit-evidence --out`** is now an accepted alias of the documented `--output`
+  and prints a deprecation warning. Downstream docs had advertised `--out`, which
+  the script previously rejected as an unknown flag.
 
 ## [1.5.0] - 2026-09-13
 
