@@ -18,7 +18,7 @@ registry carries 1.5.0; install 1.5.1.
   `npm test`. The conform suite added in 1.5.0 parses SKILL.md frontmatter with
   PyYAML; the release lane had neither package, so the `v1.5.0` tag run failed
   13 conform cases and stopped before publishing. `.harness-hash` is re-pinned
-  for the workflow change.
+  for the workflow change and the version bump.
 
 ## [1.5.0] - 2026-10-08
 
@@ -586,7 +586,7 @@ Initial release. Extracted from the `audit-tests` Claude Code skill v7.0.0 to en
 - **`audit-harness gherkin-lint`** — advisory Gherkin quality check.
 - **`audit-harness crap`** — CRAP (Complexity × Coverage) scorer for Python, JS/TS, Go, Rust.
 
-[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.1...HEAD
 [1.5.1]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.3.1...v1.4.0
