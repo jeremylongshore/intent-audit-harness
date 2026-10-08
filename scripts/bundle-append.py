@@ -74,20 +74,20 @@ def validate(inst, schema, root, path="$"):
     unknown = set(schema) - IMPLEMENTED - ANNOTATIONS
     if unknown:
         raise SchemaError(f"unsupported keyword(s) {sorted(unknown)} at {path}")
-    if "$ref" in schema:
+    if schema.get("format", "date-time") != "date-time":
+        raise SchemaError(f"unsupported format {schema['format']!r} at {path}")
+    errs = []
+    if "$ref" in schema:  # applies alongside sibling keywords (draft 2020-12)
         ref = schema["$ref"]
         if not ref.startswith("#/"):
             raise SchemaError(f"non-local $ref {ref!r}")
         target = root
         for part in ref[2:].split("/"):
             target = target[part]
-        return validate(inst, target, root, path)
-    if schema.get("format", "date-time") != "date-time":
-        raise SchemaError(f"unsupported format {schema['format']!r} at {path}")
-    errs = []
+        errs += validate(inst, target, root, path)
     t = schema.get("type")
     if t is not None and not any(_type_ok(inst, x) for x in (t if isinstance(t, list) else [t])):
-        return [f"{path}: expected {t}"]
+        return errs + [f"{path}: expected {t}"]
     if "enum" in schema and inst not in schema["enum"]:
         errs.append(f"{path}: {inst!r} not in {schema['enum']}")
     if "const" in schema and inst != schema["const"]:
