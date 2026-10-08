@@ -17,8 +17,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   kernel files are vendored unmodified under `schemas/conform/kernel/` and
   pinned by package version, tarball sha256 and per-file sha256 in `pin.json`;
   a mismatch yields an indeterminate ADVISORY, never a verdict. The embedded
-  validator gains `$ref` (local `$id` registry, JSON pointers) and `not`, and
-  agrees with `jsonschema` on all 3,091 estate skills surveyed. The default
+  validator gains `$ref` (local `$id` registry, JSON pointers) and `not`; the
+  conform suite asserts it agrees with `jsonschema` on every in-repo SKILL
+  fixture (a one-off survey of 3,091 estate skills also found 0 disagreements;
+  that corpus is not committed). The default
   tier stays `floor` (name + description), so existing consumers see the same
   verdicts; adopt the strict check with `--tier marketplace --strict`.
 - **`install.sh` ships the conform schemas.** The vendoring installer now copies

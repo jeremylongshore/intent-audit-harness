@@ -22,7 +22,7 @@ cfd2da92e71246d6d26abfbff49beef0bb6dcd3b30af64107ae636d0cbc53fc3  schemas/confor
 ae6ce3351335fd829a7f70b6f4094fed0b95607baa185ac1b4621a87e2c7017c  schemas/conform/kernel/intent-eval-core-0.11.0/authoring/v1/marketplace-tier.schema.json
 3a02f3eba5aef870349d94e49ccbd8d49352452ebc70aff80e4d7c3ae3b8b166  schemas/conform/kernel/intent-eval-core-0.11.0/authoring/v1/skill-frontmatter.schema.json
 32ccd48d6aff5484b763372701ceccb63a5bef1c8acd24d50a5fc045215d9b79  schemas/conform/kernel/intent-eval-core-0.11.0/authoring/v1/upstream-base/skill-frontmatter.v1.json
-a808e3830adeb73dcbea847308195d6a1ec28a02a0e4ea3ff073582a4a086fd2  schemas/conform/kernel/intent-eval-core-0.11.0/pin.json
+0bd4b976b04e3220db101e79ae6e49bb4ae296729edee5774487d6a44c43dc17  schemas/conform/kernel/intent-eval-core-0.11.0/pin.json
 c97e09bfe62dbc31aa35a8071ab8616f7942081f1df1456a1702514f7f721f60  schemas/conform/v1/agent-frontmatter.schema.json
 1c323e96932d14ffce0f5027a5ffe434936e282f615b001109e3d2a19479dc00  schemas/conform/v1/mcp-config.schema.json
 ff63babb16e535d25ef183c1efef811560be5838910de6701fe9d3ab4991450d  schemas/conform/v1/plugin-manifest.schema.json
