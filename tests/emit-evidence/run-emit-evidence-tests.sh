@@ -151,6 +151,14 @@ ec=0; err=$(envelope "audit-harness:ci:arch" PASS | bash "$PKG/scripts/emit-evid
 assert_eq "1" "$ec" "an unimplemented schema keyword makes --append-to refuse (fail closed)"
 check "the refusal names the unsupported keyword" grep -q "maxLength" <<<"$err"
 check "nothing was written" test ! -e "$WORK/planted.json"
+python3 - "$SNAPSHOT" "$PKG/schemas/kernel-snapshot/gate-result-v1.schema.json" <<'PY'
+import json, sys
+s = json.load(open(sys.argv[1]))
+s["properties"]["gate_name"]["format"] = "hostname"
+json.dump(s, open(sys.argv[2], "w"))
+PY
+ec=0; envelope "audit-harness:ci:arch" PASS | bash "$PKG/scripts/emit-evidence.sh" --runner-version "audit-harness@9.9.9" --commit-sha "abcdef1" --append-to "$WORK/planted.json" >/dev/null 2>&1 || ec=$?
+assert_eq "1" "$ec" "an unimplemented format makes --append-to refuse (fail closed)"
 
 echo "== --output is documented; --out is a deprecated alias =="
 

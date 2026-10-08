@@ -12,7 +12,10 @@ Validation has two halves, and neither restates the kernel by hand:
   regression suite's kernel fixture, hash-pinned in .harness-hash). The small
   validator below interprets that schema; it knows JSON Schema keywords, not
   gate-result rules, and REFUSES any keyword it does not implement so a kernel
-  update can never be silently under-validated.
+  update can never be silently under-validated. To refresh after a kernel
+  change: update tests/fixtures/gate-result-v1.schema.json, copy it byte for
+  byte to the snapshot path, extend this validator if the suite reports an
+  unsupported keyword or format, then re-pin with `audit-harness init`.
 * Statement envelope: the Evidence Bundle SPEC rules the kernel schema leaves
   to the envelope (R8 subject name == gate_id, R9 subject digest ==
   input_hash, the in-toto _type, the gate-result predicateType).
@@ -79,6 +82,8 @@ def validate(inst, schema, root, path="$"):
         for part in ref[2:].split("/"):
             target = target[part]
         return validate(inst, target, root, path)
+    if schema.get("format", "date-time") != "date-time":
+        raise SchemaError(f"unsupported format {schema['format']!r} at {path}")
     errs = []
     t = schema.get("type")
     if t is not None and not any(_type_ok(inst, x) for x in (t if isinstance(t, list) else [t])):

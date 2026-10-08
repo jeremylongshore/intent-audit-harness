@@ -47,9 +47,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Deprecated
 
-- **`emit-evidence --out`** is now an accepted alias of the documented `--output`
-  and prints a deprecation warning. Downstream docs had advertised `--out`, which
-  the script previously rejected as an unknown flag. A path flag given without a
+- **`emit-evidence --out`**: newly accepted, and deprecated on arrival. It behaves
+  exactly like the documented `--output` and prints a deprecation warning.
+  Downstream docs had advertised `--out`, which the script previously rejected as
+  an unknown flag; migrate to `--output`. A path flag given without a
   value (`--input`, `--output`, `--out`, `--append-to`) now exits 1 instead of
   aborting on an unbound variable.
 
