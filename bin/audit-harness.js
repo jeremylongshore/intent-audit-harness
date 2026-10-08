@@ -79,6 +79,10 @@ Commands:
                            turns any conformance violation into FAIL (exit 1).
                            OpenAPI -> spectral, Action -> yamllint (missing tool =
                            INDETERMINATE advisory).
+                           --tier marketplace validates SKILL.md against the kernel's
+                           full authoring/v1 skill-frontmatter contract (pinned
+                           @intentsolutions/core, sha256-checked); default --tier floor
+                           keeps the name + description structural floor.
   audit [repo]             Read-only testing-depth gate-runner. For each
                            testing-depth gate in the profile, reports coverage
                            PRESENCE per pyramid layer (unit/integration/e2e/perf/
