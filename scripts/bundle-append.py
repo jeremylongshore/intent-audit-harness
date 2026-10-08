@@ -21,15 +21,20 @@ A row whose id (subject name == gate_id) already exists is refused. The write
 is atomic (temp file in the same directory, fsync, os.replace) under an
 exclusive flock on BUNDLE.lock, so every refusal leaves the bundle unchanged.
 
-Exit 0 = appended; exit 1 = refused (message on stderr). stdlib only.
+Exit 0 = appended; exit 1 = refused (message on stderr). stdlib only; POSIX
+only (fcntl), like the bash 4 emit-evidence.sh that invokes it.
 """
 
-import fcntl
 import json
 import os
 import re
 import sys
 import tempfile
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - non-POSIX Python
+    fcntl = None
 
 STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 PREDICATE_URI = "https://evals.intentsolutions.io/gate-result/v1"
@@ -151,6 +156,9 @@ def main(argv):
     if len(argv) != 2:
         refuse("usage: bundle-append.py BUNDLE < statement.json")
     path = argv[1]
+    if fcntl is None:
+        refuse("requires POSIX file locking (this Python has no fcntl); "
+               "emit-evidence already requires bash 4 on a POSIX host")
     try:
         with open(SCHEMA_PATH, encoding="utf-8") as fh:
             schema = json.load(fh)

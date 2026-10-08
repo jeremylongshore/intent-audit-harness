@@ -35,6 +35,10 @@ check() { local d="$1"; shift; if "$@"; then pass "$d"; else fail "$d"; fi; }
 assert_eq() { if [[ "$1" == "$2" ]]; then pass "$3"; else fail "$3 (expected '$1', got '$2')"; fi; }
 
 H64() { printf '%064d' 0 | tr 0 "$1"; }
+# A gate's minimal --json envelope. emit-evidence.sh synthesizes the rest of the
+# kernel body (gate_name from gate_id, gate_version, gate_decision, gate_reasons,
+# coverage, policy_ref, evaluated_at, runner, commit_sha) before appending, which
+# is why the appended predicates validate against the 12-field kernel schema.
 envelope() { # gate_id result [extra-json-fields]
   printf '{"gate_id":"%s","result":"%s","input_hash":"sha256:%s","policy_hash":"sha256:%s"%s}' \
     "$1" "$2" "$(H64 a)" "$(H64 b)" "${3:-}"
