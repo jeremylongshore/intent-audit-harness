@@ -10,6 +10,12 @@
 #   6. A profile gate whose artifact is absent -> NOT_APPLICABLE
 #   7. A conformance kind with no bundled schema -> ADVISORY indeterminate (never a false FAIL)
 #   8. policy_hash == sha256 of the bundled schema (content-addressed), and is reproducible
+#   9. --tier marketplace: a full 8-field SKILL.md -> PASS; policy_hash == sha256(kernel pin.json)
+#  10. A SKILL.md missing `version` -> floor PASS (default unchanged), marketplace ADVISORY,
+#      marketplace --strict FAIL (the whiteglove gap this tier closes)
+#  11. Kernel shape rules: non-semver version, non-string/array allowed-tools, deprecated field
+#  12. Pin integrity: a tampered vendored kernel file -> ADVISORY indeterminate, never a verdict
+#  13. Parity: the embedded validator agrees with jsonschema+referencing on every SKILL fixture
 #
 # Run from the repository root:
 #   bash tests/conform/run-conform-tests.sh
@@ -171,6 +177,100 @@ assert ra["result"] == rb["result"], "result not reproducible"
 PY
 then pass "policy_hash == bundled schema sha256 + reproducible across runs"
 else fail "policy_hash/reproducibility check failed"; fi
+
+# ---- 9: --tier marketplace on a full 8-field skill -> PASS, kernel policy_hash ----
+PIN="$ROOT/schemas/conform/kernel/intent-eval-core-0.11.0/pin.json"
+mk="$TMP/mk.json"
+if python3 "$CONFORM" --tier marketplace --strict "$FIX/valid/skill-marketplace" >"$mk" 2>/dev/null; then ec=0; else ec=$?; fi
+if [ "$ec" -eq 0 ] && python3 - "$mk" "$PIN" <<'PY'
+import json, sys, hashlib
+r = [x for x in json.load(open(sys.argv[1])) if "conform-skillmd" in x["gate_id"]][0]
+want = "sha256:" + hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest()
+assert r["result"] == "PASS", r
+assert r["policy_hash"] == want, f"policy_hash {r['policy_hash']} != pin sha {want}"
+md = r["metadata"]
+assert md["tier"] == "marketplace" and md["kernel"] == "@intentsolutions/core@0.11.0", md
+assert md["schema_id"].endswith("/authoring/v1/skill-frontmatter.schema.json"), md
+PY
+then pass "--tier marketplace: full 8-field skill -> PASS, policy_hash == sha256(pin.json)"
+else fail "--tier marketplace valid fixture (exit $ec): $(cat "$mk")"; fi
+if validate_rows "$mk" 2>"$TMP/e"; then pass "--tier marketplace rows schema-valid"
+else fail "--tier marketplace row schema: $(cat "$TMP/e")"; fi
+
+# ---- 10: missing version -> floor PASS (default), marketplace ADVISORY / --strict FAIL ----
+nv="$FIX/malformed/skill-no-version"
+python3 "$CONFORM" "$nv" >"$TMP/nv-floor.json" 2>/dev/null
+if assert_row "$TMP/nv-floor.json" conform-skillmd PASS 2>"$TMP/e"; then
+  pass "no-version skill: default tier stays floor -> PASS (existing consumers unchanged)"
+else fail "no-version default: $(cat "$TMP/e")"; fi
+if python3 "$CONFORM" --tier marketplace "$nv" >"$TMP/nv-adv.json" 2>/dev/null; then ec=0; else ec=$?; fi
+if [ "$ec" -eq 0 ] && assert_row "$TMP/nv-adv.json" conform-skillmd ADVISORY advisory_severity error 2>"$TMP/e" \
+   && grep -q "missing required property 'version'" "$TMP/nv-adv.json"; then
+  pass "no-version skill: --tier marketplace -> ADVISORY(error) naming 'version', exit 0"
+else fail "no-version marketplace advisory (exit $ec): $(cat "$TMP/e" "$TMP/nv-adv.json")"; fi
+if python3 "$CONFORM" --tier marketplace --strict "$nv" >"$TMP/nv-strict.json" 2>/dev/null; then ec=0; else ec=$?; fi
+if [ "$ec" -eq 1 ] && assert_row "$TMP/nv-strict.json" conform-skillmd FAIL failure_mode conform:schema-violation 2>"$TMP/e"; then
+  pass "no-version skill: --tier marketplace --strict -> FAIL(conform:schema-violation), exit 1"
+else fail "no-version marketplace strict (exit $ec): $(cat "$TMP/e")"; fi
+
+# ---- 11: kernel shape rules ----
+python3 "$CONFORM" --tier marketplace "$FIX/malformed/skill-bad-kernel-shape" >"$TMP/shape.json" 2>/dev/null
+if python3 - "$TMP/shape.json" <<'PY'
+import json, sys
+r = [x for x in json.load(open(sys.argv[1])) if "conform-skillmd" in x["gate_id"]][0]
+errs = " | ".join(r["metadata"]["errors"])
+assert r["result"] == "ADVISORY", r["result"]
+assert "$.version: does not match pattern" in errs, errs
+assert "$.allowed-tools: matches none of anyOf" in errs, errs
+assert "when_to_use" in errs, errs
+PY
+then pass "kernel shape: non-semver version + bad allowed-tools + deprecated when_to_use all reported"
+else fail "kernel shape rules: $(cat "$TMP/shape.json")"; fi
+
+# ---- 12: tampered kernel pin -> ADVISORY indeterminate, even under --strict ----
+th="$TMP/tampered"; mkdir -p "$th"
+cp -R "$ROOT/scripts" "$ROOT/schemas" "$th/"
+cp "$ROOT/package.json" "$th/" 2>/dev/null || true
+printf ' ' >> "$th/schemas/conform/kernel/intent-eval-core-0.11.0/authoring/v1/is-overlay/skill-frontmatter.v1.json"
+if python3 "$th/scripts/conform.py" --tier marketplace --strict "$FIX/valid/skill-marketplace" >"$TMP/tam.json" 2>/dev/null; then ec=0; else ec=$?; fi
+if [ "$ec" -eq 0 ] && python3 - "$TMP/tam.json" <<'PY'
+import json, sys
+r = [x for x in json.load(open(sys.argv[1])) if "conform-skillmd" in x["gate_id"]][0]
+assert r["result"] == "ADVISORY" and r["metadata"].get("indeterminate") is True, r
+assert "hash mismatch" in r["metadata"]["reason"], r["metadata"]
+PY
+then pass "tampered kernel file -> ADVISORY indeterminate (hash mismatch), no verdict, exit 0"
+else fail "tampered kernel (exit $ec): $(cat "$TMP/tam.json")"; fi
+
+# ---- 13: parity with a reference JSON-Schema validator ----
+if python3 -c "import jsonschema, referencing" 2>/dev/null; then
+  if python3 - "$ROOT" <<'PY'
+import glob, os, sys
+root = sys.argv[1]
+sys.path.insert(0, os.path.join(root, "scripts"))
+import conform as CF
+import jsonschema
+from referencing import Registry, Resource
+k, reg, _, _, reason = CF.load_kernel("skillmd")
+assert k is not None, reason
+R = Registry().with_resources([(i, Resource.from_contents(d)) for i, d in reg.items()])
+V = jsonschema.Draft202012Validator(k, registry=R)
+n = 0
+for f in sorted(glob.glob(os.path.join(root, "tests/fixtures/conform/**/SKILL.md"), recursive=True)):
+    d, e = CF.extract_frontmatter(f)
+    if e:
+        continue
+    ours = bool(CF.validate_instance(d, k, _ctx={"root": k, "registry": reg}))
+    ref = any(True for _ in V.iter_errors(d))
+    assert ours == ref, f"{f}: embedded={ours} jsonschema={ref}"
+    n += 1
+assert n >= 4, n
+PY
+  then pass "embedded validator == jsonschema on every SKILL fixture (marketplace tier)"
+  else fail "embedded vs jsonschema parity"; fi
+else
+  echo "  - parity check skipped (jsonschema/referencing not installed)"
+fi
 
 echo ""
 echo "conform suite: $PASS passed, $FAIL failed"

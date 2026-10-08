@@ -21,6 +21,8 @@
 #
 # INSTALLS INTO:
 #   .audit-harness/               (scripts + version marker)
+#   .audit-harness/schemas/       (classify registry + conform schemas, incl. the
+#                                  pinned kernel authoring/v1 subset; offline)
 #   .audit-harness/configs/       (shared lint configs to `extends:` from your own root configs)
 #   scripts/audit-harness         (wrapper binary; dispatches to .audit-harness/scripts/*)
 #
@@ -112,10 +114,12 @@ fi
 
 mkdir -p "${TARGET_DIR}" "${WRAPPER_DIR}"
 
-# Download tarball from GitHub release
-TARBALL_URL="https://github.com/${REPO}/archive/refs/tags/${VERSION}.tar.gz"
+# Download tarball from GitHub release. AUDIT_HARNESS_TARBALL_URL overrides the
+# source (any URL curl/wget accepts, including file:// for an air-gapped mirror);
+# the override is recorded in PROVENANCE so the vendored tree stays traceable.
+TARBALL_URL="${AUDIT_HARNESS_TARBALL_URL:-https://github.com/${REPO}/archive/refs/tags/${VERSION}.tar.gz}"
 TMP_DIR="$(mktemp -d)"
-trap "rm -rf ${TMP_DIR}" EXIT
+trap 'rm -rf "${TMP_DIR}"' EXIT
 
 echo "  downloading ${TARBALL_URL}"
 if command -v curl >/dev/null 2>&1; then
@@ -143,6 +147,16 @@ fi
 
 # Copy scripts/ and metadata into .audit-harness/
 cp -r "${UNPACKED_DIR}/scripts" "${TARGET_DIR}/scripts"
+
+# Copy schemas/ into .audit-harness/schemas/. classify.py and conform.py resolve
+# them relative to scripts/ (../schemas/...), so without this copy classify has
+# no registry and conform can only emit "bundled schema missing" ADVISORY rows.
+# The tree includes the vendored kernel subset under schemas/conform/kernel/,
+# whose pin.json carries its own npm provenance; every file is hashed into
+# PROVENANCE below. Older tags that predate schemas/ simply skip this step.
+if [[ -d "${UNPACKED_DIR}/schemas" ]]; then
+  cp -r "${UNPACKED_DIR}/schemas" "${TARGET_DIR}/schemas"
+fi
 
 # Copy the shared lint configs into .audit-harness/configs/. The source dir at
 # the audit-harness repo root is `.audit-harness-configs/` (named so it does not
@@ -179,6 +193,20 @@ source-version: ${VERSION}
 source-tarball: ${TARBALL_URL}
 installed-at:  $(date -u +%Y-%m-%dT%H:%M:%SZ)
 PROV_EOF
+
+# Per-file sha256 of the vendored schemas, so a consumer can prove the conform
+# policy it runs is byte-identical to the release (conform also records each
+# schema's sha256 as the policy_hash of every row it emits).
+if [[ -d "${TARGET_DIR}/schemas" ]]; then
+  echo "schemas-sha256:" >> "${TARGET_DIR}/PROVENANCE"
+  (cd "${TARGET_DIR}" && find schemas -type f | LC_ALL=C sort | while IFS= read -r f; do
+    if command -v sha256sum >/dev/null 2>&1; then
+      printf '  %s\n' "$(sha256sum "$f")"
+    else
+      printf '  %s\n' "$(shasum -a 256 "$f")"
+    fi
+  done) >> "${TARGET_DIR}/PROVENANCE"
+fi
 
 # Ensure scripts are executable
 chmod +x "${TARGET_DIR}/scripts/"*.sh "${TARGET_DIR}/scripts/"*.py 2>/dev/null || true
@@ -219,6 +247,10 @@ Commands:
   bias                     Count test-bias patterns
   gherkin-lint             Advisory Gherkin quality check
   crap [args...]           CRAP scorer (requires python3 + radon/gocyclo)
+  classify [repo]          Read-only repo classifier -> audit-profile/v1 (python3)
+  conform [repo] [--strict] [--tier floor|marketplace]
+                           Read-only conformance gate-runner -> gate-result/v1 rows,
+                           against the schemas vendored in .audit-harness/schemas/
   --version, -v            Print installed version
   --help, -h               This help
 USAGE
@@ -236,6 +268,8 @@ case "${cmd}" in
   bias)         exec bash "${SCRIPTS}/bias-count.sh" "$@" ;;
   gherkin-lint) exec bash "${SCRIPTS}/gherkin-lint.sh" "$@" ;;
   crap)         exec python3 "${SCRIPTS}/crap-score.py" "$@" ;;
+  classify)     exec python3 "${SCRIPTS}/classify.py" "$@" ;;
+  conform)      exec python3 "${SCRIPTS}/conform.py" "$@" ;;
   --version|-v) cat "${HARNESS_DIR}/VERSION" 2>/dev/null || echo "unknown" ;;
   --help|-h|'') usage; exit 0 ;;
   *)

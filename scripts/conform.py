@@ -26,8 +26,20 @@ Design rules (PP-PLAN-040 Phase 2):
   - Stdlib only (PyYAML used for frontmatter when present; absent => indeterminate
     rather than a guessed verdict). No network. No filesystem mutation.
 
+Tiers (--tier, default `floor`):
+  floor        the harness's own conform/v1 structural floor (name + description
+               for SKILL.md). Unchanged default, so existing consumers see the
+               same verdicts.
+  marketplace  SKILL.md frontmatter is validated against the KERNEL's full
+               authoring/v1 skill-frontmatter contract (@intentsolutions/core,
+               vendored unmodified under schemas/conform/kernel/ and pinned by
+               version + per-file sha256 in pin.json): the IS 8-field required
+               set, semver `version`, allowed-tools shape, the universal folds.
+               Other kinds keep the floor schema. A pin mismatch is an
+               indeterminate ADVISORY, never a guessed verdict.
+
 Usage:
-  python3 scripts/conform.py [REPO_PATH] [--json] [--strict] [--profile PATH|-]
+  python3 scripts/conform.py [REPO_PATH] [--json] [--strict] [--tier floor|marketplace] [--profile PATH|-]
   AUDIT_HARNESS_DISABLE=1 python3 scripts/conform.py   # kill-switch (no-op, exit 0)
 """
 import argparse
@@ -51,6 +63,8 @@ except Exception:  # pragma: no cover - exercised only on boxes without PyYAML
     yaml = None
 
 SCHEMA_DIR = os.path.join(HERE, "..", "schemas", "conform", "v1")
+KERNEL_DIR = os.path.join(HERE, "..", "schemas", "conform", "kernel", "intent-eval-core-0.11.0")
+TIERS = ("floor", "marketplace")
 EMPTY_SHA = "sha256:" + hashlib.sha256(b"").hexdigest()
 
 # kind -> bundled schema filename (content-addressed in this harness version)
@@ -89,11 +103,47 @@ def _type_ok(value, t):
     return True
 
 
-def validate_instance(inst, schema, path="$"):
+def _resolve_ref(ref, ctx):
+    """Resolve a $ref against ctx = {"root": doc, "registry": {$id: doc}}.
+
+    Supports what the vendored kernel composition uses: absolute $id URIs,
+    same-document fragments, and RFC 6901 JSON pointers. Returns (schema, new_ctx)
+    or (None, None) when the target is not registered locally — the harness never
+    fetches a schema over the network."""
+    uri, _, frag = ref.partition("#")
+    if uri:
+        doc = ctx["registry"].get(uri)
+        if doc is None:
+            return None, None
+    else:
+        doc = ctx["root"]
+    node = doc
+    if frag:
+        for tok in frag.lstrip("/").split("/"):
+            tok = tok.replace("~1", "/").replace("~0", "~")
+            if isinstance(node, dict) and tok in node:
+                node = node[tok]
+            else:
+                return None, None
+    return node, {"root": doc, "registry": ctx["registry"]}
+
+
+def validate_instance(inst, schema, path="$", _ctx=None):
     """Return a list of human-readable violation strings ([] == valid)."""
     errs = []
     if not isinstance(schema, dict):
         return errs
+    ctx = _ctx if _ctx is not None else {"root": schema, "registry": {}}
+
+    def sub(i, sch, p, c=None):
+        return validate_instance(i, sch, p, c if c is not None else ctx)
+
+    if "$ref" in schema:
+        target, rctx = _resolve_ref(schema["$ref"], ctx)
+        if target is None:
+            errs.append(f"{path}: unresolvable $ref {schema['$ref']!r} (not bundled)")
+        else:
+            errs += sub(inst, target, path, rctx)
 
     t = schema.get("type")
     if t is not None:
@@ -125,16 +175,16 @@ def validate_instance(inst, schema, path="$"):
         item_schema = schema.get("items")
         if isinstance(item_schema, dict):
             for i, el in enumerate(inst):
-                errs += validate_instance(el, item_schema, f"{path}[{i}]")
+                errs += sub(el, item_schema, f"{path}[{i}]")
 
     if isinstance(inst, dict):
         for req in schema.get("required", []):
             if req not in inst:
                 errs.append(f"{path}: missing required property '{req}'")
         props = schema.get("properties", {})
-        for k, sub in props.items():
+        for k, sch_k in props.items():
             if k in inst:
-                errs += validate_instance(inst[k], sub, f"{path}.{k}")
+                errs += sub(inst[k], sch_k, f"{path}.{k}")
         ap = schema.get("additionalProperties", True)
         if ap is False:
             for k in inst:
@@ -143,15 +193,20 @@ def validate_instance(inst, schema, path="$"):
         elif isinstance(ap, dict):
             for k, v in inst.items():
                 if k not in props:
-                    errs += validate_instance(v, ap, f"{path}.{k}")
+                    errs += sub(v, ap, f"{path}.{k}")
 
-    for sub in schema.get("allOf", []):
-        errs += validate_instance(inst, sub, path)
+    for s_all in schema.get("allOf", []):
+        errs += sub(inst, s_all, path)
     if "anyOf" in schema:
-        if not any(not validate_instance(inst, sub, path) for sub in schema["anyOf"]):
+        if not any(not sub(inst, s_any, path) for s_any in schema["anyOf"]):
             errs.append(f"{path}: matches none of anyOf")
+    if "not" in schema and not sub(inst, schema["not"], path):
+        shown = json.dumps(schema["not"], sort_keys=True)
+        if len(shown) > 160:
+            shown = shown[:157] + "..."
+        errs.append(f"{path}: must NOT match {shown}")
     if "oneOf" in schema:
-        matches = sum(1 for sub in schema["oneOf"] if not validate_instance(inst, sub, path))
+        matches = sum(1 for s_one in schema["oneOf"] if not sub(inst, s_one, path))
         if matches != 1:
             errs.append(f"{path}: matched {matches} of oneOf branches (need exactly 1)")
     return errs
@@ -365,21 +420,69 @@ def run_shellout(kind, gate, files, commit_sha, runner, repo, strict):
     return rows
 
 
-def run_bundled(kind, gate, files, commit_sha, runner, repo, strict):
+def load_kernel(kind, kernel_dir=None):
+    """Load the pinned kernel schema for `kind`.
+
+    Returns (schema, registry, policy_hash, kernel_label, None) on success or
+    (None, None, None, None, reason) when the pin cannot be honoured. Every
+    vendored file must match its sha256 in pin.json; the policy_hash is the
+    sha256 of pin.json itself, which commits to every file hash."""
+    kdir = kernel_dir or KERNEL_DIR
+    pin_path = os.path.join(kdir, "pin.json")
+    pin = C.read_json(pin_path)
+    if not isinstance(pin, dict):
+        return None, None, None, None, "kernel pin.json missing or unreadable"
+    entry = pin.get("entries", {}).get(kind)
+    if not entry:
+        return None, None, None, None, f"pinned kernel has no entry for kind '{kind}'"
+    registry = {}
+    for rel, want in sorted(pin.get("files", {}).items()):
+        fpath = os.path.join(kdir, rel)
+        if not os.path.isfile(fpath):
+            return None, None, None, None, f"kernel file missing: {rel}"
+        got = C.sha256_file(fpath)
+        if got != want:
+            return None, None, None, None, f"kernel file hash mismatch: {rel} ({got} != pinned {want})"
+        doc = C.read_json(fpath)
+        if isinstance(doc, dict) and doc.get("$id"):
+            registry[doc["$id"]] = doc
+    if entry not in pin.get("files", {}):
+        return None, None, None, None, f"kernel entry {entry} is not pinned"
+    schema = C.read_json(os.path.join(kdir, entry))
+    label = f"{pin.get('package', '?')}@{pin.get('version', '?')}"
+    return schema, registry, C.sha256_file(pin_path), label, None
+
+
+def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor"):
     rows = []
     enforcement = gate.get("enforcement", "advisory")
-    schema_path = os.path.join(SCHEMA_DIR, BUNDLED[kind])
-    schema = C.read_json(schema_path)
-    if schema is None:
-        rows.append(make_row(
-            gate["gate_id"], "ADVISORY",
-            policy_hash=EMPTY_SHA, input_hash=EMPTY_SHA, commit_sha=commit_sha,
-            runner=runner, advisory_severity="warn",
-            metadata={"kind": kind, "indeterminate": True,
-                      "reason": f"bundled schema missing at {BUNDLED[kind]}"},
-        ))
-        return rows
-    policy_hash = C.sha256_file(schema_path)
+    registry = {}
+    tier_meta = {"tier": "floor"}
+    if tier == "marketplace" and kind == "skillmd":
+        schema, registry, policy_hash, label, reason = load_kernel(kind)
+        if schema is None:
+            rows.append(make_row(
+                gate["gate_id"], "ADVISORY",
+                policy_hash=EMPTY_SHA, input_hash=EMPTY_SHA, commit_sha=commit_sha,
+                runner=runner, advisory_severity="warn",
+                metadata={"kind": kind, "tier": "marketplace", "indeterminate": True,
+                          "reason": reason},
+            ))
+            return rows
+        tier_meta = {"tier": "marketplace", "kernel": label}
+    else:
+        schema_path = os.path.join(SCHEMA_DIR, BUNDLED[kind])
+        schema = C.read_json(schema_path)
+        if schema is None:
+            rows.append(make_row(
+                gate["gate_id"], "ADVISORY",
+                policy_hash=EMPTY_SHA, input_hash=EMPTY_SHA, commit_sha=commit_sha,
+                runner=runner, advisory_severity="warn",
+                metadata={"kind": kind, "indeterminate": True,
+                          "reason": f"bundled schema missing at {BUNDLED[kind]}"},
+            ))
+            return rows
+        policy_hash = C.sha256_file(schema_path)
     schema_id = schema.get("$id", "")
     for art in files:
         if kind in FRONTMATTER_KINDS:
@@ -393,16 +496,18 @@ def run_bundled(kind, gate, files, commit_sha, runner, repo, strict):
                 policy_hash=policy_hash, input_hash=sha256_path(art), commit_sha=commit_sha,
                 runner=runner, advisory_severity="warn",
                 metadata={"kind": kind, "validator": "audit-harness-embedded-subset",
-                          "schema_id": schema_id, "indeterminate": True,
+                          "schema_id": schema_id, "indeterminate": True, **tier_meta,
                           "artifact_path": os.path.relpath(art, repo),
                           "reason": "PyYAML unavailable — frontmatter conformance unmeasured"},
             ))
             continue
 
-        errs = validate_instance(data, schema) if parse_err is None else []
+        errs = (validate_instance(data, schema, _ctx={"root": schema, "registry": registry})
+                if parse_err is None else [])
         result, fm, sev = verdict_for(errs, parse_err, enforcement, strict)
         meta = {"kind": kind, "validator": "audit-harness-embedded-subset",
-                "schema_id": schema_id, "artifact_path": os.path.relpath(art, repo)}
+                "schema_id": schema_id, "artifact_path": os.path.relpath(art, repo),
+                **tier_meta}
         if parse_err is not None:
             meta["errors"] = [parse_err]
         elif errs:
@@ -421,6 +526,9 @@ def main():
     ap.add_argument("--json", action="store_true", help="Emit JSON (default; flag is for CLI symmetry)")
     ap.add_argument("--strict", action="store_true",
                     help="Treat every conformance violation as FAIL (exit 1), ignoring advisory default")
+    ap.add_argument("--tier", choices=TIERS, default="floor",
+                    help="Schema tier: 'floor' (default, harness conform/v1 floor) or 'marketplace' "
+                         "(SKILL.md against the pinned kernel authoring/v1 skill-frontmatter contract)")
     ap.add_argument("--registry", default=C.DEFAULT_REGISTRY, help="Path to the dimension-to-gate registry")
     ap.add_argument("--profile", default=None,
                     help="Use a pinned audit-profile/v1 (PATH or '-' for stdin) instead of classifying")
@@ -455,7 +563,7 @@ def main():
             ))
             continue
         if kind in BUNDLED:
-            rows += run_bundled(kind, gate, files, commit_sha, runner, repo, args.strict)
+            rows += run_bundled(kind, gate, files, commit_sha, runner, repo, args.strict, args.tier)
         elif kind in SHELLOUT:
             rows += run_shellout(kind, gate, files, commit_sha, runner, repo, args.strict)
         else:
