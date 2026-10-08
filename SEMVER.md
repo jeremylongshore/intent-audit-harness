@@ -130,6 +130,7 @@ If you are an adopter pinning `@intentsolutions/audit-harness@^0.x.y`:
 | 1.5.0 | 2026-09 | `scan --fail-closed` and `--osv-severity-threshold` add opt-in dependency measurement enforcement; default `scan` behavior remains advisory-compatible. Additive minor. |
 | (unreleased) | 2026-06 | new `migration-notes` subcommand (adopter-facing migration-notes generator, iah-E05d) — read-only, stdlib, emits Markdown or a `migration-notes/v1` envelope from this file + `CHANGELOG.md`. Additive. |
 | (unreleased) | 2026-08 | `report-lineage` emits the kernel-valid `audit-harness:ci:report-lineage` row identity plus selected Grader, deterministic Run-count, report-schema, and sample-balance metadata for exact-byte promotion binding. Additive metadata; corrects the pre-release two-segment placeholder before downstream adoption. |
+| (unreleased) | 2026-10 | `conform --tier` (`floor` or `marketplace`; default `floor`, verdicts unchanged) adds opt-in validation of SKILL.md against the pinned kernel `authoring/v1` skill-frontmatter contract; rows gain optional `metadata.tier` / `metadata.kernel`. The `install.sh` vendored wrapper gains `classify` and `conform`, and the installer honours `AUDIT_HARNESS_TARBALL_URL`. Additive minor. |
 
 Future minor bumps add new gates, new flags, new optional fields in JSON metadata. Future major
 bumps will be rare; we will hold a major-bump as a last resort.

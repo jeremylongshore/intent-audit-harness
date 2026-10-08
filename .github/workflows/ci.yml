@@ -469,6 +469,8 @@ jobs:
         run: pip install jsonschema pyyaml
       - name: Run conform golden suite
         run: bash tests/conform/run-conform-tests.sh
+      - name: Run installer offline suite (fresh install.sh can run conform)
+        run: bash tests/install/run-install-tests.sh
 
   audit:
     name: audit golden suite (testing-depth gate-runner)

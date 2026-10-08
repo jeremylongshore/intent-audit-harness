@@ -13,6 +13,7 @@ SUITES=(
   tests/cred-gate/run-cred-gate-tests.sh
   tests/classify/run-classify-tests.sh
   tests/conform/run-conform-tests.sh
+  tests/install/run-install-tests.sh
   tests/audit/run-audit-tests.sh
   tests/scan/run-scan-tests.sh
   tests/currency/run-currency-tests.sh

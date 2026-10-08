@@ -23,6 +23,30 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   byte-identical to the regression suite's kernel fixture and cross-checks rows
   with `jsonschema`.
 
+- **`conform --tier marketplace` — full kernel skill-frontmatter validation.**
+  SKILL.md frontmatter can now be checked against the kernel's complete
+  `authoring/v1` skill-frontmatter contract (`@intentsolutions/core@0.11.0`):
+  the IS 8-field required set, strict SemVer `version`, the `allowed-tools`
+  string-or-array shape, and the three universal folds (deprecated fields,
+  reserved names and markup, the 1536-character description budget). The four
+  kernel files are vendored unmodified under `schemas/conform/kernel/` and
+  pinned by package version, tarball sha256 and per-file sha256 in `pin.json`;
+  a mismatch yields an indeterminate ADVISORY, never a verdict. The embedded
+  validator gains `$ref` (local `$id` registry, JSON pointers) and `not`; the
+  conform suite asserts it agrees with `jsonschema` on every in-repo SKILL
+  fixture (a one-off survey of 3,091 estate skills also found 0 disagreements;
+  that corpus is not committed). The default
+  tier stays `floor` (name + description), so existing consumers see the same
+  verdicts; adopt the strict check with `--tier marketplace --strict`.
+- **`install.sh` ships the conform schemas.** The vendoring installer now copies
+  `schemas/` (classify registry, conform floor schemas, pinned kernel subset)
+  into `.audit-harness/schemas/`, records a `schemas-sha256` line per file in
+  `PROVENANCE`, and its wrapper dispatches `classify` and `conform`. Before this,
+  a vendored install could only emit "bundled schema missing" ADVISORY rows.
+  `AUDIT_HARNESS_TARBALL_URL` overrides the tarball source (for example a
+  `file://` mirror) and is recorded in `PROVENANCE`. A new offline suite
+  (`tests/install/`) proves a fresh install runs `conform` with no network.
+
 - **`report-lineage` subcommand — deterministic Run/Grade/report verification.** The
   read-only, stdlib-only gate validates J-Rig `unified-report/v1` and
   `suite-report/v1` projections, recomputes summary and per-cell arithmetic,
