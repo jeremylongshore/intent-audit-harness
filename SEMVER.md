@@ -51,13 +51,13 @@ the cost of a silent CI breakage across N adopter repositories.
 | `bias` | 1 | test directory not found | v0.1.0 |
 | `emit-evidence` | 0 | Statement emitted | v0.3.0 |
 | `emit-evidence` | 1 | input malformed | v0.3.0 |
-| `emit-evidence` | 1 | `--append-to` refused: invalid bundle or row, duplicate row id, or a flag conflict (bundle left byte-identical) | unreleased |
+| `emit-evidence` | 1 | `--append-to` refused: invalid bundle or row, duplicate row id, or a flag conflict (bundle left byte-identical) | v1.5.0 |
 | `emit-evidence` | 2 | cosign not installed (when --sign) | v0.3.0 |
 | `emit-evidence` | 3 | Rekor push failed | v0.3.0 |
 | `emit-evidence` | 4 | production DNSSEC/CAA pre-flight failed — REFUSE to sign (fail-closed; nothing anchored) | v1.2.0 |
-| `report-lineage` | 0 | report is clean, or findings remain advisory | unreleased |
-| `report-lineage` | 1 | `--strict` found unverifiable or mismatched lineage, including duplicate sample slots | unreleased |
-| `report-lineage` | 2 | command-line usage error | unreleased |
+| `report-lineage` | 0 | report is clean, or findings remain advisory | v1.5.0 |
+| `report-lineage` | 1 | `--strict` found unverifiable or mismatched lineage, including duplicate sample slots | v1.5.0 |
+| `report-lineage` | 2 | command-line usage error | v1.5.0 |
 
 ### Stream contracts
 
@@ -81,7 +81,7 @@ log (Rekor). The path is also reserved exclusively for this predicate per the
 Breaking changes to the predicate body would mint a new URI (`gate-result/v2`); both URIs may
 coexist. We will never silently change the body shape under the same URI.
 
-### `emit-evidence` file flags (unreleased)
+### `emit-evidence` file flags (v1.5.0)
 
 `--output PATH` is the documented flag for writing one Statement (or DSSE envelope) to a file.
 `--out PATH` is accepted as a **deprecated** alias: same behavior plus a stderr warning. Per the
@@ -127,10 +127,10 @@ If you are an adopter pinning `@intentsolutions/audit-harness@^0.x.y`:
 | 0.2.0 | 2026-04 | Intentional Mapping terminology rename (internal docs only — zero CLI delta) |
 | 0.3.0 | 2026-05 (Milestone 2) | `--json` on all 6 gates; new `emit-evidence` subcommand; SemVer doc; backward-compat regression suite. Additive minor. |
 | 1.1.8+ | 2026-06 | new `cred-gate` subcommand (provider credential PASS/FAIL gate, iah-E08); `emit-evidence` now also fires the `gate.decision.emitted` OTel event (iah-E07b, per NORMATIVE intent-eval-lab `067-AT-SPEC` § 2.2: `gate.decision` enum `{pass, fail, advisory, error}` + `gate.name` + `gate.policy_ref`). Both additive. |
-| 1.5.0 | 2026-09 | `scan --fail-closed` and `--osv-severity-threshold` add opt-in dependency measurement enforcement; default `scan` behavior remains advisory-compatible. Additive minor. |
+| 1.5.0 | 2026-10 | `scan --fail-closed` and `--osv-severity-threshold` add opt-in dependency measurement enforcement; default `scan` behavior remains advisory-compatible. Additive minor. |
 | (unreleased) | 2026-06 | new `migration-notes` subcommand (adopter-facing migration-notes generator, iah-E05d) — read-only, stdlib, emits Markdown or a `migration-notes/v1` envelope from this file + `CHANGELOG.md`. Additive. |
-| (unreleased) | 2026-08 | `report-lineage` emits the kernel-valid `audit-harness:ci:report-lineage` row identity plus selected Grader, deterministic Run-count, report-schema, and sample-balance metadata for exact-byte promotion binding. Additive metadata; corrects the pre-release two-segment placeholder before downstream adoption. |
-| (unreleased) | 2026-10 | `conform --tier` (`floor` or `marketplace`; default `floor`, verdicts unchanged) adds opt-in validation of SKILL.md against the pinned kernel `authoring/v1` skill-frontmatter contract; rows gain optional `metadata.tier` / `metadata.kernel`. The `install.sh` vendored wrapper gains `classify` and `conform`, and the installer honours `AUDIT_HARNESS_TARBALL_URL`. Additive minor. |
+| 1.5.0 | 2026-10 | `report-lineage` emits the kernel-valid `audit-harness:ci:report-lineage` row identity plus selected Grader, deterministic Run-count, report-schema, and sample-balance metadata for exact-byte promotion binding. Additive metadata; corrects the pre-release two-segment placeholder before downstream adoption. |
+| 1.5.0 | 2026-10 | `conform --tier` (`floor` or `marketplace`; default `floor`, verdicts unchanged) adds opt-in validation of SKILL.md against the pinned kernel `authoring/v1` skill-frontmatter contract; rows gain optional `metadata.tier` / `metadata.kernel`. The `install.sh` vendored wrapper gains `classify` and `conform`, and the installer honours `AUDIT_HARNESS_TARBALL_URL`. Additive minor. |
 
 Future minor bumps add new gates, new flags, new optional fields in JSON metadata. Future major
 bumps will be rare; we will hold a major-bump as a last resort.

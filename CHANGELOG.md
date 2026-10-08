@@ -6,6 +6,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-08
+
+First release since 1.4.0. The 1.5.0 version bump and the `scan --fail-closed`
+work were prepared on 2026-09-13 but never tagged or published; this release
+ships them together with everything merged since.
+
 ### Added
 
 - **`emit-evidence --append-to BUNDLE` — assemble the Evidence Bundle the rollout
@@ -60,28 +66,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ADVISORY by default; `--strict` turns unverifiable or mismatched lineage into
   FAIL. No SQLite, network, J-Rig import, or runtime dependency is introduced.
 
-### Changed
-
-- **Kernel currency and shadow detection:** the kernel-shadow gate now checks
-  both local re-declarations and dependency ranges that cannot resolve to the
-  current `@intentsolutions/core@0.10.0`. Its offline contract suite covers
-  the 0.x caret trap, lower-bound SemVer behavior, unknown-range surfacing,
-  and fail-closed lookup messaging. Release-time Evidence Bundle validation is
-  pinned to the same exact kernel version.
-
-### Deprecated
-
-- **`emit-evidence --out`**: newly accepted, and deprecated on arrival. It behaves
-  exactly like the documented `--output` and prints a deprecation warning.
-  Downstream docs had advertised `--out`, which the script previously rejected as
-  an unknown flag; migrate to `--output`. A path flag given without a
-  value (`--input`, `--output`, `--out`, `--append-to`) now exits 1 instead of
-  aborting on an unbound variable.
-
-## [1.5.0] - 2026-09-13
-
-### Added
-
 - `scan --fail-closed` now makes OSV dependency measurement mandatory whenever
   a supported lockfile or manifest exists. The gate emits honest
   `NOT_APPLICABLE` only when no dependencies are declared, fails an unlocked
@@ -94,19 +78,27 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   runners, plus deterministic golden coverage for clean, vulnerable,
   unavailable, crashed, malformed, and not-applicable paths.
 
-### Security
-
-- Release and pull-request dependency lanes now install OSV-Scanner and execute
-  the harness fail-closed instead of accepting an unmeasured advisory result.
-- The 23-test signing-reconciler state-machine suite now runs in CI; it was
-  previously present but unwired despite protecting append-only Rekor outbox
-  and fail-closed persistence behavior.
-
 ### Changed
+
+- **Kernel currency and shadow detection:** the kernel-shadow gate now checks
+  both local re-declarations and dependency ranges that cannot resolve to the
+  current `@intentsolutions/core@0.10.0`. Its offline contract suite covers
+  the 0.x caret trap, lower-bound SemVer behavior, unknown-range surfacing,
+  and fail-closed lookup messaging. Release-time Evidence Bundle validation is
+  pinned to the same exact kernel version.
 
 - PyPI publishing is retired starting with this release. The
   `intent-audit-harness` PyPI package remains frozen at `1.4.0`; npm is the
   canonical distribution and crates.io remains an optional Rust wrapper.
+
+### Deprecated
+
+- **`emit-evidence --out`**: newly accepted, and deprecated on arrival. It behaves
+  exactly like the documented `--output` and prints a deprecation warning.
+  Downstream docs had advertised `--out`, which the script previously rejected as
+  an unknown flag; migrate to `--output`. A path flag given without a
+  value (`--input`, `--output`, `--out`, `--append-to`) now exits 1 instead of
+  aborting on an unbound variable.
 
 ### Fixed
 
@@ -120,6 +112,14 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   jobs use `npm ci` rather than resolving a fresh graph with `npm install`.
 - The release workflow is tag-only. The manual-dispatch path that could publish
   arbitrary branch bytes without a matching version tag has been removed.
+
+### Security
+
+- Release and pull-request dependency lanes now install OSV-Scanner and execute
+  the harness fail-closed instead of accepting an unmeasured advisory result.
+- The 23-test signing-reconciler state-machine suite now runs in CI; it was
+  previously present but unwired despite protecting append-only Rekor outbox
+  and fail-closed persistence behavior.
 
 ## [1.4.0] - 2026-09-01
 
