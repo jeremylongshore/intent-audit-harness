@@ -6,7 +6,7 @@
     "test": "node --experimental-strip-types --test canonical-payload.test.mjs"
   },
   "dependencies": {
-    "@intentsolutions/core": "0.10.0"
+    "@intentsolutions/core": "0.11.0"
   },
   "type": "module"
 }
