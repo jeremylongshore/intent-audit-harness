@@ -105,6 +105,11 @@ Commands:
                            inputs exist and blocks production/unknown findings at
                            --osv-severity-threshold (HIGH by default); proven
                            development-only findings remain advisory.
+                           Also requires profile-required security tools to finish
+                           with valid machine evidence; operational failures are
+                           distinct from findings. --sbom-output PATH exports Syft
+                           JSON outside the audited repo, with a digest/URI in the
+                           row (required for a fail-closed SBOM gate).
   fp-rate                  Measure each gate's false-positive / false-negative rate
                            over a labeled corpus (valid/ should be clean, malformed/
                            should flag). The metric that gates advisory->blocking

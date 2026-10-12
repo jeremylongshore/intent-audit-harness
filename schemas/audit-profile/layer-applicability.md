@@ -5,7 +5,7 @@
 > Regenerate: `audit-harness gen-layer-applicability --write` (or `python3 scripts/gen-layer-applicability.py --write`).
 > CI gate `layer-applicability-drift` fails the build if this file drifts from the registry.
 >
-> registry `sha256:ffbc75700fb5eb501cb47f1e4038f47ab95ae1fba534b38095e1fe7820c80ed1`
+> registry `sha256:e9e4fbd18fd88bae9bed9a76398497af82369d88f0805bcc2f35435d8f77efc1`
 
 THE canonical dimension-to-gate registry: the single datum that answers 'which gates apply to repo-type X, in which dimension, at what applicability'. layer-applicability.md and each repo's TESTING.md are PROJECTIONS of this datum. `classify` resolves the UNION of a repo's detected classifications against this registry and records its sha256 as the audit-profile's registry_hash. Every gate defaults to enforcement=advisory; blocking is earned (engineer-pinned in TESTING.md, FP-rate-gated). applicability mirrors the matrix glyphs: required(✅) recommended(⭕) conditional(⚠) waived(❌).
 

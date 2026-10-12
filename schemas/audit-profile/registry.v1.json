@@ -1,6 +1,31 @@
 {
   "registry_version": "audit-profile-registry/v1",
   "description": "THE canonical dimension-to-gate registry: the single datum that answers 'which gates apply to repo-type X, in which dimension, at what applicability'. layer-applicability.md and each repo's TESTING.md are PROJECTIONS of this datum. `classify` resolves the UNION of a repo's detected classifications against this registry and records its sha256 as the audit-profile's registry_hash. Every gate defaults to enforcement=advisory; blocking is earned (engineer-pinned in TESTING.md, FP-rate-gated). applicability mirrors the matrix glyphs: required(✅) recommended(⭕) conditional(⚠) waived(❌).",
+  "tool_contracts": {
+    "gitleaks": {
+      "adapter": "security-tool/v1",
+      "report": "redacted JSON finding array",
+      "clean_exit": 0,
+      "findings_exit": 10,
+      "operational_failure": "other exit, invalid report or exit/report disagreement",
+      "fail_closed": "required or blocking profile gate; measurement and findings block"
+    },
+    "semgrep": {
+      "adapter": "security-tool/v1",
+      "report": "JSON results and errors arrays; any analysis error is incomplete measurement",
+      "clean_exit": 0,
+      "findings_exit": 1,
+      "operational_failure": "other exit, invalid report, analysis errors or exit/report disagreement",
+      "fail_closed": "required or blocking profile gate; measurement and findings block"
+    },
+    "syft": {
+      "adapter": "security-tool/v1",
+      "report": "syft-json; package count and exact-byte SHA256 retained",
+      "clean_exit": 0,
+      "operational_failure": "nonzero exit, invalid report or unavailable required artifact",
+      "fail_closed": "required or blocking profile gate also needs --sbom-output outside the audited repository"
+    }
+  },
   "base": [
     { "gate_id": "audit-harness:local:hygiene-readme", "dimension": "hygiene", "applicability": "recommended", "enforcement": "advisory", "result_class_default": "PASS" },
     { "gate_id": "audit-harness:local:hygiene-links", "dimension": "hygiene", "applicability": "recommended", "enforcement": "advisory", "tool": "lychee", "result_class_default": "INDETERMINATE" },
