@@ -6,6 +6,14 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- Refresh the development lockfile from `brace-expansion` 5.0.9 to 5.0.12,
+  removing the known brace-parser denial-of-service advisories reached through
+  ESLint and minimatch. Only that locked package changes; direct dependency
+  ranges and the published zero-runtime-dependency surface remain unchanged.
+  Refs bead `bd_000-projects-wcze.8`.
+
 ### Fixed
 
 - The `iah` dashboard emitter carries kernel-valid in-toto statement arrays and
