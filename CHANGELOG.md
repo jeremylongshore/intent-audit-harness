@@ -8,6 +8,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The Python module entry point preserves failed-gate exit codes, and architecture
+  checks emit valid JSON when a failed checker reports no matching violations.
+  Behavioral fixtures now cover all five architecture dispatch routes, clean and
+  seeded bias results, and Python/Rust command/argument/exit passthrough. The tests
+  run in CI and `npm test`. Refs bead `bd_000-projects-wcze.5`.
 - CI actions use immutable commits; Actionlint and ShellCheck downloads are
   verified before extraction. CI Python tools and kernel validators use payload
   locks, and schema fixtures are committed rather than fetched from mutable

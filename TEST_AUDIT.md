@@ -8,7 +8,36 @@
 > CI-only `ci/signing-reconciler/` sub-package. **The scripts are the product** —
 > so the load-bearing question is whether the harness tests its own scanners.
 
-## Grade: B+ (87/100)
+## 2026-10-12 remediation evidence
+
+The shipped-scanner and port-dispatch findings below are now covered by
+`tests/shipped/test_gates_and_wrappers.py` (bead `bd_000-projects-wcze.5`):
+
+- Architecture: all five dispatch routes use controlled external-tool fixtures
+  for clean and seeded-violation results; unconfigured repositories and a failed
+  checker without matching violation text have explicit exit/JSON assertions.
+- Bias: clean, seeded-bias and empty directories prove counts, grades, advisory
+  severity, exit behavior and the stdout/stderr split.
+- Ports: Python's module entry point and a Rust binary compiled offline in a
+  disposable copy exercise eight public commands with literal arguments and exit
+  codes 0, 1, 2 and 42. Help/version and missing-interpreter/unknown-command paths
+  are also checked. Copied packages, Rust build outputs and extracted scripts stay
+  in temporary directories.
+
+These tests reproduced two defects before fixes: architecture JSON contained a
+two-line zero when a failed checker emitted no matching violation text, and
+`python -m intent_audit_harness` discarded every nonzero dispatcher exit code.
+The fixes preserve a numeric count and propagate the Python module's return code.
+The canonical architecture script and both bundled mirrors remain byte-identical.
+
+Run `python3 tests/shipped/test_gates_and_wrappers.py` (Python 3, Bash 4+, `bc`
+and Cargo required). The same tests run in `npm test` and the required
+`Shipped architecture, bias and port behavior` CI job. The aggregate also covers
+scanner and supply-chain contracts; signing-reconciler tests have a separate
+required CI job. The July assessment below is historical; no new overall coverage percentage, mutation
+score or audit grade is claimed by this bounded remediation.
+
+## Historical July 2026 grade: B+ (87/100)
 
 A genuinely strong, broadly-gated posture — **21 CI jobs** in `ci.yml` plus 5 more
 workflows, hard-fail `shellcheck` + `ruff`, a per-scanner golden/fixture suite for

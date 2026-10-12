@@ -54,6 +54,15 @@ done
 
 mkdir -p "$REPORT_DIR"
 
+count_violations() {
+  local count
+  # grep -c already prints 0 when there is no match. Appending another 0
+  # produces a two-line value and corrupts the JSON number on checker errors.
+  count=$(grep -Ec "$1" "$2") || true
+  [[ "$count" =~ ^[0-9]+$ ]] || count=0
+  printf '%s\n' "$count"
+}
+
 emit_result() {
   local tool="$1" status="$2" violations="$3" log="$4"
   if [[ "$JSON_OUT" -eq 1 ]]; then
@@ -97,7 +106,7 @@ if [[ -f "${ROOT}/.dependency-cruiser.js" || -f "${ROOT}/.dependency-cruiser.cjs
       emit_result dependency-cruiser pass 0 "$LOG"
       exit 0
     else
-      VIOL=$(grep -c "error" "$LOG" || echo 0)
+      VIOL=$(count_violations "error" "$LOG")
       emit_result dependency-cruiser fail "$VIOL" "$LOG"
       exit 1
     fi
@@ -115,7 +124,7 @@ if [[ -f "${ROOT}/.importlinter" ]] || grep -q "^\[importlinter\]" "${ROOT}/pypr
       emit_result import-linter pass 0 "$LOG"
       exit 0
     else
-      VIOL=$(grep -c "BROKEN" "$LOG" || echo 0)
+      VIOL=$(count_violations "BROKEN" "$LOG")
       emit_result import-linter fail "$VIOL" "$LOG"
       exit 1
     fi
@@ -133,7 +142,7 @@ if [[ -f "${ROOT}/deptrac.yaml" ]]; then
       emit_result deptrac pass 0 "$LOG"
       exit 0
     else
-      VIOL=$(grep -Ec "violation" "$LOG" || echo 0)
+      VIOL=$(count_violations "violation" "$LOG")
       emit_result deptrac fail "$VIOL" "$LOG"
       exit 1
     fi
@@ -151,7 +160,7 @@ if [[ -f "${ROOT}/arch-go.yml" ]]; then
       emit_result arch-go pass 0 "$LOG"
       exit 0
     else
-      VIOL=$(grep -c "Violation" "$LOG" || echo 0)
+      VIOL=$(count_violations "Violation" "$LOG")
       emit_result arch-go fail "$VIOL" "$LOG"
       exit 1
     fi
@@ -170,7 +179,7 @@ if [[ -f "${ROOT}/build.gradle" || -f "${ROOT}/build.gradle.kts" ]] && \
       emit_result archunit pass 0 "$LOG"
       exit 0
     else
-      VIOL=$(grep -Ec "violated|FAILED" "$LOG" || echo 0)
+      VIOL=$(count_violations "violated|FAILED" "$LOG")
       emit_result archunit fail "$VIOL" "$LOG"
       exit 1
     fi
