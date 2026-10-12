@@ -14,6 +14,19 @@ permissions:
   contents: read
 
 jobs:
+  canonical-dashboard-evidence:
+    name: Canonical dashboard evidence contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+      - name: Install locked CI kernel validators
+        run: npm ci --ignore-scripts --prefix ci
+      - name: Check canonical payloads and manifest mutations
+        run: npm test --prefix ci
+
   shipped-gates-and-wrappers:
     name: Shipped architecture, bias and port behavior
     runs-on: ubuntu-latest

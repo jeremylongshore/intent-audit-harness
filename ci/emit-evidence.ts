@@ -10,9 +10,8 @@
  * `@intentsolutions/core` (the kernel validators), so it must NOT live in the
  * published surface. `ci/` is excluded from `files`, so nothing here ships to npm
  * consumers and the published package stays zero-dep. CI installs the kernel with
- * `npm i --no-save @intentsolutions/core@<v>` (never written to package.json)
- * just for this emit job — see `.github/workflows/release.yml`, which pins the
- * current canonical kernel version exactly rather than using a floating range.
+ * `npm ci --ignore-scripts --prefix ci` using the private CI package and lockfile.
+ * Its exact kernel pin matches the dashboard's verification dependency.
  *
  * This is the DETERMINISTIC half of the emit. It runs audit-harness's real
  * deterministic self-gate, shapes the outcome into a kernel `gate-result/v1`
@@ -20,6 +19,7 @@
  *
  *   build/evidence/bundle-<i>.json          — CANONICAL EvidenceBundle bytes
  *   build/evidence/gate-result-<i>.json     — the gate-result/v1 predicate body
+ *   build/evidence/evidence-payload-<i>.json — canonical in-toto statement array
  *   build/evidence/manifest-skeleton.json   — for ci/assemble-manifest.ts
  *
  * Signing + Rekor + final report-manifest.json assembly happen in CI. This script
@@ -27,8 +27,8 @@
  *
  * ── Gate selection (honest, no fake evidence) ──
  *
- * audit-harness is the deterministic-gates tool itself; it has no unit-test
- * coverage suite. Its one clean, deterministic, release-state SELF-gate is
+ * audit-harness has deterministic contract suites. Its signed release evidence
+ * currently selects one deterministic, release-state SELF-gate:
  * HARNESS-HASH (`scripts/harness-hash.sh --verify`) — the integrity check that
  * the hash-pinning tool's own policy manifest (`.harness-hash`) is internally
  * consistent / untampered. That is exactly what iah emits. Deliberately excluded
@@ -61,6 +61,11 @@ import {
   GATE_RESULT_V1_URI,
 } from '@intentsolutions/core/validators/v1/gate-result-v1';
 import { EvidenceBundleSchema } from '@intentsolutions/core/validators/v1/evidence-bundle';
+import {
+  EvidenceBundlePayloadSchema,
+  IN_TOTO_STATEMENT_V1_TYPE,
+  type EvidenceBundlePayload,
+} from '@intentsolutions/core/validators/v1/evidence-statement';
 
 const GITHUB_REPO = 'jeremylongshore/intent-audit-harness';
 const REPO_KEY = 'iah';
@@ -126,6 +131,7 @@ export interface EmitRow {
   readonly bundle: unknown;
   readonly canonicalBundle: string;
   readonly gateResult: unknown;
+  readonly evidencePayload: EvidenceBundlePayload;
   readonly sourceSha: string;
 }
 
@@ -155,23 +161,44 @@ export function buildGateResult(o: GateOutcome, ctx: EmitContext): Record<string
   return body;
 }
 
+/** Wrap one gate predicate in the kernel's invariant-checked statement array. */
+export function buildEvidencePayload(gateResult: Record<string, unknown>): EvidenceBundlePayload {
+  const body = GateResultV1Schema.parse(gateResult);
+  return EvidenceBundlePayloadSchema.parse([
+    {
+      _type: IN_TOTO_STATEMENT_V1_TYPE,
+      subject: [{ name: body.gate_id, digest: { sha256: body.input_hash.slice(7) } }],
+      predicateType: GATE_RESULT_V1_URI,
+      predicate: body,
+    },
+  ]);
+}
+
+/** Derive signed metadata from the complete ordered statement payload. */
+export function evidencePayloadMetadata(payloadRaw: unknown) {
+  const payload = EvidenceBundlePayloadSchema.parse(payloadRaw);
+  const subjects = new Map(
+    payload.flatMap((statement) =>
+      statement.subject.map((subject) => [stableStringify(subject), subject] as const),
+    ),
+  );
+  return {
+    predicate_uri_set: [...new Set(payload.map((statement) => statement.predicateType))],
+    row_count: payload.length,
+    subject_set: [...subjects.values()],
+    storage_key: `sha256:${sha256Hex(stableStringify(payloadRaw))}`,
+  };
+}
+
 export function buildEvidenceBundle(
-  gateResult: Record<string, unknown>,
+  evidencePayload: EvidenceBundlePayload,
   ctx: EmitContext,
 ): Record<string, unknown> {
-  const grHashHex = sha256Hex(stableStringify(gateResult));
-  const inputHash = String(gateResult['input_hash']);
-  const subjectDigest = inputHash.startsWith('sha256:')
-    ? inputHash.slice('sha256:'.length)
-    : inputHash;
   const bundle: Record<string, unknown> = {
     id: uuidv7(ctx.nowMs, ctx.rand16()),
     eval_run_id: uuidv7(ctx.nowMs, ctx.rand16()),
     created_at: ctx.nowIso,
-    predicate_uri_set: [GATE_RESULT_V1_URI],
-    row_count: 1,
-    subject_set: [{ name: String(gateResult['gate_id']), digest: { sha256: subjectDigest } }],
-    storage_key: `sha256:${grHashHex}`,
+    ...evidencePayloadMetadata(evidencePayload),
     signing_mode: 'rekor_production',
     rekor_log_indices: [],
     verification_status: 'unverified',
@@ -183,12 +210,14 @@ export function buildEvidenceBundle(
 
 export function buildRows(outcomes: readonly GateOutcome[], ctx: EmitContext): EmitRow[] {
   return outcomes.map((o) => {
-    const gateResult = buildGateResult(o, ctx);
-    const bundle = buildEvidenceBundle(gateResult, ctx);
+    const evidencePayload = buildEvidencePayload(buildGateResult(o, ctx));
+    const gateResult = evidencePayload[0]!.predicate;
+    const bundle = buildEvidenceBundle(evidencePayload, ctx);
     return {
       bundle,
       canonicalBundle: stableStringify(bundle),
       gateResult,
+      evidencePayload,
       sourceSha: ctx.sourceSha,
     };
   });
@@ -200,6 +229,7 @@ export interface ManifestSkeleton {
   readonly rows: readonly {
     readonly bundleFile: string;
     readonly gateResults: readonly unknown[];
+    readonly evidencePayload: EvidenceBundlePayload;
     readonly sourceSha: string;
   }[];
 }
@@ -218,7 +248,17 @@ export function writeEmit(rows: readonly EmitRow[], ref: string, outDir: string)
     const bundleFile = `bundle-${i}.json`;
     writeFileSync(join(outDir, bundleFile), row.canonicalBundle, 'utf8');
     writeFileSync(join(outDir, `gate-result-${i}.json`), stableStringify(row.gateResult), 'utf8');
-    return { bundleFile, gateResults: [row.gateResult], sourceSha: row.sourceSha };
+    writeFileSync(
+      join(outDir, `evidence-payload-${i}.json`),
+      stableStringify(row.evidencePayload),
+      'utf8',
+    );
+    return {
+      bundleFile,
+      gateResults: [row.gateResult],
+      evidencePayload: row.evidencePayload,
+      sourceSha: row.sourceSha,
+    };
   });
   const skeleton: ManifestSkeleton = { repo: REPO_KEY, signing: signingClaims(ref), rows: skeletonRows };
   writeFileSync(join(outDir, 'manifest-skeleton.json'), JSON.stringify(skeleton, null, 2), 'utf8');
