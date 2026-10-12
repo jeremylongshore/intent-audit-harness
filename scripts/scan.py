@@ -6,9 +6,9 @@ audit-harness scan — read-only security / hygiene / skill-quality gate-runner
 For every `dimension: security | hygiene | skill-quality` gate in a repo's
 audit-profile/v1, scan runs the right external tool with the repo present and wraps
 its exit code into a `gate-result/v1` row (JSON array, stdout). Advisory-first by
-default. `--fail-closed` makes dependency measurement mandatory when a supported
-lockfile/manifest exists and enforces the configured OSV severity threshold. It
-NEVER fixes anything and NEVER reimplements a scanner.
+default. `--fail-closed` requires dependency measurement plus security tools
+marked required/blocking by the profile, and enforces the OSV severity threshold.
+It NEVER fixes anything and NEVER reimplements a scanner.
 
 Strategies:
   - local      hygiene-readme: deterministic README presence check (no tool).
@@ -16,8 +16,10 @@ Strategies:
                No supported input -> NOT_APPLICABLE. Its JSON distinguishes
                findings from scanner failures and records inputs, tool version,
                dependency exposure, severity, and summary counts.
-  - shell-out  every other gate carrying a `tool` (gitleaks, semgrep, syft,
-               markdownlint, lychee, ...): run it if on PATH; clean exit -> PASS;
+  - security   gitleaks, semgrep and syft: validate machine reports and exit
+               contracts; required measurement errors fail closed in CI mode.
+               Syft can export an exact-byte SBOM outside the audited repository.
+  - shell-out  hygiene tools (markdownlint, lychee): clean exit -> PASS;
                findings -> ADVISORY(error) (or FAIL under --strict / blocking);
                tool absent -> ADVISORY indeterminate.
   - consume    skill-quality skill-behavioral (tool j-rig): CONSUME a j-rig
@@ -25,17 +27,19 @@ Strategies:
                location). The harness does NOT run behavioral judgment itself —
                it ingests j-rig's verdict. No verdict -> ADVISORY indeterminate.
 
-Stdlib only. No network beyond whatever the shelled-out tool does. No filesystem
-mutation.
+Stdlib only. No network beyond whatever the shelled-out tool does. The audited
+repository is never modified; --sbom-output explicitly exports evidence elsewhere.
 """
 import argparse
 import hashlib
 import json
 import os
+from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -81,15 +85,22 @@ OSV_DEV_GROUPS = {
 OSV_SEVERITY_FLOORS = {"LOW": 0.1, "MEDIUM": 4.0, "HIGH": 7.0, "CRITICAL": 9.0}
 OSV_FINDING_LIMIT = 500
 
-# tool -> argv (run with cwd=repo). "generation" tools (syft) are PASS on exit 0,
-# INDETERMINATE on failure (they produce an artifact, they don't pass/fail policy).
+# Hygiene tool -> argv (run with cwd=repo).
 TOOL_CMD = {
-    "gitleaks": (["gitleaks", "detect", "--no-banner"], "scan"),
-    "semgrep": (["semgrep", "scan", "--error", "--quiet"], "scan"),
-    "syft": (["syft", "."], "generation"),
-    "markdownlint": (["markdownlint", "."], "scan"),
-    "lychee": (["lychee", "--offline", "--no-progress", "."], "scan"),
+    "markdownlint": ["markdownlint", "."],
+    "lychee": ["lychee", "--offline", "--no-progress", "."],
 }
+
+# Gitleaks normally uses exit 1 for both findings and errors. Reserve 10 for
+# findings so a failed scan can never masquerade as a measured policy result.
+SECURITY_CMD = {
+    "gitleaks": ["gitleaks", "detect", "--no-banner", "--redact=100",
+                 "--exit-code", "10", "--report-format", "json", "--report-path", "-"],
+    "semgrep": ["semgrep", "scan", "--error", "--quiet", "--json",
+                "--metrics=off", "--disable-version-check"],
+    "syft": ["syft", ".", "--output", "syft-json"],
+}
+SECURITY_REPORT_LIMIT = 16 * 1024 * 1024
 
 
 def sha256_str(s):
@@ -476,7 +487,139 @@ def run_readme(repo, gate, commit_sha, runner, strict):
                     metadata={"method": "local-presence", "reason": "no README found"})
 
 
-def run_tool(tool, repo, gate, commit_sha, runner, strict):
+def preserve_sbom(repo, output, payload):
+    """Atomically export evidence outside the audited repository, or refuse."""
+    target = Path(output).absolute()
+    if target.is_symlink():
+        raise ValueError("symlink output")
+    target = target.resolve()
+    if os.path.commonpath((str(target), os.path.realpath(repo))) == os.path.realpath(repo):
+        raise ValueError("output inside audited repository")
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".sbom-", delete=False) as f:
+            temporary = f.name
+            f.write(payload)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, target)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
+    return target.as_uri()
+
+
+def run_security_tool(tool, repo, gate, commit_sha, runner, strict, fail_closed, sbom_output):
+    enforcement = gate.get("enforcement", "advisory")
+    required = fail_closed and (gate.get("applicability") == "required" or enforcement == "blocking")
+    argv = SECURITY_CMD[tool]
+    policy_hash = sha256_str(json.dumps({"adapter": "security-tool/v1", "command": argv,
+                                        "required": required, "strict": strict,
+                                        "enforcement": enforcement}, sort_keys=True))
+    metadata = {"method": "security-tool/v1", "tool": tool, "command": argv,
+                "required_measurement": required}
+
+    def unavailable(code, reason):
+        return osv_operational_row(
+            gate, commit_sha, runner, reason=reason,
+            failure_mode=f"scan:{tool}-{code}", fail_closed=required,
+            policy_hash=policy_hash, input_hash=EMPTY_SHA,
+            metadata=dict(metadata, measurement_status="operational-failure"),
+        )
+
+    if gate.get("applicability") == "waived":
+        return make_row(gate["gate_id"], "NOT_APPLICABLE", policy_hash=policy_hash,
+                        input_hash=EMPTY_SHA, commit_sha=commit_sha, runner=runner,
+                        metadata=dict(metadata, reason="profile explicitly waives this gate"))
+    if shutil.which(tool) is None:
+        return unavailable("unavailable", "scanner is not on PATH")
+    try:
+        version_args = {"gitleaks": [tool, "version"], "syft": [tool, "version", "--output", "json"],
+                        "semgrep": [tool, "--version"]}[tool]
+        version = subprocess.run(version_args, cwd=repo, capture_output=True, text=True, timeout=15)
+        # Never copy arbitrary scanner stdout/stderr into a public evidence row.
+        candidate = version.stdout[:4096].strip()
+        if tool == "syft":
+            try:
+                details = json.loads(candidate)
+                candidate = details.get("version", "") if isinstance(details, dict) else ""
+            except json.JSONDecodeError:
+                candidate = ""
+        candidate = candidate if isinstance(candidate, str) and len(candidate) <= 100 else ""
+        match = re.fullmatch(rf"(?:{re.escape(tool)}\s+)?v?(\d+\.\d+(?:\.\d+)?(?:[-+][A-Za-z0-9.-]+)?)",
+                             candidate)
+        metadata["tool_version"] = match.group(1) if match and version.returncode == 0 else "unknown"
+        proc = subprocess.run(argv, cwd=repo, capture_output=True, timeout=300)
+    except subprocess.TimeoutExpired:
+        return unavailable("timeout", "scanner exceeded its execution deadline")
+    except (OSError, UnicodeError):
+        return unavailable("execution-error", "scanner could not be executed")
+
+    metadata["scanner_exit_code"] = proc.returncode
+    accepted_codes = {"gitleaks": (0, 10), "semgrep": (0, 1), "syft": (0,)}[tool]
+    if proc.returncode not in accepted_codes:
+        return unavailable("execution-error", "scanner returned an operational exit code")
+    if len(proc.stdout) > SECURITY_REPORT_LIMIT:
+        return unavailable("report-too-large", "machine report exceeds the 16 MiB evidence limit")
+    try:
+        report = json.loads(proc.stdout)
+    except (json.JSONDecodeError, UnicodeError):
+        return unavailable("invalid-report", "scanner did not return valid JSON")
+
+    if tool == "syft":
+        if not (isinstance(report, dict) and isinstance(report.get("artifacts"), list)
+                and all(isinstance(a, dict) for a in report["artifacts"])
+                and isinstance(report.get("descriptor"), dict)
+                and report["descriptor"].get("name") == "syft"
+                and isinstance(report.get("schema"), dict)
+                and isinstance(report["schema"].get("version"), str) and report["schema"]["version"]
+                and isinstance(report.get("source"), dict)):
+            return unavailable("invalid-report", "scanner did not return a Syft JSON SBOM")
+        metadata.update({"sbom_format": "syft-json", "sbom_sha256": "sha256:" + hashlib.sha256(proc.stdout).hexdigest(),
+                         "package_count": len(report["artifacts"])})
+        if sbom_output:
+            try:
+                metadata["sbom_uri"] = preserve_sbom(repo, sbom_output, proc.stdout)
+            except (OSError, ValueError):
+                return unavailable("artifact-unavailable",
+                                   "SBOM output must be writable, non-symlinked and outside the audited repository")
+        elif required:
+            return unavailable("artifact-unavailable",
+                               "required SBOM measurement needs --sbom-output outside the audited repository")
+        metadata["measurement_status"] = "generated"
+        return make_row(gate["gate_id"], "PASS", policy_hash=policy_hash,
+                        input_hash=EMPTY_SHA, commit_sha=commit_sha, runner=runner, metadata=metadata)
+
+    if tool == "gitleaks":
+        findings = report
+        valid = isinstance(findings, list) and all(
+            isinstance(f, dict) and isinstance(f.get("RuleID"), str) and f["RuleID"]
+            for f in findings)
+    else:
+        valid = (isinstance(report, dict) and isinstance(report.get("results"), list)
+                 and isinstance(report.get("errors"), list))
+        findings = report.get("results", []) if isinstance(report, dict) else []
+        valid = valid and all(isinstance(f, dict) and isinstance(f.get("check_id"), str)
+                              and f["check_id"] for f in findings)
+        if valid and report["errors"]:
+            metadata["scanner_error_count"] = len(report["errors"])
+            return unavailable("incomplete-report", "Semgrep reported incomplete analysis")
+    if not valid or bool(findings) != (proc.returncode != 0):
+        return unavailable("invalid-report", "machine report shape or exit/result agreement is invalid")
+    metadata.update({"finding_count": len(findings),
+                     "measurement_status": "findings" if findings else "clean"})
+    should_fail = bool(findings) and (strict or enforcement == "blocking" or required)
+    return make_row(
+        gate["gate_id"], "FAIL" if should_fail else "ADVISORY" if findings else "PASS",
+        policy_hash=policy_hash, input_hash=EMPTY_SHA, commit_sha=commit_sha, runner=runner,
+        metadata=metadata, failure_mode=f"scan:{tool}-findings" if should_fail else None,
+        advisory_severity="error" if findings and not should_fail else None,
+    )
+
+
+def run_tool(tool, repo, gate, commit_sha, runner, strict, fail_closed=False, sbom_output=None):
+    if tool in SECURITY_CMD:
+        return run_security_tool(tool, repo, gate, commit_sha, runner, strict, fail_closed, sbom_output)
     enforcement = gate.get("enforcement", "advisory")
     policy = f"tool:{tool}"
     if tool not in TOOL_CMD:
@@ -485,7 +628,7 @@ def run_tool(tool, repo, gate, commit_sha, runner, strict):
     if shutil.which(tool) is None:
         return indeterminate(gate, commit_sha, runner,
                              f"{tool} not on PATH — {gate.get('dimension')} unmeasured", policy)
-    argv, kind = TOOL_CMD[tool]
+    argv = TOOL_CMD[tool]
     try:
         proc = subprocess.run(argv, cwd=repo, capture_output=True, text=True, timeout=300)
     except Exception as e:
@@ -494,10 +637,6 @@ def run_tool(tool, repo, gate, commit_sha, runner, strict):
         return make_row(gate["gate_id"], "PASS", policy_hash=sha256_str(policy),
                         input_hash=EMPTY_SHA, commit_sha=commit_sha, runner=runner,
                         metadata={"method": "shell-out", "tool": tool})
-    if kind == "generation":
-        # syft etc. failing to generate is infra, not a policy violation
-        return indeterminate(gate, commit_sha, runner,
-                             f"{tool} could not generate artifact (exit {proc.returncode})", policy)
     detail = (proc.stdout or proc.stderr).strip()[:2000]
     result, fm, sev = ("FAIL", f"scan:{tool}-findings", None) if (strict or enforcement == "blocking") \
         else ("ADVISORY", None, "error")
@@ -557,8 +696,8 @@ def main():
     ap.add_argument("--strict", action="store_true", help="treat a finding/gap as FAIL (exit 1)")
     ap.add_argument(
         "--fail-closed", action="store_true",
-        help=("require OSV measurement when a supported dependency input exists; "
-              "FAIL on scanner errors and production/unknown findings at the severity threshold"),
+        help=("require OSV measurement for dependency inputs and profile-required security scanners; "
+              "FAIL on measurement errors and blocking findings"),
     )
     ap.add_argument(
         "--osv-severity-threshold", choices=tuple(OSV_SEVERITY_FLOORS), default="HIGH",
@@ -567,6 +706,9 @@ def main():
     ap.add_argument("--registry", default=C.DEFAULT_REGISTRY)
     ap.add_argument("--profile", default=None, help="pinned audit-profile/v1 (PATH or '-')")
     ap.add_argument("--jrig-verdict", default=None, help="path to a j-rig Evidence Bundle verdict to consume")
+    ap.add_argument("--sbom-output", default=None,
+                    help=("export validated Syft JSON atomically outside the audited repo "
+                          "(required for fail-closed SBOM gates)"))
     args = ap.parse_args()
 
     repo = os.path.abspath(args.repo)
@@ -589,7 +731,24 @@ def main():
     for gate in gates:
         suffix = gate_suffix(gate["gate_id"])
         tool = gate.get("tool")
-        if suffix == "hygiene-readme":
+        if gate.get("dimension") == "security" and tool not in (*SECURITY_CMD, "osv-scanner"):
+            policy_hash = sha256_str("security-tool/v1:unsupported")
+            if gate.get("applicability") == "waived":
+                rows.append(make_row(
+                    gate["gate_id"], "NOT_APPLICABLE", policy_hash=policy_hash,
+                    input_hash=EMPTY_SHA, commit_sha=commit_sha, runner=runner,
+                    metadata={"reason": "profile explicitly waives this gate"},
+                ))
+            else:
+                required = args.fail_closed and (gate.get("applicability") == "required"
+                                                or gate.get("enforcement") == "blocking")
+                rows.append(osv_operational_row(
+                    gate, commit_sha, runner, reason="no security adapter is wired for this gate",
+                    failure_mode="scan:unsupported-security-tool", fail_closed=required,
+                    policy_hash=policy_hash, input_hash=EMPTY_SHA,
+                    metadata={"measurement_status": "operational-failure", "required_measurement": required},
+                ))
+        elif suffix == "hygiene-readme":
             rows.append(run_readme(repo, gate, commit_sha, runner, args.strict))
         elif tool == "j-rig":
             rows.append(consume_jrig(repo, gate, commit_sha, runner, args.strict, args.jrig_verdict))
@@ -599,7 +758,8 @@ def main():
                 args.osv_severity_threshold,
             ))
         elif tool:
-            rows.append(run_tool(tool, repo, gate, commit_sha, runner, args.strict))
+            rows.append(run_tool(tool, repo, gate, commit_sha, runner, args.strict,
+                                 args.fail_closed, args.sbom_output))
         else:
             rows.append(indeterminate(gate, commit_sha, runner,
                                       f"gate '{suffix}' has no tool wired in this harness version",

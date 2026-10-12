@@ -31,7 +31,7 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 | `audit-harness classify` | Read-only repo classifier → an `audit-profile/v1` value (never writes) |
 | `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks SKILL.md against the pinned kernel `authoring/v1` skill-frontmatter contract (default `--tier floor`: name + description) |
 | `audit-harness audit` | Read-only testing-depth gate-runner → coverage presence per pyramid layer + crap-score |
-| `audit-harness scan` | Read-only security/hygiene/skill-quality gate-runner; `--fail-closed` makes applicable OSV measurement release-blocking |
+| `audit-harness scan` | Security/hygiene/skill-quality gates; `--fail-closed` requires OSV and profile-required security scanners; optional SBOM export stays outside the audited repo |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
 | `audit-harness currency` | Advisory poll-freshness report over the per-upstream pin relation |
 | `audit-harness migration-notes` | Generate deterministic adopter-facing migration notes from the changelog and SemVer policy |
@@ -174,7 +174,10 @@ Important for CI scripting:
 | 2 | verify | `HARNESS_TAMPERED` — pinned file changed |
 | 2 | escape-scan | REFUSE — pipeline halted |
 | 3 | verify | No manifest (fresh repo, not an error) |
-| 1 | scan `--fail-closed` | Required dependency measurement failed or policy-blocking OSV findings exist |
+| 1 | scan `--fail-closed` | Required measurement failed or a required security/OSV gate has blocking findings |
+
+See [security scanner contracts](docs/security-scanners.md) for Gitleaks and
+Semgrep exit/report validation, applicability, and Syft evidence export.
 
 ## Language support
 

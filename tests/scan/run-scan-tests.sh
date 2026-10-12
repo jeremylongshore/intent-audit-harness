@@ -276,6 +276,12 @@ python3 "$SCAN" "$FIX/with-readme" >"$o" 2>/dev/null
 if validate_rows "$o" 2>"$TMP/e"; then pass "real classify run: all rows schema-valid (shell-out paths graceful)"
 else fail "real run schema: $(cat "$TMP/e")"; fi
 
+if python3 "$ROOT/tests/scan/test_security_adapters.py"; then
+  pass "security adapter CLI contracts: fail-closed measurement, safe reports, SBOM custody"
+else
+  fail "security adapter CLI contracts"
+fi
+
 echo ""
 echo "scan suite: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

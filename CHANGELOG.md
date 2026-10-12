@@ -6,6 +6,19 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Security scanner adapters distinguish findings from crashes, malformed reports,
+  and incomplete analysis. `scan --fail-closed` requires security gates marked
+  required or blocking in the profile, while default advisory behavior remains.
+  Evidence contains bounded counts and execution metadata instead of raw findings
+  or stderr, which may contain secrets or source snippets.
+- Syft emits validated JSON and an exact-byte digest. `--sbom-output` atomically
+  preserves the artifact outside the audited repository and records its URI;
+  required SBOM gates refuse missing or unwritable outputs. Invalid reports leave
+  existing artifacts untouched. Deterministic scanner contract tests run in the
+  existing scan suite. Refs bead `bd_000-projects-wcze.2`.
+
 ## [1.5.1] - 2026-10-08
 
 Ships the 1.5.0 content to npm and crates.io. The `v1.5.0` tag and GitHub
