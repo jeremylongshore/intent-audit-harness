@@ -29,6 +29,12 @@ tests/**/*.py
 # valid; they are policy, not ordinary documentation.
 schemas/**/*.json
 
+# CI executable/download policy and full predicate fixtures are reviewed inputs.
+ci/*.py
+ci/*.json
+ci/requirements.txt
+tests/fixtures/gate-result*.schema.json
+
 # Shared lint configs (iep-shared-lint-configs / bd_000-projects-e3ey). These
 # are policy the five IEP repos vendor (.audit-harness/configs/) and `extends`
 # from — a silent edit to a markdownlint/yamllint/ruff/shellcheck rule is a

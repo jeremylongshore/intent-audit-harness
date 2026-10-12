@@ -178,6 +178,8 @@ Important for CI scripting:
 
 See [security scanner contracts](docs/security-scanners.md) for Gitleaks and
 Semgrep exit/report validation, applicability, and Syft evidence export.
+See [CI dependency integrity](docs/ci-supply-chain.md) for action pins, verified
+tool downloads, and the CI-only Python and kernel validator lockfiles.
 
 ## Language support
 

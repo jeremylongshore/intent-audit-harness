@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # ---- PRODUCE -----------------------------------------------------------
       # Demonstrate that audit-harness emits a real gate-result/v1 row from its
@@ -68,7 +68,7 @@ jobs:
       # Pinned to the newest released tag, v0.3.2 (2026-07-08).
       - name: Consume bundle + policy -> ship/no-ship decision
         id: gate
-        uses: jeremylongshore/intent-rollout-gate@v0.3.2
+        uses: jeremylongshore/intent-rollout-gate@1c2e13029bf7088870df16037a9969fe1c4d9296 # v0.3.2
         with:
           bundle-path: tests/dogfood/bundle.json
           policy-path: tests/dogfood/policy.json

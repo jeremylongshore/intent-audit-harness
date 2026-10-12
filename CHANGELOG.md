@@ -8,6 +8,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- CI actions use immutable commits; Actionlint and ShellCheck downloads are
+  verified before extraction. CI Python tools and kernel validators use payload
+  locks, and schema fixtures are committed rather than fetched from mutable
+  upstream refs. A tested CI policy rejects mutable actions and direct unverified
+  installs. Refs bead `bd_000-projects-wcze.3`.
 - Security scanner adapters distinguish findings from crashes, malformed reports,
   and incomplete analysis. `scan --fail-closed` requires security gates marked
   required or blocking in the profile, while default advisory behavior remains.

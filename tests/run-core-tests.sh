@@ -30,4 +30,6 @@ for suite in "${SUITES[@]}"; do
   bash "$suite"
 done
 
+python3 tests/supply-chain/test_policy.py
+
 echo "All deterministic core suites passed."

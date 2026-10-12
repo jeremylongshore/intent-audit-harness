@@ -1,5 +1,14 @@
 version: 2
 updates:
+  # CI-only validators and hash-locked test tools are separate from runtime deps.
+  - package-ecosystem: "npm"
+    directory: "/ci"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "pip"
+    directory: "/ci"
+    schedule:
+      interval: "weekly"
   # Keep GitHub Actions up to date
   - package-ecosystem: "github-actions"
     directory: "/"
