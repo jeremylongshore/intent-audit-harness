@@ -1,147 +1,149 @@
-# TEST_AUDIT.md — @intentsolutions/audit-harness
+# Test Audit — @intentsolutions/audit-harness
 
-> Diagnostic produced by `/audit-tests` (7-layer + gate sweep). Date: 2026-07-13.
-> Scope: the deterministic test-enforcement toolkit itself — the scanners under
-> `scripts/` (escape-scan, hash-pinning, CRAP, architecture, bias, gherkin-lint,
-> classify/conform/audit/scan, cred-gate, currency, migration-notes), the Node CLI
-> dispatcher (`bin/`), the Python (PyPI) + Rust (crates.io) port wrappers, and the
-> CI-only `ci/signing-reconciler/` sub-package. **The scripts are the product** —
-> so the load-bearing question is whether the harness tests its own scanners.
+Date: 2026-10-12. Bead: `bd_000-projects-b3u6`.
+Audited source: `735134f3a0bf8a644c5078b70a8b8d87031e2f86` (version 1.5.1).
+Scope: canonical scripts, Node dispatcher, bundled Python/Rust wrappers, and
+CI-only evidence/signing packages. This is a diagnostic snapshot.
 
-## 2026-10-12 remediation evidence
+**Result: behavioral suites pass; measurement and enforcement gaps remain.**
+Grade: **unavailable**. No deterministic repository grading rubric or measured
+coverage denominator was found. The July B+/87 was a historical assessment,
+not a current tool result; it is not carried forward or replaced with a
+self-assigned score. The [previous report](https://github.com/jeremylongshore/intent-audit-harness/blob/735134f3a0bf8a644c5078b70a8b8d87031e2f86/TEST_AUDIT.md)
+retains the July assessment and subsequent bounded remediation.
 
-The shipped-scanner and port-dispatch findings below are now covered by
-`tests/shipped/test_gates_and_wrappers.py` (bead `bd_000-projects-wcze.5`):
+## Classification and freshness
 
-- Architecture: all five dispatch routes use controlled external-tool fixtures
-  for clean and seeded-violation results; unconfigured repositories and a failed
-  checker without matching violation text have explicit exit/JSON assertions.
-- Bias: clean, seeded-bias and empty directories prove counts, grades, advisory
-  severity, exit behavior and the stdout/stderr split.
-- Ports: Python's module entry point and a Rust binary compiled offline in a
-  disposable copy exercise eight public commands with literal arguments and exit
-  codes 0, 1, 2 and 42. Help/version and missing-interpreter/unknown-command paths
-  are also checked. Copied packages, Rust build outputs and extracted scripts stay
-  in temporary directories.
+`node bin/audit-harness.js classify .` detects **CLI**, with no unresolved
+classification. Its registry hash is
+`sha256:e9e4fbd18fd88bae9bed9a76398497af82369d88f0805bcc2f35435d8f77efc1`.
+All eight resolved gates are advisory; required *applicability* does not make
+them blocking. No engineer-authored testing policy or waivers were present.
+Browser/accessibility and declared-persona/journey audits are outside this
+CLI's default requirements; this is not a newly enacted waiver.
 
-These tests reproduced two defects before fixes: architecture JSON contained a
-two-line zero when a failed checker emitted no matching violation text, and
-`python -m intent_audit_harness` discarded every nonzero dispatcher exit code.
-The fixes preserve a numeric count and propagate the Python module's return code.
-The canonical architecture script and both bundled mirrors remain byte-identical.
+Source version and the npm latest-version probe both returned 1.5.1.
+`node bin/audit-harness.js verify` passed. `currency --json` reports 18 stale
+local records among 19 pins, based on their recorded dates. It does not verify
+live upstream compatibility. The initial `currency .` invocation was rejected
+(exit 2); the corrected command completed with exit 0 and an advisory report.
 
-Run `python3 tests/shipped/test_gates_and_wrappers.py` (Python 3, Bash 4+, `bc`
-and Cargo required). The same tests run in `npm test` and the required
-`Shipped architecture, bias and port behavior` CI job. The aggregate also covers
-scanner and supply-chain contracts; signing-reconciler tests have a separate
-required CI job. The July assessment below is historical; no new overall coverage percentage, mutation
-score or audit grade is claimed by this bounded remediation.
+## Seven-layer assessment
 
-## Historical July 2026 grade: B+ (87/100)
+| Layer | Presence and configuration | Enforcement and limits |
+| --- | --- | --- |
+| L1 — hooks/CI | Active Beads hooks chain Lefthook; staged escape and disposable pre-push checks exist | 18 GitHub required contexts; some newer jobs are absent from that list |
+| L2 — static analysis | ShellCheck, Ruff, Python syntax, ESLint, actionlint, markdownlint, offline links, typos, CodeQL | Several checks required; Vale advisory; no scoped signing TypeScript typecheck |
+| L3 — unit/function | Shell fixtures, Python unittest, Node tests | Behavior tested; source coverage, mutation and self-CRAP unmeasured |
+| L4 — integration/regression | Offline installation, wrapper dispatch, canonical evidence, signing state transitions | Real local contracts exercised; injected signing transport is not live Rekor delivery |
+| L5 — system quality | Hash/escape checks, security adapters, live CI OSV, CodeQL | Local OSV unavailable; one known history secret finding persists |
+| L6 — CLI smoke/E2E | SemVer and port-dispatch smoke; rollout dogfood workflow | Smoke exists despite naming heuristic; dogfood consumes a committed fixture, not its emitted live row |
+| L7 — acceptance | Public SemVer and signing acceptance assertions | Formal requirement/persona/journey registers undeclared; no external UAT claim |
 
-A genuinely strong, broadly-gated posture — **21 CI jobs** in `ci.yml` plus 5 more
-workflows, hard-fail `shellcheck` + `ruff`, a per-scanner golden/fixture suite for
-almost every gate, a live SemVer CLI-contract freeze, and self-dogfooding
-(`self-check` + `rollout-gate-dogfood`). Everything that runs, passes: **all 11
-offline suites + 9 static/self-checks verified green locally.** Held below A by a
-real **P1 meta-gap** — the newest and most security-sensitive subsystem
-(`ci/signing-reconciler`, the Rekor OUTBOX + SkillVersion signing state machine)
-has a **23-test suite that no workflow runs** — and a cluster of P2s where two
-*shipped* scanners (`arch-check.sh`, `bias-count.sh`) have no behavioral tests,
-the port wrappers are untested, and the toolkit that advertises "coverage-gate"
-and "mutation-testing" applies neither to itself. For an ordinary app these are
-minor; for a *test-enforcement product* an untested shipped scanner is the
-physician-heal-thyself finding, so it weighs heavier.
+Sources: [CI](.github/workflows/ci.yml), [hooks](lefthook.yml),
+[aggregate](tests/run-core-tests.sh), [SemVer contract](SEMVER.md), and
+[dogfood workflow](.github/workflows/rollout-gate-dogfood.yml).
 
-## Classification
+GitHub protection and active rules were read on 2026-10-12 at 16:23Z. The
+shipped architecture/bias/port, signing, canonical-payload, supply-chain and
+report-lineage jobs run but are not named in the 18-context protection floor.
+The maintainer's configured merge guard additionally rejects observed
+non-advisory failures; that does not guarantee a missing job will be required.
+The prior report's unconditional description of the new jobs as "required"
+was too broad. No protection or merge-policy settings changed in this audit.
 
-**Polyglot CLI + test-enforcement tooling.** The product is the ~5,166 lines of
-`scripts/*.{sh,py}` scanners, dispatched by a zero-runtime-dep Node CLI
-(`bin/audit-harness.js`) and mirrored by thin Python (PyPI) and Rust (crates.io)
-port wrappers that bundle byte-identical script copies. A separate CI-only,
-non-published Node/TS sub-package (`ci/signing-reconciler/`) carries the Rekor
-signing runtime. Deterministic, offline, read-only by design — so the natural
-test shape is **golden-master + fixture** (input dir → expected JSON / stdout),
-not classic mocked unit tests, and coverage is asserted by fixture breadth rather
-than an instrumented percentage.
+## Executed evidence
 
-## 7-layer presence / config / enforcement
+Tests ran in a disposable archive of the exact source commit: all 269 tracked
+files were verified byte-identical before execution. This keeps fixture writes
+and build products outside the target worktree. Locked CI package dependencies
+were installed there with `npm ci --ignore-scripts --no-audit --no-fund`.
 
-| Layer | State | Evidence |
-|---|---|---|
-| L1 — git hooks & CI | ✅ HARD | `lefthook.yml` local pre-commit (escape-scan `--staged`, ruff, shellcheck, eslint) + 21 CI jobs (`.github/workflows/ci.yml`) + 5 workflows (actionlint, codeql, doc-quality, rollout-gate-dogfood, typos) |
-| L2 — static / lint / types | ✅ HARD | pinned `shellcheck v0.10.0` (hard-fail, all `scripts/*.sh`), pinned `ruff 0.15.4` (hard-fail), `py_compile`, `eslint` (recommended), `actionlint`, CodeQL, `typos`, Vale, markdownlint |
-| L3 — unit / function | ✅ | golden/fixture suites per scanner: classify, conform, audit, scan, crap-score, currency, migration-notes, cred-gate, gherkin-lint (via golden); crap-score adds a Python join-regression + a standalone `test_crap_score_joins.py`. **Gap:** `arch-check.sh`, `bias-count.sh` have no behavioral suite |
-| L4 — integration | ✅ HARD | `regression` suite pipes escape-scan → emit-evidence → in-toto Statement → kernel schema validation; `wrapper-sync` (bundled mirrors byte-identical to canonical); `version-canonical-check` (4 polyglot manifests aligned); `kernel-shadow-check` |
-| L5 — system quality | ✅ | `self-check` matrix (node 18/20/22): `verify` / `list` / `harness-hash --verify` (hard-fail on tamper) / synthetic threshold-lowering escape-scan; `dns-preflight` live leg env-gated |
-| L6 — E2E / acceptance | ✅ | `rollout-gate-dogfood` emits a live Evidence Bundle row → consumes bundle + policy → ship/no-ship decision (the harness gating itself end-to-end); `golden` suite pins raw scorer stdout as a downstream contract |
-| L7 — acceptance / business | ✅ | `semver` suite pins the public CLI/output surface as live assertions — frozen subcommand roster, frozen exit codes, `--json` stream contract, frozen `gate-result/v1` predicate URI; a MAJOR-worthy change shipped as MINOR/PATCH fails |
+| Command or measurement | Observed result |
+| --- | --- |
+| `npm test` | Exit 0; 17 shell entrypoints and two direct Python entrypoints completed |
+| Aggregate counters | 319 reported shell checks and 37 Python tests passed; overlapping counters, not a unique-test total |
+| `npm --prefix ci test` | 12 canonical-payload tests passed |
+| `npm --prefix ci/signing-reconciler test` | 23 signing tests passed |
+| `bash tests/report-lineage/run-report-lineage-tests.sh` | 25 checks passed |
+| `bash tests/emit-evidence/run-emit-evidence-tests.sh` | 33 checks passed |
+| `conform .` | Exit 0, zero applicable conformance rows; not a substantive conformance pass |
+| `audit . --deep` | Two raw PASS rows and one smoke advisory; unit is presence-only and self-CRAP scored zero methods |
+| CRAP, JS and Python providers | **Not measured**: missing complexity providers; raw zero-method PASS is not quality evidence |
+| Architecture / Gherkin | Exit 2: no architecture configuration / no feature directory; not measured |
+| Coverage / mutation | No instrumented repository baseline or declared floor |
+| Bias | 25 regex matches / 42 detected functions; fixture/wording false positives make the raw rate unsuitable as a quality grade |
+| `scan .` | Two PASS, three ADVISORY; OSV and markdownlint unavailable locally; Gitleaks found one historical item |
 
-## Deterministic gates (all verified locally 2026-07-13)
+The aggregate does not include every independent CI suite; the four supplemental
+runs above close that local execution gap for this audit. Live DNS, Rekor,
+release publishing, and installed-package distribution tests were not run.
+Passing behavioral suites do not establish source coverage percentages.
 
-| Gate | Result |
-|---|---|
-| shellcheck `scripts/*.sh` (pinned, hard-fail) | PASS |
-| ruff check (pinned, hard-fail) | PASS |
-| py_compile (all `scripts/*.py`) | PASS |
-| regression suite (escape-scan / emit-evidence / schema) | PASS |
-| semver CLI-contract suite | PASS |
-| golden-master stdout (gherkin-lint + crap-score) | PASS |
-| classify / conform / audit / scan golden suites | PASS (4/4) |
-| crap-score suite + `test_crap_score_joins.py` | PASS |
-| currency / migration-notes / cred-gate suites | PASS (3/3) |
-| dns-preflight (non-live) | PASS |
-| harness-hash `--verify` (hash-pin idempotency) | OK |
-| wrapper-sync (bundled mirror byte-identity) | PASS |
-| kernel-shadow-check (advisory) | PASS (0 shadows) |
-| gen-layer-applicability `--check` (projection drift) | PASS |
-| `ci/signing-reconciler` `npm test` (23 tests) | PASS locally — **but run by NO workflow** |
+A redacted full-history Gitleaks run returned exit 10 and the existing finding
+at `python/PUBLISH.md:24`, commit `9b97217ab639219bdd81ed6ac11bad5c1485ba62`.
+It matches [the open credential incident](https://github.com/jeremylongshore/intent-audit-harness/issues/166),
+Bead `bd_000-projects-wcze.4`. This audit does not establish provider revocation,
+authorize an allowlist, or clear that release hold.
 
-## Gaps
+## Traceability
 
-**P0:** none. Every gate that ships is green; the core product scanners are tested.
+No formal REQ/MoSCoW register, tagged requirement commits, declared personas,
+or declared journeys were found. The 28 inventoried test-source files have no
+formal REQ links; several explicitly reference documented contracts instead.
+Formal traceability is optional for CLI. Requirement, persona and journey
+coverage percentages are **unavailable**, not 100%; no uncovered MUST count
+can be inferred from an absent register.
 
-**P1 — the reconciler suite is dead in CI:**
+| Documented contract | Related test evidence |
+| --- | --- |
+| `SEMVER.md` public CLI/output guarantees | `tests/semver/run-semver-tests.sh` |
+| Audit-profile union and schema contract | `tests/classify/run-classify-tests.sh` |
+| `docs/cred-gate.md` redaction/refusal behavior | `tests/cred-gate/run-cred-gate-tests.sh` |
+| `docs/security-scanners.md` operational failures | `tests/scan/test_security_adapters.py` |
+| `docs/ci-supply-chain.md` download integrity | `tests/supply-chain/test_policy.py` |
+| Signing README transition/outbox contracts | `ci/signing-reconciler/tests/` |
 
-- `ci/signing-reconciler/tests/{cli,outbox,reconcile}.test.ts` = **23 `node --test`
-  cases, all passing locally, invoked by zero workflows** (`ci.yml` and `release.yml`
-  never `cd ci/signing-reconciler`). This is the newest and most security-sensitive
-  subsystem — the append-only Rekor OUTBOX + bounded-retry reconciler for the kernel
-  SkillVersion signing state machine (CISO P0-RATIFY-2, landed #124/#127), whose own
-  tests assert fail-closed invariants ("kernel-invalid rows are NOT persisted"). A
-  regression here ships undetected. **Fix:** add a `signing-reconciler` job to
-  `ci.yml` — `cd ci/signing-reconciler && npm ci && npm test` on node ≥22.6.
+These are bounded source-to-test observations, not a complete requirement
+matrix or new policy. `tests/TESTING.md` is absent. An observational draft is
+included in the implementation handoff; its creation requires deliberate
+manifest initialization because the verifier protects the entire file.
 
-**P2 — the meta-gap (an under-tested enforcement toolkit is a real finding):**
+## Findings and implementation handoff
 
-- **`arch-check.sh` (185 loc) and `bias-count.sh` (151 loc) have no behavioral
-  tests.** They are shipped, advertised scanners ("architecture checks, bias
-  detection") yet the only coverage is a source-grep portability guard in the
-  regression suite (`arch-check` must use the cross-platform `SHA256_CMD` pattern) —
-  a logic regression in either would pass CI. Add `tests/arch/` + `tests/bias/`
-  golden fixtures (clean-repo pass + seeded-violation fail), matching the
-  classify/scan pattern.
-- **The Rust port (`rust/src/main.rs`) has 0 test functions; the Python port
-  dispatcher (`cli.py` / `__main__.py`) has no `test_*.py`.** `wrapper-sync`
-  byte-checks the bundled `crap-score.py` mirror, but the port dispatch logic (arg
-  routing, script resolution, exit-code propagation) is untested — and both are
-  *published* artifacts (crates.io + PyPI). Add a smoke test per port asserting
-  subcommand dispatch + exit-code passthrough.
-- **No coverage or mutation instrumentation on the scanners.** The golden/fixture
-  strategy is legitimate for deterministic scanners, but there is no coverage % — so
-  the exact fraction of the 5,166 script lines exercised is unknown, and the package
-  advertises `coverage-gate` + `mutation-testing` as keywords while applying neither
-  to itself (the self-application / dogfood gap). Advisory: add a `bashcov`/`coverage
-  run` pass over the suites to quantify the meta-gap, then decide whether to gate.
-- **`npm test` at the repo root is a no-op smoke** (`bash scripts/escape-scan.sh
-  --staged || true`) — the real suites are the per-scanner runners wired individually
-  into CI jobs. A contributor running `npm test` gets a misleading green. Cosmetic:
-  point root `test` at an aggregate runner (or document that CI is the real gate).
+No newly demonstrated P0 from this testing audit; the existing credential
+incident remains open. Two P1 work groups go to `bd_000-projects-0wvb`:
 
-## Handoff
+1. **Enforcement documentation and intent:** reconcile the missing required
+   contexts with the intended merge floor. Preserve all existing checks and
+   distinguish configured jobs, observed-failure rejection and required presence.
+2. **Measurement validity:** collect an advisory baseline for actual product
+   scripts/tests and ensure unavailable providers or zero scored methods cannot
+   support a measured-pass claim. Coverage, mutation and blocking thresholds
+   remain engineer-owned; copying skill defaults is not a policy decision.
+   The legacy zero-method output is golden-tested; preserve its existing
+   CLI contract while introducing explicit measurement-status reporting.
 
-**Recommended.** The P1 (reconciler suite unwired) is a one-job CI fix and should
-land first. The P2 arch/bias behavioral suites are the highest-value follow-on —
-they close the physician-heal-thyself hole for a product whose entire value
-proposition is test enforcement. Route to `/implement-tests` for the `tests/arch/`
-and `tests/bias/` fixtures plus the port smoke tests.
+P2 recommendations: a scoped signing typecheck; mutation baseline; a pinned
+live CI secret scanner after incident disposition; a connected producer-to-
+consumer dogfood path; a clearly documented aggregate boundary; upstream-pin
+review; and bias false-positive triage. Optional formal traceability remains
+an advisory observation. These do not authorize gate promotion or publishing.
+
+The mandatory `implement-tests` handoff uses the existing implementation bead,
+not a duplicate task. Order: establish policy/measurement boundaries, address
+L1 intent and L3 measurement validity, then consider applicable P2 additions.
+The harness is this repository's source product; do not install a second copy
+of itself as a runtime dependency. Credential response stays in `wcze.4`.
+
+## Audit change verification
+
+The initial addition of observational `tests/TESTING.md` caused hash verification
+to refuse the expanded protected-file set (exit 2); all 97 existing pins still
+matched. The draft was removed from this diagnostic diff and retained in the
+implementation handoff. No manifest was regenerated and no threshold enacted.
+
+The corrected report-only diff passed hash verification (97 existing pins) and
+escape scan (exit 0; zero REFUSE, CHALLENGE or FLAG findings). Markdown lint and
+offline local-link checks passed. Source, tests, thresholds, CI, protection,
+and contributor guides are unchanged.
