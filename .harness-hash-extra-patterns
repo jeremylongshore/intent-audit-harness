@@ -35,6 +35,8 @@ schemas/**/*.json
 
 # CI executable/download policy and full predicate fixtures are reviewed inputs.
 ci/*.py
+ci/*.ts
+ci/*.mjs
 ci/*.json
 ci/requirements.txt
 tests/fixtures/gate-result*.schema.json

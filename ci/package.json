@@ -2,6 +2,9 @@
   "name": "audit-harness-ci-evidence",
   "private": true,
   "version": "0.0.0",
+  "scripts": {
+    "test": "node --experimental-strip-types --test canonical-payload.test.mjs"
+  },
   "dependencies": {
     "@intentsolutions/core": "0.10.0"
   },
