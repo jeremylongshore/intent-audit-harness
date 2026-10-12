@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import io
 from pathlib import Path
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -55,12 +56,61 @@ class WorkflowPolicy(unittest.TestCase):
     def test_locked_install_and_notification_post_are_allowed(self):
         for command in ("npm ci --ignore-scripts --prefix ci",
                         "curl --fail-with-body -X POST https://example.invalid/notification",
-                        "python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt"):
+                        "python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt",
+                        '"$RUNNER_TEMP/provider/bin/python" -m pip install --require-hashes '
+                        '--only-binary=:all: -r ci/measurement-requirements.txt'):
             text = self.workflow("- run: |\n          " + command)
             self.assertEqual(POLICY.check_workflow(text), [])
 
+    def test_arbitrary_traversal_and_extra_requirements_are_rejected(self):
+        for requirements in ("requirements.txt", "ci/arbitrary-requirements.txt",
+                             "ci/../ci/measurement-requirements.txt", "../ci/measurement-requirements.txt",
+                             "ci/measurement-requirements.txt -r other.txt",
+                             "ci/measurement-requirements.txt --no-deps"):
+            with self.subTest(requirements=requirements):
+                command = "python3 -m pip install --require-hashes --only-binary=:all: -r " + requirements
+                self.assertTrue(POLICY.check_workflow(self.workflow("- run: " + command)))
+
+    def test_measurement_install_requires_hash_and_binary_flags(self):
+        for flags in ("", "--require-hashes ", "--only-binary=:all: "):
+            with self.subTest(flags=flags):
+                command = f"python3 -m pip install {flags}-r ci/measurement-requirements.txt"
+                self.assertTrue(POLICY.check_workflow(self.workflow("- run: " + command)))
+
     def test_invalid_yaml_fails_closed(self):
         self.assertTrue(POLICY.check_workflow("jobs: [invalid"))
+
+
+class RequirementsPolicy(unittest.TestCase):
+    def fixture(self, root):
+        for relative in ("ci/requirements.txt", "ci/measurement-requirements.txt", "ci/downloads.json",
+                         "ci/package.json", "ci/package-lock.json", ".github/dependabot.yml",
+                         "tests/fixtures/gate-result-v1.schema.json"):
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / relative, target)
+
+    def test_both_trusted_locks_require_exact_versions_and_payload_hashes(self):
+        for relative in ("ci/requirements.txt", "ci/measurement-requirements.txt"):
+            for requirement in ("coverage==7.13.4", "coverage>=7.13.4 --hash=sha256:" + "a" * 64,
+                                "coverage==7.13.4 --hash=sha256:abc123", "-r ../requirements.txt"):
+                with self.subTest(path=relative, requirement=requirement), tempfile.TemporaryDirectory() as work:
+                    root = Path(work)
+                    self.fixture(root)
+                    (root / relative).write_text(requirement + "\n")
+                    errors = POLICY.check(root)
+                    self.assertTrue(any(relative in error and "payload hash" in error for error in errors), errors)
+
+    def test_missing_or_redirected_lock_cannot_bypass_hash_validation(self):
+        for relative in ("ci/requirements.txt", "ci/measurement-requirements.txt"):
+            with self.subTest(path=relative), tempfile.TemporaryDirectory() as work:
+                root = Path(work)
+                self.fixture(root)
+                path = root / relative
+                path.unlink()
+                self.assertTrue(any(relative in error for error in POLICY.check(root)))
+                path.symlink_to(ROOT / relative)
+                self.assertTrue(any(relative in error for error in POLICY.check(root)))
 
 
 class VerifiedInstaller(unittest.TestCase):

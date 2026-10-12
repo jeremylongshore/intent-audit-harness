@@ -58,6 +58,105 @@ jobs:
           python3 ci/check-supply-chain.py
           python3 tests/supply-chain/test_policy.py
 
+  python-self-measurement:
+    name: Python self-measurement (advisory, non-blocking)
+    # This display name matches the maintainer merge guard's advisory pattern.
+    # No thresholds or required-presence contexts are added by this observation.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        id: checkout
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        id: node
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        id: python
+        with:
+          python-version: '3.12'
+      - name: Install isolated hash-locked measurement providers
+        id: providers
+        env:
+          MEASUREMENT_PROVIDER: ${{ runner.temp }}/measurement-provider
+        # Do not activate this venv or append its bin to PATH/GITHUB_PATH.
+        # The runner exposes only Python launchers to behavioral subprocesses;
+        # radon stays invisible to the legacy no-provider golden suite.
+        run: |
+          python3 -m venv "$MEASUREMENT_PROVIDER"
+          "$MEASUREMENT_PROVIDER/bin/python" -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
+          "$MEASUREMENT_PROVIDER/bin/python" -m pip install --require-hashes --only-binary=:all: -r ci/measurement-requirements.txt
+      - name: Collect Python observations and explicit unavailable reasons
+        id: measurement
+        if: always() && steps.checkout.outcome == 'success'
+        env:
+          MEASUREMENT_OUTPUT: ${{ runner.temp }}/python-self-measurement
+          MEASUREMENT_PROVIDER: ${{ runner.temp }}/measurement-provider
+        run: |
+          # The runner refuses nonempty output directories to prevent stale data.
+          # Preserve its pipeline status before adding the live log to artifacts.
+          runner_status=0
+          python3 ci/run_measurement.py \
+            --output-dir "$MEASUREMENT_OUTPUT" \
+            --coverage-python "$MEASUREMENT_PROVIDER/bin/python" \
+            --complexity-python "$MEASUREMENT_PROVIDER/bin/python" \
+            2>&1 | tee "$MEASUREMENT_OUTPUT.runner.log" || runner_status=$?
+          mkdir -p "$MEASUREMENT_OUTPUT"
+          mv -f "$MEASUREMENT_OUTPUT.runner.log" "$MEASUREMENT_OUTPUT/runner.log"
+          exit "$runner_status"
+      - name: Publish measurement summary and CI diagnostics
+        if: always()
+        env:
+          MEASUREMENT_OUTPUT: ${{ runner.temp }}/python-self-measurement
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          NODE_OUTCOME: ${{ steps.node.outcome }}
+          PYTHON_OUTCOME: ${{ steps.python.outcome }}
+          PROVIDERS_OUTCOME: ${{ steps.providers.outcome }}
+          MEASUREMENT_OUTCOME: ${{ steps.measurement.outcome }}
+        run: |
+          mkdir -p "$MEASUREMENT_OUTPUT"
+          report_available=false
+          if [[ -s "$MEASUREMENT_OUTPUT/summary.json" && -s "$MEASUREMENT_OUTPUT/summary.md" ]]; then
+            report_available=true
+            cat "$MEASUREMENT_OUTPUT/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Python self-measurement report unavailable; inspect CI diagnostics and runner log"
+            {
+              echo "## Python self-measurement unavailable"
+              echo ""
+              echo "The runner did not emit both summary.json and summary.md. No measurement or pass claim is available."
+            } | tee "$MEASUREMENT_OUTPUT/ci-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          cat > "$MEASUREMENT_OUTPUT/ci-diagnostic.json" <<EOF
+          {
+            "schema_version": "audit-harness-self-measurement-ci-diagnostic/v1",
+            "enforcement": "advisory",
+            "report_available": $report_available,
+            "steps": {
+              "checkout": "$CHECKOUT_OUTCOME", "setup_node": "$NODE_OUTCOME",
+              "setup_python": "$PYTHON_OUTCOME", "providers": "$PROVIDERS_OUTCOME",
+              "measurement": "$MEASUREMENT_OUTCOME"
+            }
+          }
+          EOF
+          {
+            echo ""
+            echo "CI outcomes: checkout=$CHECKOUT_OUTCOME; Node=$NODE_OUTCOME; Python=$PYTHON_OUTCOME; providers=$PROVIDERS_OUTCOME; measurement=$MEASUREMENT_OUTCOME."
+            echo "Advisory observation only; thresholds and promotion remain undeclared."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve measurement artifacts and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-self-measurement
+          path: ${{ runner.temp }}/python-self-measurement
+          if-no-files-found: warn
+          retention-days: 14
+
   self-check:
     name: audit-harness self-check
     runs-on: ubuntu-latest
