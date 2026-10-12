@@ -31,5 +31,6 @@ for suite in "${SUITES[@]}"; do
 done
 
 python3 tests/supply-chain/test_policy.py
+python3 tests/shipped/test_gates_and_wrappers.py
 
 echo "All deterministic core suites passed."

@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-10-12 Shipped-Gate and Port Revalidation
+
+Bead `bd_000-projects-wcze.5` adds behavioral coverage for the shipped architecture
+and bias gates and the Python/Rust dispatchers. The current evidence is
+`tests/shipped/test_gates_and_wrappers.py`, wired into the root aggregate and the
+required `Shipped architecture, bias and port behavior` CI job. Five architecture
+tool routes have clean/violation fixtures; bias has clean/seeded/empty fixtures;
+both port entry points exercise all eight supported commands and preserve literal
+arguments, output streams and exit codes. Rust builds offline in a disposable
+copy, and Python uses copied package resources. Prerequisites are Python 3,
+Bash 4+, `bc` and Cargo.
+
+The tests exposed and now guard two concrete defects: a failed architecture
+checker with no matching violation text emitted invalid JSON, and Python's
+`-m` entry point returned success after failed gates. Both are corrected; mirrored
+architecture scripts remain byte-identical. This supersedes the older report's
+untested-scanner/port findings only. Historical analysis, release posture and
+global coverage/mutation claims require their own dated evidence.
+
 ## 0. 2026-09-13 Security and Operations Revalidation
 
 This section is the current operator handoff. Sections 1–13 preserve the full
