@@ -8,6 +8,14 @@ import re
 import yaml
 
 
+CI_REQUIREMENTS = ("ci/requirements.txt", "ci/measurement-requirements.txt")
+LOCKED_PIP_INSTALL = re.compile(
+    r"pip install --require-hashes --only-binary=:all: -r (?:"
+    + "|".join(re.escape(path) for path in CI_REQUIREMENTS)
+    + r")\s*$"
+)
+
+
 def check_workflow(text):
     errors = []
     lines = text.splitlines()
@@ -32,9 +40,7 @@ def check_workflow(text):
                         for match in re.finditer(r"\b(curl|wget)\b([^;|&]*)", command):
                             if match[1] != "curl" or not re.search(r"-X\s+POST\b", match[2]):
                                 errors.append("direct downloads must use the checksum-verifying CI installer")
-                        if re.search(r"\bpip\s+install\b", command) and not re.search(
-                            r"pip install --require-hashes --only-binary=:all: -r ci/requirements\.txt\s*$", command
-                        ):
+                        if re.search(r"\bpip\s+install\b", command) and not LOCKED_PIP_INSTALL.search(command):
                             errors.append("Python CI installs must use the hash-locked requirements")
                         if re.search(r"\bnpm\s+(?:i|install)\b|\bgh\s+release\s+download\b", command):
                             errors.append("use a committed lockfile or verified installer, not an unpinned install")
@@ -67,12 +73,16 @@ def check(root):
             errors.append(f"{tool}: missing archive SHA256")
         if not re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+/releases/download/v[0-9.]+/[^/]+", pin["url"]):
             errors.append(f"{tool}: expected a versioned upstream release URL")
-    requirements = (root / "ci/requirements.txt").read_text().splitlines()
-    for line in requirements:
-        if line and not line.startswith("#") and not re.fullmatch(
-            r"[\w.-]+==[\w.+-]+ --hash=sha256:[a-f0-9]{64}", line
-        ):
-            errors.append("Python requirement lacks an exact version and payload hash")
+    for relative_path in CI_REQUIREMENTS:
+        path = root / relative_path
+        if path.is_symlink() or not path.is_file():
+            errors.append(f"{relative_path}: hash-locked requirements must be a regular committed file")
+            continue
+        for number, line in enumerate(path.read_text().splitlines(), 1):
+            if line and not line.startswith("#") and not re.fullmatch(
+                r"[\w.-]+==[\w.+-]+ --hash=sha256:[a-f0-9]{64}", line
+            ):
+                errors.append(f"{relative_path}:{number}: Python requirement lacks an exact version and payload hash")
     package = json.loads((root / "ci/package.json").read_text())
     lock = json.loads((root / "ci/package-lock.json").read_text())
     if package.get("dependencies") != lock["packages"][""].get("dependencies"):

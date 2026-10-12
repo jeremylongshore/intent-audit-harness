@@ -6,6 +6,17 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- An advisory CI baseline measures canonical Python scripts and Python tests
+  using isolated, hash-locked coverage.py and Radon providers. Reports retain
+  source hashes, command results, line/branch coverage, complexity and a
+  file-coverage CRAP proxy; unavailable and partial measurements are explicit.
+  Other languages, mutation scores and blocking thresholds remain unmeasured
+  or undeclared. The public CLI and its no-provider golden remain unchanged.
+  Contributor commands and measurement limits are documented in
+  `tests/TESTING.md`. Refs bead `bd_000-projects-0wvb` (partial implementation).
+
 ### Security
 
 - Refresh the development lockfile from `brace-expansion` 5.0.9 to 5.0.12,

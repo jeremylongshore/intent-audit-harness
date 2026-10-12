@@ -1,0 +1,8 @@
+# CI only: CPython 3.12 on Linux x86_64; exact PyPI wheel payload hashes.
+# coverage has no required transitives; radon requires mando/colorama; mando requires six.
+# Install only in the isolated measurement provider venv; never activate its bin in PATH.
+colorama==0.4.6 --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
+coverage==7.16.2 --hash=sha256:5375ebd99038021b35e99dc88255022912c06565d316212f4a576e4b08d30f5d
+mando==0.7.1 --hash=sha256:26ef1d70928b6057ee3ca12583d73c63e05c49de8972d620c278a7b206581a8a
+radon==6.0.1 --hash=sha256:632cc032364a6f8bb1010a2f6a12d0f14bc7e5ede76585ef29dc0cecf4cd8859
+six==1.17.0 --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274
