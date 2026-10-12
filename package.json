@@ -41,7 +41,7 @@
   ],
   "scripts": {
     "test": "bash tests/run-core-tests.sh",
-    "check": "npm run lint && npm test && python3 scripts/gen-layer-applicability.py --check && bash scripts/harness-hash.sh --verify",
+    "check": "python3 ci/check-supply-chain.py && npm run lint && npm test && python3 scripts/gen-layer-applicability.py --check && bash scripts/harness-hash.sh --verify",
     "lint": "eslint \"bin/**/*.js\"",
     "lint:fix": "eslint --fix \"bin/**/*.js\"",
     "prepublishOnly": "node bin/audit-harness.js --version"

@@ -25,15 +25,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Run actionlint
         # Pinned actionlint release; downloads the official static binary and
         # lints every .github/workflows/*.yml. Pin bumps are explicit PRs.
-        env:
-          ACTIONLINT_VERSION: "1.7.7"
         run: |
           set -euo pipefail
-          curl -sSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
-            | tar -xz -C /tmp actionlint
-          /tmp/actionlint -version
-          /tmp/actionlint -color
+          python3 ci/install-tool.py actionlint "$RUNNER_TEMP/actionlint-bin"
+          "$RUNNER_TEMP/actionlint-bin/actionlint" -version
+          "$RUNNER_TEMP/actionlint-bin/actionlint" -color

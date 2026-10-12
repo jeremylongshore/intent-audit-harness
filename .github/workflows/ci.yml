@@ -14,6 +14,22 @@ permissions:
   contents: read
 
 jobs:
+  supply-chain:
+    name: CI supply-chain input policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - name: Install hash-locked policy dependencies
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
+      - name: Verify workflow pins and installer failure paths
+        run: |
+          python3 ci/check-supply-chain.py
+          python3 tests/supply-chain/test_policy.py
+
   self-check:
     name: audit-harness self-check
     runs-on: ubuntu-latest
@@ -23,10 +39,10 @@ jobs:
         node-version: [18, 20, 22]
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -91,19 +107,16 @@ jobs:
     # Convergence Debt Plan Priority 6 Phase A1. Version-pinned per
     # iah-shellcheck-version-pin (bd_000-projects-v1ds, v1.1.4 bundle) so
     # a future shellcheck release can't surface new rules silently against
-    # already-merged code. To bump: edit SHELLCHECK_VERSION below + run
+    # already-merged code. To bump: update ci/downloads.json with verified bytes and run
     # `shellcheck scripts/*.sh` locally to confirm nothing new fires +
     # commit as part of an explicit PR. Stable releases at
     # https://github.com/koalaman/shellcheck/releases
-    env:
-      SHELLCHECK_VERSION: "v0.10.0"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Install pinned shellcheck
         run: |
-          curl -sSL "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
-            | tar -xJ -C /tmp
-          sudo install -m 0755 "/tmp/shellcheck-${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck
+          python3 ci/install-tool.py shellcheck "$RUNNER_TEMP/shellcheck-bin"
+          echo "$RUNNER_TEMP/shellcheck-bin" >> "$GITHUB_PATH"
       - name: shellcheck
         run: |
           shellcheck --version
@@ -119,12 +132,13 @@ jobs:
     # code. To bump: edit the pinned version below + run `ruff check` locally
     # to confirm nothing new fires + commit as part of an explicit PR.
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install ruff (pinned)
-        run: pip install 'ruff==0.15.4'
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
       - name: ruff check
         run: |
           ruff --version
@@ -134,8 +148,8 @@ jobs:
     name: python -m py_compile (script lint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Compile-check Python scripts
@@ -149,8 +163,8 @@ jobs:
     # @eslint/js "recommended" ruleset (flat config: eslint.config.js).
     # Correctness floor, not a style enforcer. Per rnpy.
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 20
           cache: npm
@@ -179,7 +193,7 @@ jobs:
     # A stale 0.x caret range is a compatibility shadow, not forward-compatible
     # currency. The range check remains advisory unless --strict is requested.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Contract tests for the detector itself
         # Deterministic + offline (every case is a literal source fixture in a
         # throwaway git repo). Runs BEFORE the detector: a detector whose own
@@ -193,7 +207,7 @@ jobs:
     name: report-lineage + sample-balance contract suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Run deterministic Run/Grade/report and sample-balance fixtures
         run: bash tests/report-lineage/run-report-lineage-tests.sh
 
@@ -206,7 +220,7 @@ jobs:
     # MUST match exactly. CI fails if any drift is detected.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Verify all 4 manifests carry the same version and Apache-2.0 license
         shell: bash
         run: |
@@ -316,7 +330,7 @@ jobs:
     # `bash scripts/check-wrapper-sync.sh --fix`.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Verify bundled mirrors are byte-identical to canonical scripts/
         run: bash scripts/check-wrapper-sync.sh
 
@@ -324,26 +338,19 @@ jobs:
     name: backward-compat regression suite (v0.3.0+)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install jsonschema (for SPEC validation)
-        run: pip install jsonschema
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
       - name: Stage gate-result schema fixture
         run: |
-          mkdir -p tests/fixtures
-          # Canonical gate-result schema now lives in the kernel
-          # (@intentsolutions/core) — the prior intent-eval-lab v0.1.0-draft path
-          # is a redirect stub ($ref to the kernel) since lab PR #65. Fetch the
-          # kernel canonical schema so Section 3 validates against the real
-          # contract; on failure the suite skips Section 3 and still validates
-          # Sections 1, 2, 4.
-          if [[ ! -f tests/fixtures/gate-result.schema.json ]]; then
-            curl -sSL -o tests/fixtures/gate-result.schema.json \
-              https://raw.githubusercontent.com/jeremylongshore/intent-eval-core/main/schemas/v1/gate-result.schema.json \
-              || echo "schema not yet available — Section 3 will be skipped"
-          fi
+          # The complete predicate schema is committed and hash-pinned. A missing
+          # fixture is a broken checkout, never permission to fetch mutable main.
+          test -s tests/fixtures/gate-result-v1.schema.json
+          bash scripts/harness-hash.sh --verify
       - name: Run regression suite
         run: bash tests/regression/run-regression.sh
 
@@ -356,7 +363,7 @@ jobs:
     # sat on the tool's flagship advertised behaviour, and nothing tested it.
     # Deterministic + offline: every fixture is literal text in a throwaway repo.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Run escape-scan contract suite
         run: bash tests/escape-scan/run-escape-scan-tests.sh
 
@@ -368,7 +375,7 @@ jobs:
     # the kill-switch skips, and no run leaves worktrees or dirties the tree.
     # Deterministic + offline: every case runs in a throwaway repo under mktemp.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Run worktree-run contract suite
         run: bash tests/worktree-run/run-worktree-run-tests.sh
 
@@ -376,7 +383,7 @@ jobs:
     name: harness-hash protected-denominator contract suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Prove package scripts, threshold configs, and CI stay protected
         run: bash tests/harness-hash/run-harness-hash-tests.sh
 
@@ -389,12 +396,13 @@ jobs:
     # deprecated --out alias. Offline; jsonschema cross-checks appended rows
     # against the committed kernel gate-result/v1 fixture.
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install jsonschema (kernel cross-check)
-        run: pip install jsonschema
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
       - name: Run emit-evidence contract suite
         run: bash tests/emit-evidence/run-emit-evidence-tests.sh
 
@@ -411,11 +419,11 @@ jobs:
     # Complements (does not duplicate) the regression suite (behavioral parity)
     # and the golden suite (raw stdout shape).
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 20
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Run SemVer contract suite
@@ -434,8 +442,8 @@ jobs:
     # read; synthetic secret fixtures are injected via env-var NAME and never
     # touch argv. Failure-mode docs: docs/cred-gate.md.
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Run cred-gate + OTel-event suite
@@ -445,12 +453,13 @@ jobs:
     name: classify golden suite (audit-profile/v1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install jsonschema (for audit-profile/v1 validation)
-        run: pip install jsonschema
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
       - name: Run classify golden suite
         run: bash tests/classify/run-classify-tests.sh
 
@@ -458,15 +467,16 @@ jobs:
     name: conform golden suite (gate-result/v1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install jsonschema + PyYAML
         # jsonschema validates every emitted gate-result/v1 row; PyYAML is the
         # frontmatter parser conform requires for a reliable skill/agent verdict
         # (absent => conform emits an honest ADVISORY indeterminate, never a guess).
-        run: pip install jsonschema pyyaml
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
       - name: Run conform golden suite
         run: bash tests/conform/run-conform-tests.sh
       - name: Run installer offline suite (fresh install.sh can run conform)
@@ -476,12 +486,13 @@ jobs:
     name: audit golden suite (testing-depth gate-runner)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install jsonschema
-        run: pip install jsonschema
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
       - name: Run audit golden suite
         run: bash tests/audit/run-audit-tests.sh
 
@@ -491,12 +502,13 @@ jobs:
     name: scan golden suite (security/hygiene/skill-quality)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install jsonschema
-        run: pip install jsonschema
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
       - name: Run scan golden suite
         run: bash tests/scan/run-scan-tests.sh
       - name: Install checksum-pinned OSV-Scanner
@@ -521,8 +533,8 @@ jobs:
     name: signing reconciler security-state suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22
           cache: npm
@@ -538,8 +550,8 @@ jobs:
     name: currency advisory report suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Run currency golden suite
@@ -557,11 +569,11 @@ jobs:
     # CHANGELOG.md (latest entry must equal package.json version). Stdlib-only,
     # read-only, no network — same discipline as classify/conform/audit/currency.
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 20
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Run migration-notes generator suite
@@ -576,8 +588,8 @@ jobs:
     # Go coverage join, and absolute-vs-relative path normalization for the
     # JS coverage join.
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Run crap-score join-regression suite
@@ -593,8 +605,8 @@ jobs:
     # schema gate cannot. CI installs no complexity provider, so the golden
     # captures crap-score's no-provider envelope shape (deterministic).
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Run golden-master suite
@@ -604,8 +616,8 @@ jobs:
     name: layer-applicability projection drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Verify layer-applicability.md is in sync with the registry datum
@@ -618,12 +630,13 @@ jobs:
     name: gate FP-rate measurement (advisory)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
       - name: Install PyYAML (conform frontmatter parser)
-        run: pip install pyyaml
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
       - name: Measure conform-gate FP/FN rate over the labeled corpus
         # Advisory measurement (does not gate the build by default). Promotion of a
         # gate to enforcement=blocking requires FP-rate <= 5% here, then an

@@ -1,0 +1,9 @@
+{
+  "name": "audit-harness-ci-evidence",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "@intentsolutions/core": "0.10.0"
+  },
+  "type": "module"
+}

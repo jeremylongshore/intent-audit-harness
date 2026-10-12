@@ -54,7 +54,7 @@ jobs:
     steps:
       - name: Check out the base branch reviewer rules
         if: ${{ matrix.lane != 'adversarial' || vars.ENABLE_MINIMAX_ADVERSARIAL != 'false' }}
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           sparse-checkout: .greptile
@@ -152,7 +152,7 @@ jobs:
 
       - name: MiniMax ${{ matrix.lane }} review
         if: ${{ steps.prompt.outputs.skip == 'false' }}
-        uses: jeremylongshore/minimax-code-review@58867f12dd52362fefda74f4d3c48541f1784e2f
+        uses: jeremylongshore/minimax-code-review@58867f12dd52362fefda74f4d3c48541f1784e2f # reviewed workflow snapshot
         with:
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           MINIMAX_MODEL: ${{ vars.MINIMAX_MODEL || 'MiniMax-M3' }}

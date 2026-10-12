@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
           # pin the checked-out bytes to the exact ref that triggered this run —
@@ -56,14 +56,14 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
           cache: npm
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
 
@@ -92,7 +92,8 @@ jobs:
       # 13 conform cases and never reached `npm publish`. Exact pins keep the
       # release lane reproducible.
       - name: Install test-suite Python dependencies (PyYAML, jsonschema)
-        run: python3 -m pip install 'pyyaml==6.0.3' 'jsonschema==4.26.0'
+        run: |
+          python3 -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
 
       - name: Run deterministic core test suite
         run: npm test
@@ -164,7 +165,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
           # this job signs the EvidenceBundle, so the canonical bytes it hashes +
@@ -175,23 +176,21 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           # Node >= 22.6 — the emit scripts run under `--experimental-strip-types`
           # (TS without a build step), which Node 20 does NOT support (exit 9).
           node-version: 22
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
-      # CI-only kernel install — NEVER written to package.json (zero-dep stays).
+      # CI-only locked kernel install; published runtime dependencies stay empty.
       # Keep this exact pin aligned with the sibling IEP consumers and the
       # kernel-shadow currency gate; signed evidence must be checked by the
       # same canonical validator surface the dashboard consumes.
-      - name: Install kernel validators (CI-only, --no-save)
-        env:
-          KERNEL_VERSION: "0.10.0"
-        run: npm i --no-save "@intentsolutions/core@${KERNEL_VERSION}"
+      - name: Install kernel validators (CI-only, integrity locked)
+        run: npm ci --ignore-scripts --prefix ci
 
       - name: Emit-evidence self-check (kernel-valid + canonical-stable)
         run: node --experimental-strip-types ci/emit-evidence.ts --self-check
@@ -306,7 +305,7 @@ jobs:
       attestations: write # write the build-provenance attestation to the repo
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # ISEDC E09 DR / CISO reproducible-from-tag invariant (#32 bug class):
           # the crates.io crate is built + published from this checkout, so the
@@ -355,7 +354,7 @@ jobs:
 
       - name: Attest crate build provenance (SLSA → Sigstore/Rekor)
         if: steps.guard.outputs.token_present == 'true'
-        uses: actions/attest-build-provenance@v4.2.2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: ${{ env.CRATE_TARBALL }}
 
