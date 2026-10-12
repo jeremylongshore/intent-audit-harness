@@ -195,6 +195,9 @@ jobs:
       - name: Emit-evidence self-check (kernel-valid + canonical-stable)
         run: node --experimental-strip-types ci/emit-evidence.ts --self-check
 
+      - name: Canonical payload and manifest mutation contracts
+        run: npm test --prefix ci
+
       - name: Emit gate-result/v1 EvidenceBundle(s)
         run: node --experimental-strip-types ci/emit-evidence.ts --out build/evidence --ref "${GITHUB_REF}"
 

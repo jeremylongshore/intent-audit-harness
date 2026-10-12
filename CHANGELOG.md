@@ -16,6 +16,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The `iah` dashboard emitter carries kernel-valid in-toto statement arrays and
+  binds their complete canonical bytes, subjects, predicate types and row count
+  in signed metadata. Manifest assembly rejects payload or compatibility-body
+  drift; CI and the release emitter run interoperability and mutation contracts.
+  The private CI kernel stays pinned to 0.10.0 and tag-only publication is
+  unchanged. Refs bead `bd_000-projects-0s2a`.
 - The Python module entry point preserves failed-gate exit codes, and architecture
   checks emit valid JSON when a failed checker reports no matching violations.
   Behavioral fixtures now cover all five architecture dispatch routes, clean and
