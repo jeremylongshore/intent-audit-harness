@@ -1,5 +1,11 @@
 # @intentsolutions/audit-harness
 
+<!-- intent-select-partner:start -->
+[![Intent Solutions: Claude Partner Network Select Services Partner](https://raw.githubusercontent.com/intent-solutions-io/.github/b82af5d3e7951d85e39ea9e65cc24ee8278722a7/assets/brand/claude-select-partner.svg)](https://intentsolutions.io/)
+
+Intent Solutions is a Claude Partner Network Select Services Partner.
+<!-- intent-select-partner:end -->
+
 [![npm](https://img.shields.io/npm/v/@intentsolutions/audit-harness?color=cb3837&logo=npm)](https://www.npmjs.com/package/@intentsolutions/audit-harness)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Provenance](https://img.shields.io/badge/sigstore-provenance-066da5)](https://www.npmjs.com/package/@intentsolutions/audit-harness)
