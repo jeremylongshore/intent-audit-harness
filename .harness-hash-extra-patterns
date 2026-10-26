@@ -28,6 +28,7 @@ rust/src/*.rs
 # silently dropping or weakening a suite.
 tests/**/*.sh
 tests/**/*.py
+tests/**/*.cjs
 
 # Profiles and conform schemas decide what is applicable and what evidence is
 # valid; they are policy, not ordinary documentation.

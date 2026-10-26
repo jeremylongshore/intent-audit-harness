@@ -6,7 +6,7 @@
  * Keeping the scripts as-is (not a TS port) across stable releases — they're battle-tested
  * and language-portable. The CLI just adds discoverability + cross-platform-ish shell resolution.
  */
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const { resolve } = require('node:path');
 const { existsSync } = require('node:fs');
 
@@ -214,29 +214,79 @@ const isPython = entry.script.endsWith('.py');
 const interpreter = isPython ? 'python3' : 'bash';
 const finalArgs = [scriptPath, ...entry.args, ...rest];
 
-// Per-command supervision: a hung gate hits its timeout and is killed (exit 124)
-// rather than blocking the pipeline. 0/unset = no timeout.
+// Supervise a POSIX process group when a timeout is configured. This is not
+// a sandbox: a command that deliberately starts another session can escape it.
 const timeoutSec = Number(process.env.AUDIT_HARNESS_TIMEOUT) || 0;
-
-const child = spawn(interpreter, finalArgs, { stdio: 'inherit' });
-
-let timedOut = false;
+const windows = process.platform === 'win32';
+let child;
 let timer = null;
-if (timeoutSec > 0) {
+let cleanupTimer = null;
+let stopping = null;
+let pendingSignal = null;
+
+function finishStop(cleanupFailed = false) {
+  if (timer) clearTimeout(timer);
+  if (cleanupTimer) clearTimeout(cleanupTimer);
+  if (stopping.kind === 'timeout') {
+    // Preserve the existing normal-timeout diagnostic; failed cleanup is a
+    // separate error condition and must not be reported as a successful kill.
+    const outcome = cleanupFailed ? 'process-tree cleanup failed' : 'killed';
+    console.error(`audit-harness: ${entry.script} exceeded AUDIT_HARNESS_TIMEOUT=${timeoutSec}s — ${outcome} (INDETERMINATE)`);
+  } else if (cleanupFailed) {
+    console.error('audit-harness: cancellation process-tree cleanup failed (INDETERMINATE)');
+  }
+  process.exit(stopping.code);
+}
+function signalGroup(signal) {
+  try {
+    process.kill(-child.pid, signal);
+    return true;
+  } catch (error) {
+    if (error.code === 'ESRCH') return true;
+    console.error(`audit-harness: process-group ${signal} failed: ${error.message}`);
+    return false;
+  }
+}
+function forceStop() {
+  finishStop(!signalGroup('SIGKILL'));
+}
+function cancel(signal) {
+  if (!child?.pid) { pendingSignal = signal; return; }
+  if (stopping) { forceStop(); return; }
+  stopping = { kind: 'signal', code: { SIGINT: 130, SIGTERM: 143, SIGHUP: 129, SIGQUIT: 131 }[signal] };
+  if (timer) clearTimeout(timer);
+  signalGroup(signal);
+  cleanupTimer = setTimeout(forceStop, 2000);
+}
+// Install before spawn and retain through cleanup: repeated cancellation must
+// escalate group termination, not restore Node's default exit disposition.
+if (!windows && timeoutSec > 0) {
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGQUIT']) {
+    process.on(signal, () => cancel(signal));
+  }
+}
+child = spawn(interpreter, finalArgs, { stdio: 'inherit', detached: !windows && timeoutSec > 0 });
+if (pendingSignal) cancel(pendingSignal);
+if (timeoutSec > 0 && !stopping) {
   timer = setTimeout(() => {
-    timedOut = true;
-    child.kill('SIGTERM');
-    setTimeout(() => child.kill('SIGKILL'), 2000).unref();
+    stopping = { kind: 'timeout', code: 124 };
+    if (windows) {
+      const result = spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+        stdio: 'ignore', timeout: 5000,
+      });
+      finishStop(Boolean(result.error) || result.status !== 0);
+      return;
+    }
+    signalGroup('SIGTERM');
+    // Keep referenced even if the shell exits while a descendant ignores TERM.
+    cleanupTimer = setTimeout(forceStop, 2000);
   }, timeoutSec * 1000);
   timer.unref();
 }
 
 child.on('exit', (code, signal) => {
   if (timer) clearTimeout(timer);
-  if (timedOut) {
-    console.error(`audit-harness: ${entry.script} exceeded AUDIT_HARNESS_TIMEOUT=${timeoutSec}s — killed (INDETERMINATE)`);
-    process.exit(124);
-  }
+  if (stopping) return;
   if (signal) {
     console.error(`audit-harness: ${entry.script} killed by ${signal}`);
     process.exit(128);
@@ -245,6 +295,7 @@ child.on('exit', (code, signal) => {
 });
 child.on('error', (err) => {
   if (timer) clearTimeout(timer);
+  if (cleanupTimer) clearTimeout(cleanupTimer);
   console.error(`audit-harness: failed to spawn ${interpreter}: ${err.message}`);
   process.exit(2);
 });

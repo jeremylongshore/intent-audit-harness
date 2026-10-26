@@ -180,6 +180,9 @@ jobs:
       - name: audit-harness verify (self-check via dispatcher)
         run: node bin/audit-harness.js verify
 
+      - name: CLI timeout and process-tree regression tests
+        run: node --test tests/cli/timeout.test.cjs
+
       - name: audit-harness list (self-check enumeration)
         # Self-pin landed via iep-P3 iah-self-pin (bd_000-projects-itpl).
         # .harness-hash is now committed at repo root pinning scripts/*.sh,
@@ -226,6 +229,19 @@ jobs:
             echo "::warning::escape-scan did NOT refuse on synthetic threshold-lowering input — review scripts/escape-scan.sh"
             # tighten to exit 1 once escape-scan output is deterministic
           fi
+
+  timeout-windows:
+    name: CLI timeout process tree (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: Exercise native taskkill and dispatcher contracts
+        run: node --test tests/cli/timeout.test.cjs
 
   shellcheck:
     name: shellcheck (script lint)

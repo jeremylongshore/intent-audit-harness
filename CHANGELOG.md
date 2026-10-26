@@ -27,6 +27,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Node CLI timeouts supervise a POSIX process group through TERM and the
+  subsequent bounded KILL cleanup even when its immediate shell exits first.
+  On Windows, a bounded `taskkill /T /F` request targets the child tree;
+  cleanup failures are reported explicitly. Normal command arguments and exit
+  codes are preserved. This is process supervision, not containment of commands
+  that deliberately detach into another session. Refs `compile-then-govern-c0r`.
+
 - The `iah` dashboard emitter carries kernel-valid in-toto statement arrays and
   binds their complete canonical bytes, subjects, predicate types and row count
   in signed metadata. Manifest assembly rejects payload or compatibility-body
