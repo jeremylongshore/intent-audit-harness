@@ -71,6 +71,17 @@ known optional field types; the enterprise rubric and pinned marketplace kernel
 remain distinct. No third-party schema, snapshot, runtime dependency or consumer
 version is adopted by these observations.
 
+[The bounded SKILL comparison](skill-floor-comparison-2026-10-26.json) binds the
+retained Lab baseline, captured current standard and bundled structural schema.
+All three require the same name/description pair. This establishes required-set
+equality only. Five actual validator probes demonstrate that the bundled floor
+accepts uppercase names, consecutive hyphens, overlong names/descriptions and an
+array of allowed tools, where the open standard documents stricter constraints.
+The floor also lacks parent-directory context. The historical baseline already
+documented those constraints: these are existing scope limits, not evidence of
+new upstream regressions. All original pin values and freshness dates remain
+unchanged; the comparison does not complete the remaining semantic reviews.
+
 ## Release classification
 
 The changed default text is a **major** CLI change under [SEMVER.md](../../SEMVER.md).

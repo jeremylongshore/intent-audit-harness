@@ -37,7 +37,8 @@
       "disposition": {
         "status": "retained",
         "reason": "Retain existing baseline and name/description structural floor. Observed required pair is unchanged; complete standard conformance is not established by the floor."
-      }
+      },
+      "semantic_scope_evidence": "docs/currency/skill-floor-comparison-2026-10-26.json"
     },
     {
       "identity": "platform-skills-overview",
