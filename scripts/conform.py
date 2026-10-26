@@ -30,11 +30,13 @@ Tiers (--tier, default `floor`):
   floor        the harness's own conform/v1 structural floor (name + description
                for SKILL.md). Unchanged default, so existing consumers see the
                same verdicts.
-  marketplace  SKILL.md frontmatter is validated against the KERNEL's full
-               authoring/v1 skill-frontmatter contract (@intentsolutions/core,
+  marketplace  SKILL.md frontmatter is validated against encoded structural
+               rules from the KERNEL's authoring/v1 contract (@intentsolutions/core,
                vendored unmodified under schemas/conform/kernel/ and pinned by
                version + per-file sha256 in pin.json): the IS 8-field required
                set, semver `version`, allowed-tools shape, the universal folds.
+               Prose-only and separate Zod-runtime rules are not established by
+               this JSON-Schema projection. See docs/validation-scope.md.
                Other kinds keep the floor schema. A pin mismatch is an
                indeterminate ADVISORY, never a guessed verdict.
 

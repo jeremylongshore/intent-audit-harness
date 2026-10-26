@@ -38,7 +38,7 @@ echo "install.sh offline suite"
 VER="v0.0.0-offline-test"
 STAGE="$TMP/stage/intent-audit-harness-${VER#v}"
 mkdir -p "$STAGE"
-for p in scripts schemas bin .audit-harness-configs README.md LICENSE NOTICE CHANGELOG.md package.json; do
+for p in scripts schemas docs bin .audit-harness-configs README.md LICENSE NOTICE CHANGELOG.md package.json; do
   [ -e "$ROOT/$p" ] && cp -R "$ROOT/$p" "$STAGE/"
 done
 find "$STAGE" -name __pycache__ -type d -prune -exec rm -rf {} +
@@ -63,6 +63,12 @@ else
 fi
 
 H="$CONSUMER/.audit-harness"
+
+# README links into docs/ must resolve in the installed consumer, not just in
+# the upstream checkout. Compare the complete release-selected documentation.
+if diff -r "$ROOT/docs" "$H/docs" >/dev/null 2>&1; then
+  pass "vendored documentation is byte-identical to the release tree"
+else fail "vendored docs/ missing or differs from the release tree"; fi
 
 # ---- 1: schemas vendored ----
 missing=0

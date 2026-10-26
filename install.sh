@@ -148,6 +148,12 @@ fi
 # Copy scripts/ and metadata into .audit-harness/
 cp -r "${UNPACKED_DIR}/scripts" "${TARGET_DIR}/scripts"
 
+# Keep README's relative docs/ links usable in a vendored installation. Older
+# release archives without docs/ remain installable.
+if [[ -d "${UNPACKED_DIR}/docs" ]]; then
+  cp -r "${UNPACKED_DIR}/docs" "${TARGET_DIR}/docs"
+fi
+
 # Copy schemas/ into .audit-harness/schemas/. classify.py and conform.py resolve
 # them relative to scripts/ (../schemas/...), so without this copy classify has
 # no registry and conform can only emit "bundled schema missing" ADVISORY rows.

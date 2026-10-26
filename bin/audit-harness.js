@@ -80,7 +80,7 @@ Commands:
                            OpenAPI -> spectral, Action -> yamllint (missing tool =
                            INDETERMINATE advisory).
                            --tier marketplace validates SKILL.md against the kernel's
-                           full authoring/v1 skill-frontmatter contract (pinned
+                           encoded authoring/v1 structural rules (pinned
                            @intentsolutions/core, sha256-checked); default --tier floor
                            keeps the name + description structural floor.
   audit [repo]             Read-only testing-depth gate-runner. For each
