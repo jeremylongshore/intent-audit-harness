@@ -6,13 +6,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
+### Breaking changes — next major release
 
 - Currency reports preserve optional per-identity observation and disposition
   evidence separately from retained references and checked dates. A dated record
   covers 18 stale upstream identities without updating their dates, baselines or
   compatibility status. Pending and indeterminate results remain visible.
-  Refs `compile-then-govern-8pg` (reverification still in progress).
+  The changed default text requires a major release under `SEMVER.md`;
+  exact-text consumers must migrate using `docs/currency/MIGRATION-2.md`.
+  Refs `compile-then-govern-8pg` (reverification still in progress) and release
+  tracking `compile-then-govern-wwq`. No release is published by this source change.
+
+### Added
 
 - An advisory CI baseline measures canonical Python scripts and Python tests
   using isolated, hash-locked coverage.py and Radon providers. Reports retain

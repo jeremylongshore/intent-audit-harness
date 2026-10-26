@@ -528,7 +528,7 @@
       ],
       "lab_comparison": {
         "identity": "anthropic-engineering",
-        "error": "",
+        "error": "Expected first relative /engineering/<slug> href sentinel absent from HTTP200 HTML; intended extractor signal indeterminate.",
         "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13"
       },
       "disposition": {

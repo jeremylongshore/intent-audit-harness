@@ -22,6 +22,16 @@ write, initialize references or promote policy. Existing SLA resolution, status
 values and advisory exit behavior remain unchanged. Invalid input files still
 produce an input error.
 
+When present, observation and disposition records must be objects. Observations
+require nonempty `observed_at`, `outcome`, `value` and `evidence` strings;
+`observed_at` is an ISO date or timestamp and `outcome` is `observed` or
+`indeterminate`. Evidence is a repository-relative path, optionally followed by
+an identity fragment; optional `evidence_identity` must be a nonempty string.
+Dispositions require a documented `status` and nonempty `reason`. Reference kinds
+must be one of the four kinds listed above. Both output modes reject malformed
+metadata with input-error exit 2 before printing any report; stale, valid data
+still exits 0. Evidence paths are descriptive and are never opened by the report.
+
 Advance `checked_at` only after supported reverification of that specific
 reference and scope. Change `pinned_version` only after a deliberate baseline or
 contract update. A successful HTTP response alone is an observation. A newer
@@ -37,13 +47,15 @@ private local artifacts; they are not redistributed here. The record preserves
 bounded extracted values and hashes for comparison, without claiming that a
 future fetch of a mutable URL reproduces those bytes. It is not a signed receipt.
 
-The 16 Lab surface comparisons use the named extractor contract at fixed commit
+The 16 Lab surface comparison attempts use the named extractor contract at fixed commit
 `dd42d4598b4ef1eadef143b31ef5eab1e2de6d13`. Raw-body digests and extractor-output
-digests are distinct. Eleven computed projections differ from that Lab baseline;
-four match. Engineering is indeterminate because the relative article-link
+digests are recorded separately and coincide for raw-byte extractors. Eleven
+computed projections differ from that Lab baseline; four byte-match. Engineering
+is indeterminate because the relative article-link
 sentinel is absent. This is byte comparison, not semantic compatibility. In
 particular, the current MCP schema matches the Lab snapshot but differs from the
 older prefix retained by this harness.
+The two internal-contract identities have no Lab comparison.
 
 All 19 original `pinned_version`, `checked_at`, class and poll-window values are
 preserved. All 18 previously stale identities still report stale. Their
@@ -58,3 +70,9 @@ revision. The SKILL frontmatter floor checks a required name/description pair an
 known optional field types; the enterprise rubric and pinned marketplace kernel
 remain distinct. No third-party schema, snapshot, runtime dependency or consumer
 version is adopted by these observations.
+
+## Release classification
+
+The changed default text is a **major** CLI change under [SEMVER.md](../../SEMVER.md).
+It must ship in the next major release, with the [adopter migration notes](MIGRATION-2.md).
+This source change does not publish a release or update consumer installations.
