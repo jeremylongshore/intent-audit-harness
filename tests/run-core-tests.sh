@@ -30,6 +30,8 @@ for suite in "${SUITES[@]}"; do
   bash "$suite"
 done
 
+node --test tests/cli/timeout.test.cjs
+
 python3 tests/supply-chain/test_policy.py
 python3 tests/shipped/test_gates_and_wrappers.py
 python3 tests/measurement/test_measurement_baseline.py
