@@ -35,7 +35,7 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 | `audit-harness crap` | CRAP (Complexity × Coverage) scorer — Python, Go, JS/TS, Rust |
 | `audit-harness emit-evidence` | Wrap a gate-result JSON envelope in an in-toto Statement v1 (predicate `gate-result/v1`); `--output FILE` writes one row, `--append-to BUNDLE` appends it to the JSON-array bundle `intent-rollout-gate` consumes |
 | `audit-harness classify` | Read-only repo classifier → an `audit-profile/v1` value (never writes) |
-| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks SKILL.md against the pinned kernel `authoring/v1` skill-frontmatter contract (default `--tier floor`: name + description) |
+| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks SKILL.md against the encoded structural rules of the pinned kernel `authoring/v1` skill-frontmatter contract (default `--tier floor`: name + description) |
 | `audit-harness audit` | Read-only testing-depth gate-runner → coverage presence per pyramid layer + crap-score |
 | `audit-harness scan` | Security/hygiene/skill-quality gates; `--fail-closed` requires OSV and profile-required security scanners; optional SBOM export stays outside the audited repo |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
@@ -223,3 +223,11 @@ This is infrastructure code. Changes need to be conservative. Before opening a P
 1. Read `audit-tests/references/philosophy.md` (in the companion skill) to understand the escape-grammar design
 2. Run `bash scripts/escape-scan.sh --staged` on your own diff — yes, the harness tests itself
 3. Add test cases if you're adding a new pattern to escape-scan or a new command to the CLI
+
+### Validation and vendored documentation scope
+
+See [validation scope](docs/validation-scope.md) for timestamp/classifier inputs,
+structural conformance limits and the pinned snapshot’s allowed-tools prose
+discrepancy. The installer copies available `docs/` alongside README so its
+relative documentation links remain usable. Older archives without docs remain
+installable; this does not add files to previously published releases.

@@ -38,7 +38,7 @@ echo "install.sh offline suite"
 VER="v0.0.0-offline-test"
 STAGE="$TMP/stage/intent-audit-harness-${VER#v}"
 mkdir -p "$STAGE"
-for p in scripts schemas bin .audit-harness-configs README.md LICENSE NOTICE CHANGELOG.md package.json; do
+for p in scripts schemas docs bin .audit-harness-configs README.md LICENSE NOTICE CHANGELOG.md package.json; do
   [ -e "$ROOT/$p" ] && cp -R "$ROOT/$p" "$STAGE/"
 done
 find "$STAGE" -name __pycache__ -type d -prune -exec rm -rf {} +
@@ -63,6 +63,12 @@ else
 fi
 
 H="$CONSUMER/.audit-harness"
+
+# README links into docs/ must resolve in the installed consumer, not just in
+# the upstream checkout. Compare the complete release-selected documentation.
+if diff -r "$ROOT/docs" "$H/docs" >/dev/null 2>&1; then
+  pass "vendored documentation is byte-identical to the release tree"
+else fail "vendored docs/ missing or differs from the release tree"; fi
 
 # ---- 1: schemas vendored ----
 missing=0
@@ -134,6 +140,22 @@ if (cd "$CONSUMER" && env "${OFFLINE_ENV[@]}" scripts/audit-harness conform . --
 if [ "$ec" -eq 1 ] && grep -q "missing required property 'version'" "$TMP/nv.json"; then
   pass "fresh install: --tier marketplace --strict -> FAIL (exit 1) on a skill missing version"
 else fail "fresh-install marketplace FAIL (exit $ec): $(cat "$TMP/nv.json")"; fi
+
+# Older release archives may omit docs/. Their scripts must remain installable.
+tar --exclude="intent-audit-harness-${VER#v}/docs" \
+  --exclude="intent-audit-harness-${VER#v}/docs/*" \
+  -czf "$TMP/no-docs.tar.gz" -C "$TMP/stage" "intent-audit-harness-${VER#v}"
+LEGACY="$TMP/legacy-consumer"
+mkdir -p "$LEGACY"
+git -C "$LEGACY" init -q
+if (cd "$LEGACY" && env "${OFFLINE_ENV[@]}" \
+    "AUDIT_HARNESS_TARBALL_URL=file://$TMP/no-docs.tar.gz" \
+    bash "$ROOT/install.sh" --version "$VER" >"$TMP/legacy-install.log" 2>&1) \
+    && [ ! -e "$LEGACY/.audit-harness/docs" ] \
+    && [ -f "$LEGACY/.audit-harness/schemas/audit-profile/registry.v1.json" ] \
+    && [ "$(cd "$LEGACY" && scripts/audit-harness --version)" = "$VER" ]; then
+  pass "older archive without docs installs and its wrapper reports the selected version"
+else fail "archive without docs did not retain working installation"; fi
 
 echo ""
 echo "install suite: $PASS passed, $FAIL failed"

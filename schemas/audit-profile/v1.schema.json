@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://evals.intentsolutions.io/audit-profile/v1.schema.json",
   "title": "Audit Profile (v1)",
-  "description": "Closed, versioned, hash-bearing value describing the audit profile of a repository: the UNION of detected classifications, the resolved gate set (each with applicability + enforcement + dimension), and the explicit unresolved residue. Produced by `audit-harness classify` as read-only stdout JSON; the classifier NEVER mutates the repo. A profile is a deterministic function of (repo contents at commit_sha, the canonical dimension-to-gate registry pinned by registry_hash, and any engineer .audit-harness.yml overrides). Mirrors the gate-result/v1 closed-value conventions (additionalProperties:false, version-in-$id) so the two predicates compose in one Evidence Bundle.",
+  "description": "Closed, versioned, hash-bearing value describing the audit profile of a repository: the UNION of detected classifications, the resolved gate set (each with applicability + enforcement + dimension), and the explicit unresolved residue. Produced by `audit-harness classify` as read-only stdout JSON; the classifier NEVER mutates the repo. Classification and gate resolution depend on repo contents at commit_sha, the canonical dimension-to-gate registry pinned by registry_hash, engineer .audit-harness.yml overrides, and classifier version. The full emitted profile also records its emission timestamp; repeated runs do not promise identical whole-profile bytes. Mirrors the gate-result/v1 closed-value conventions (additionalProperties:false, version-in-$id) so the two predicates compose in one Evidence Bundle.",
   "type": "object",
   "required": [
     "schema_version",
