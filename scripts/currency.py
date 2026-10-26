@@ -65,7 +65,7 @@ def build_report(pins_doc, today):
         else:
             age = (today - checked).days
             status = "stale" if age > window else "current"
-        out.append({
+        row = {
             "identity": pin.get("identity"),
             "class": pin.get("class") or UNCLASSED,
             "pinned_version": pin.get("pinned_version"),
@@ -75,7 +75,14 @@ def build_report(pins_doc, today):
             "status": status,
             "source": pin.get("source"),
             "notes": pin.get("notes"),
-        })
+        }
+        # Evidence about a newer upstream surface is separate from the retained
+        # contract/baseline. Never use observed_at to refresh checked_at or infer
+        # compatibility. Legacy rows retain their existing JSON shape.
+        for key in ("pin_kind", "latest_observation", "review_disposition"):
+            if key in pin:
+                row[key] = pin[key]
+        out.append(row)
     return out
 
 
@@ -142,11 +149,22 @@ def main():
                     mark = "? " + r["status"]
                 print(f"  {(r['identity'] or ''):<24} {(r['pinned_version'] or ''):<18} "
                       f"{(r['checked_at'] or ''):<12} {age:>5} {r['window_days']:>4}  {mark}")
+                observation = r.get("latest_observation")
+                if observation:
+                    print(f"    observed {observation.get('observed_at', '?')}: "
+                          f"{observation.get('outcome', '?')} — "
+                          f"{observation.get('value', '?')}")
+                disposition = r.get("review_disposition")
+                if disposition:
+                    print(f"    disposition {disposition.get('status', '?')}: "
+                          f"{disposition.get('reason', '')}")
         print()
         if stale:
             print(f"{len(stale)} pin(s) past their poll-freshness SLA — the SLA gates nothing but human "
-                  f"attention: re-verify against upstream, then bump pinned_version + checked_at in "
-                  f"schemas/currency/pins.v1.json:")
+                  f"attention: re-verify against upstream and record evidence plus a disposition in "
+                  f"schemas/currency/pins.v1.json. Advance checked_at only after supported "
+                  f"reverification; change pinned_version only for a deliberate baseline/contract update. "
+                  f"An observation alone proves neither freshness nor compatibility:")
             for r in stale:
                 print(f"  - {r['identity']} [{r['class']}]: last checked {r['checked_at']} "
                       f"({r['age_days']}d ago > {r['window_days']}d SLA)")

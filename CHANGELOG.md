@@ -8,6 +8,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Currency reports preserve optional per-identity observation and disposition
+  evidence separately from retained references and checked dates. A dated record
+  covers 18 stale upstream identities without updating their dates, baselines or
+  compatibility status. Pending and indeterminate results remain visible.
+  Refs `compile-then-govern-8pg` (reverification still in progress).
+
 - An advisory CI baseline measures canonical Python scripts and Python tests
   using isolated, hash-locked coverage.py and Radon providers. Reports retain
   source hashes, command results, line/branch coverage, complexity and a
