@@ -16,12 +16,14 @@ of the broader authoring contract. For example, parent-directory/name matching
 and consecutive-hyphen restrictions are prose-only in the snapshot. The
 `requires_env`/`fallback_for_env` exclusion is assigned to a separate Zod runtime
 by the snapshot, which this command does not run. Passing this gate does not
-establish those omitted checks, host behavior or behavioral quality.
+establish those omitted checks, host behavior or behavioral quality. Legacy CLI
+help describes the broader contract as full; that wording is qualified here
+without changing existing command output or encoded checks.
 
 The pinned core0.11.0 authoring snapshot's upstream-base comment says the IS
 overlay narrows `allowed-tools` to an array. Its actual overlay accepts a string
-or an array. The encoded overlay governs this command; the array-only comment
-is stale. Preserve the upstream snapshot and its per-file pins byte-for-byte
+or an array. This command follows the encoded overlay; the snapshot alone does not
+establish which wording reflects upstream intent. Preserve the upstream snapshot and its per-file pins byte-for-byte
 rather than silently rewriting the third-party contract.
 
 The core0.10.0 EvidenceBundle snapshot serves evidence emission; core0.11.0
