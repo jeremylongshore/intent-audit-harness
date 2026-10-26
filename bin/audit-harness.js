@@ -214,71 +214,79 @@ const isPython = entry.script.endsWith('.py');
 const interpreter = isPython ? 'python3' : 'bash';
 const finalArgs = [scriptPath, ...entry.args, ...rest];
 
-// Supervise a POSIX process group so descendants remain addressable after the
-// immediate interpreter exits. This is cooperative process supervision, not a
-// sandbox: a command that deliberately starts a separate session can escape it.
+// Supervise a POSIX process group when a timeout is configured. This is not
+// a sandbox: a command that deliberately starts another session can escape it.
 const timeoutSec = Number(process.env.AUDIT_HARNESS_TIMEOUT) || 0;
 const windows = process.platform === 'win32';
-const child = spawn(interpreter, finalArgs, { stdio: 'inherit', detached: !windows && timeoutSec > 0 });
-
-let timedOut = false;
+let child;
 let timer = null;
-function timeoutExit(cleanupFailed = false) {
-  const outcome = cleanupFailed ? 'process-tree cleanup failed' : 'process-tree cleanup requested';
-  console.error(`audit-harness: ${entry.script} exceeded AUDIT_HARNESS_TIMEOUT=${timeoutSec}s — ${outcome} (INDETERMINATE)`);
-  process.exit(124);
+let cleanupTimer = null;
+let stopping = null;
+let pendingSignal = null;
+
+function finishStop(cleanupFailed = false) {
+  if (timer) clearTimeout(timer);
+  if (cleanupTimer) clearTimeout(cleanupTimer);
+  if (stopping.kind === 'timeout') {
+    // Preserve the existing normal-timeout diagnostic; failed cleanup is a
+    // separate error condition and must not be reported as a successful kill.
+    const outcome = cleanupFailed ? 'process-tree cleanup failed' : 'killed';
+    console.error(`audit-harness: ${entry.script} exceeded AUDIT_HARNESS_TIMEOUT=${timeoutSec}s — ${outcome} (INDETERMINATE)`);
+  } else if (cleanupFailed) {
+    console.error('audit-harness: cancellation process-tree cleanup failed (INDETERMINATE)');
+  }
+  process.exit(stopping.code);
 }
 function signalGroup(signal) {
   try {
     process.kill(-child.pid, signal);
     return true;
   } catch (error) {
-    if (error.code === 'ESRCH') return true; // The group already finished.
+    if (error.code === 'ESRCH') return true;
     console.error(`audit-harness: process-group ${signal} failed: ${error.message}`);
     return false;
   }
 }
-if (timeoutSec > 0) {
+function forceStop() {
+  finishStop(!signalGroup('SIGKILL'));
+}
+function cancel(signal) {
+  if (!child?.pid) { pendingSignal = signal; return; }
+  if (stopping) { forceStop(); return; }
+  stopping = { kind: 'signal', code: { SIGINT: 130, SIGTERM: 143, SIGHUP: 129, SIGQUIT: 131 }[signal] };
+  if (timer) clearTimeout(timer);
+  signalGroup(signal);
+  cleanupTimer = setTimeout(forceStop, 2000);
+}
+// Install before spawn and retain through cleanup: repeated cancellation must
+// escalate group termination, not restore Node's default exit disposition.
+if (!windows && timeoutSec > 0) {
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGQUIT']) {
+    process.on(signal, () => cancel(signal));
+  }
+}
+child = spawn(interpreter, finalArgs, { stdio: 'inherit', detached: !windows && timeoutSec > 0 });
+if (pendingSignal) cancel(pendingSignal);
+if (timeoutSec > 0 && !stopping) {
   timer = setTimeout(() => {
-    timedOut = true;
+    stopping = { kind: 'timeout', code: 124 };
     if (windows) {
-      // taskkill /T includes descendants; /F avoids an unbounded console close.
-      // Its bounded synchronous completion keeps the dispatcher alive until the
-      // tree-kill request finishes. Failure is visible, never reported as killed.
       const result = spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
         stdio: 'ignore', timeout: 5000,
       });
-      timeoutExit(Boolean(result.error) || result.status !== 0);
+      finishStop(Boolean(result.error) || result.status !== 0);
       return;
     }
     signalGroup('SIGTERM');
-    // Keep this timer referenced even if the shell exits on TERM. Otherwise a
-    // TERM-resistant descendant could outlive the dispatcher and its watchdog.
-    setTimeout(() => timeoutExit(!signalGroup('SIGKILL')), 2000);
+    // Keep referenced even if the shell exits while a descendant ignores TERM.
+    cleanupTimer = setTimeout(forceStop, 2000);
   }, timeoutSec * 1000);
   timer.unref();
 }
 
-// Isolated timeout groups do not receive the dispatcher's terminal signals.
-// Forward operator cancellation as well, then finish the same bounded cleanup.
-if (!windows && timeoutSec > 0) {
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.once(signal, () => {
-      if (timedOut) return;
-      timedOut = true;
-      if (timer) clearTimeout(timer);
-      signalGroup(signal);
-      setTimeout(() => {
-        signalGroup('SIGKILL');
-        process.exit(signal === 'SIGINT' ? 130 : 143);
-      }, 2000);
-    });
-  }
-}
-
 child.on('exit', (code, signal) => {
   if (timer) clearTimeout(timer);
-  if (timedOut) return; // The tree cleanup owns the final timeout exit.
+  if (stopping) return;
   if (signal) {
     console.error(`audit-harness: ${entry.script} killed by ${signal}`);
     process.exit(128);
@@ -287,6 +295,7 @@ child.on('exit', (code, signal) => {
 });
 child.on('error', (err) => {
   if (timer) clearTimeout(timer);
+  if (cleanupTimer) clearTimeout(cleanupTimer);
   console.error(`audit-harness: failed to spawn ${interpreter}: ${err.message}`);
   process.exit(2);
 });

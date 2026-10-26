@@ -27,7 +27,7 @@ function fixture(t, script) {
   return root;
 }
 
-async function run(root, timeout, args = [], interrupt) {
+async function run(root, timeout, args = [], interrupts = []) {
   const env = { ...process.env, BBB_TIMEOUT_FIXTURE: root };
   delete env.AUDIT_HARNESS_TIMEOUT;
   delete env.AUDIT_HARNESS_DISABLE;
@@ -38,13 +38,24 @@ async function run(root, timeout, args = [], interrupt) {
   let stdout = '', stderr = '';
   child.stdout.on('data', data => { stdout += data; });
   child.stderr.on('data', data => { stderr += data; });
-  if (interrupt) setTimeout(() => child.kill(interrupt), 1000);
+  const cancellation = (async () => {
+    if (!interrupts.length) return;
+    for (let attempt = 0; !fs.existsSync(path.join(root, 'descendant.pid')); attempt++) {
+      if (attempt === 200) throw new Error('descendant fixture did not start');
+      await delay(20);
+    }
+    for (const signal of interrupts) {
+      child.kill(signal);
+      await delay(150);
+    }
+  })();
   const watchdog = setTimeout(() => child.kill('SIGKILL'), 10000);
   try {
     const code = await new Promise((resolve, reject) => {
       child.on('error', reject);
       child.on('exit', resolve);
     });
+    await cancellation;
     return { code, stdout, stderr };
   } finally { clearTimeout(watchdog); }
 }
@@ -63,7 +74,7 @@ test('timeout force-kills a direct child that ignores SIGTERM', { skip: !posix }
   const root = fixture(t, "trap '' TERM\nwhile :; do sleep 1; done\n");
   const result = await run(root, '0.3');
   assert.equal(result.code, 124);
-  assert.match(result.stderr, /exceeded AUDIT_HARNESS_TIMEOUT/);
+  assert.equal(result.stderr, 'audit-harness: harness-hash.sh exceeded AUDIT_HARNESS_TIMEOUT=0.3s — killed (INDETERMINATE)\n');
 });
 
 test('timeout cleans a TERM-resistant descendant even after the shell exits', async t => {
@@ -71,36 +82,43 @@ test('timeout cleans a TERM-resistant descendant even after the shell exits', as
   fs.writeFileSync(path.join(root, 'descendant.cjs'), `
     const fs = require('node:fs');
     const root = process.env.BBB_TIMEOUT_FIXTURE;
-    fs.writeFileSync(root + '/descendant.pid', String(process.pid));
     process.on('SIGTERM', () => {});
-    setTimeout(() => fs.writeFileSync(root + '/survived', 'bad'), 4200);
+    const startedAt = Date.now();
+    setTimeout(() => fs.writeFileSync(root + '/survived', 'bad'), 6200);
     setInterval(() => {}, 1000);
+    fs.writeFileSync(root + '/started.json', JSON.stringify({ startedAt }));
+    fs.writeFileSync(root + '/descendant.pid', String(process.pid));
   `);
-  const start = Date.now();
-  const result = await run(root, '1');
+  const result = await run(root, '2');
   assert.equal(result.code, 124);
   assert.ok(fs.existsSync(path.join(root, 'descendant.pid')), 'fixture descendant actually started');
-  await delay(Math.max(0, 4600 - (Date.now() - start)));
+  const startedAt = JSON.parse(fs.readFileSync(path.join(root, 'started.json'), 'utf8')).startedAt;
+  await delay(Math.max(0, startedAt + 6600 - Date.now()));
   assert.equal(fs.existsSync(path.join(root, 'survived')), false, 'descendant kept operating after timeout');
 });
 
-test('operator cancellation cleans the isolated timeout group', { skip: !posix }, async t => {
+for (const [signals, code] of [[['SIGTERM'], 143], [['SIGTERM', 'SIGTERM'], 143], [['SIGHUP'], 129]]) {
+ test(`operator cancellation ${signals.join(',')} cleans the isolated timeout group`, { skip: !posix }, async t => {
   const root = fixture(t, 'node "$BBB_TIMEOUT_FIXTURE/descendant.cjs" >/dev/null 2>&1 &\nwait\n');
   fs.writeFileSync(path.join(root, 'descendant.cjs'), `
     const fs = require('node:fs');
     const root = process.env.BBB_TIMEOUT_FIXTURE;
-    fs.writeFileSync(root + '/descendant.pid', String(process.pid));
     process.on('SIGTERM', () => {});
-    setTimeout(() => fs.writeFileSync(root + '/survived', 'bad'), 4200);
+    const startedAt = Date.now();
+    setTimeout(() => fs.writeFileSync(root + '/survived', 'bad'), 6200);
     setInterval(() => {}, 1000);
+    fs.writeFileSync(root + '/started.json', JSON.stringify({ startedAt }));
+    fs.writeFileSync(root + '/descendant.pid', String(process.pid));
   `);
-  const start = Date.now();
-  const result = await run(root, '8', [], 'SIGTERM');
-  assert.equal(result.code, 143);
+  const result = await run(root, '8', [], signals);
+  assert.equal(result.code, code);
   assert.ok(fs.existsSync(path.join(root, 'descendant.pid')));
-  await delay(Math.max(0, 4600 - (Date.now() - start)));
+  const startedAt = JSON.parse(fs.readFileSync(path.join(root, 'started.json'), 'utf8')).startedAt;
+  await delay(Math.max(0, startedAt + 6600 - Date.now()));
   assert.equal(fs.existsSync(path.join(root, 'survived')), false);
 });
+
+}
 
 function windowsTimeout(taskkillResult) {
   const timers = [], calls = [], listeners = {}, errors = [];
