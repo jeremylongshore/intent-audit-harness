@@ -124,5 +124,5 @@ PYTHON
 ## Release classification
 
 The changed default text is a **major** CLI change under [SEMVER.md](../../SEMVER.md).
-It must ship in the next major release, with the [adopter migration notes](MIGRATION-2.md).
+It ships in 2.0.0, with the [adopter migration notes](MIGRATION-2.md).
 This source change does not publish a release or update consumer installations.

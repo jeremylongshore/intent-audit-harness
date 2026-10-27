@@ -1,9 +1,7 @@
-# Currency text migration for the next major release
+# Currency text migration for 2.0.0
 
-This is an unreleased major change under [the CLI SemVer contract](../../SEMVER.md).
-It must not be published as a 1.x minor or patch update. Release preparation,
-version alignment and approval remain tracked separately in
-`compile-then-govern-wwq`; this document does not authorize publication.
+This is a major change under [the CLI SemVer contract](../../SEMVER.md), released
+in 2.0.0. The full 1.5.1 to 2.0.0 guide is [docs/migration-2.0.0.md](../migration-2.0.0.md).
 
 ## What changes
 
