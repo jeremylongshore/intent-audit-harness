@@ -32,6 +32,11 @@ must be one of the four kinds listed above. Both output modes reject malformed
 metadata with input-error exit 2 before printing any report; stale, valid data
 still exits 0. Evidence paths are descriptive and are never opened by the report.
 
+Legacy `checked_at` values are retained recorded check dates, not universal proof
+of successful verification. In particular, the SDK row retains an `unverified`
+reference; its historical date does not certify SDK compatibility. No historical
+negative-review evidence is inferred from that date.
+
 Advance `checked_at` only after supported reverification of that specific
 reference and scope. Change `pinned_version` only after a deliberate baseline or
 contract update. A successful HTTP response alone is an observation. A newer
@@ -42,7 +47,10 @@ release, unchanged feed ID or matching Lab digest cannot certify other surfaces.
 [The evidence record](reverification-2026-10-26.json) covers all 18 identities
 reported stale on that date, using 20 successful primary-source fetches. Each
 source records URL, final URL, timestamp, response status, byte length, full
-body SHA-256 and its extracted signal. Exact raw responses were inspected in
+body SHA-256. Nineteen sources also yielded their intended extracted signal; the
+engineering source retained only a raw-body digest because its intended legacy
+article sentinel was absent. Its `extracted_value` field describes that raw
+digest, not a successful article extraction. Exact raw responses were inspected in
 private local artifacts; they are not redistributed here. The record preserves
 bounded extracted values and hashes for comparison, without claiming that a
 future fetch of a mutable URL reproduces those bytes. It is not a signed receipt.
@@ -56,6 +64,12 @@ sentinel is absent. This is byte comparison, not semantic compatibility. In
 particular, the current MCP schema matches the Lab snapshot but differs from the
 older prefix retained by this harness.
 The two internal-contract identities have no Lab comparison.
+
+The later [Lab repair PR413](https://github.com/jeremylongshore/intent-eval-lab/pull/413)
+merged as `79b6f89ae0187f1f88935b84b70879e3984b0004`. Its separate evidence records
+a repaired engineering extractor and bounded availability controls. That repair
+does not rewrite this earlier fixed-commit failure, refresh its date, adopt a
+baseline, or by itself complete this harness identity's semantic review.
 
 All 19 original `pinned_version`, `checked_at`, class and poll-window values are
 preserved. All 18 previously stale identities still report stale. Their
@@ -74,13 +88,38 @@ version is adopted by these observations.
 [The bounded SKILL comparison](skill-floor-comparison-2026-10-26.json) binds the
 retained Lab baseline, captured current standard and bundled structural schema.
 All three require the same name/description pair. This establishes required-set
-equality only. Five actual validator probes demonstrate that the bundled floor
-accepts uppercase names, consecutive hyphens, overlong names/descriptions and an
+equality only. Five unsigned author-run validator observations record that the
+bundled floor accepts uppercase names, consecutive hyphens, overlong names/descriptions and an
 array of allowed tools, where the open standard documents stricter constraints.
-The floor also lacks parent-directory context. The historical baseline already
-documented those constraints: these are existing scope limits, not evidence of
+The committed record contains the five inputs and reported outcomes, not an
+independently executed or certified reproduction. The floor also lacks
+parent-directory context. The historical baseline already documented those constraints: these are existing scope limits, not evidence of
 new upstream regressions. All original pin values and freshness dates remain
 unchanged; the comparison does not complete the remaining semantic reviews.
+
+To reproduce the five floor observations offline with this checkout's owning
+embedded validator (not a test of the open standard), run from the repository root:
+
+```bash
+python3 - <<'PYTHON'
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location("conform", "scripts/conform.py")
+conform = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(conform)
+record = json.loads(Path("docs/currency/skill-floor-comparison-2026-10-26.json").read_text())
+schema_path = Path(record["bundled_schema"]["path"])
+assert hashlib.sha256(schema_path.read_bytes()).hexdigest() == record["bundled_schema"]["sha256"]
+schema = json.loads(schema_path.read_text())
+for case in record["counterexamples"]:
+    errors = conform.validate_instance(case["input"], schema)
+    assert not errors, (case["case"], errors)
+    print(case["case"] + ": accepted by owning embedded validator")
+PYTHON
+```
 
 ## Release classification
 

@@ -2,6 +2,7 @@
   "record": "skill-floor-comparison/v1",
   "scope": "Required field-set equality only, plus demonstrated structural-floor omissions. No claim of complete standard, enterprise rubric, directory-context or kernel compatibility.",
   "author_recorded": true,
+  "execution_evidence": "Unsigned author-run validator observations. Inputs and reported outcomes are recorded below; this file is not an independent execution receipt or certified reproduction.",
   "harness_source_parent": "d11049ecb95851c48cdb2f7ba996b7e1e6807195",
   "bundled_schema": {
     "path": "schemas/conform/v1/skillmd-frontmatter.schema.json",

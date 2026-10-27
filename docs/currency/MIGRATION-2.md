@@ -25,7 +25,7 @@ audit-harness currency --json | python3 -c 'import json, sys; report = json.load
 
 The envelope remains `currency/v1`, with `advisory: true`, `stale_count`, `by_class`
 and `pins`. Existing row fields retain their meanings: `pinned_version` is the
-retained reference, `checked_at` is its recorded verification date, and `status`
+retained reference, `checked_at` is its retained recorded check date, and `status`
 is its poll freshness. Optional `pin_kind`, `latest_observation` and
 `review_disposition` fields describe evidence separately. Consumers must tolerate
 absent optional fields and additional future fields.

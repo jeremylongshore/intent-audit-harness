@@ -6,7 +6,7 @@ Currency depends on upstream state, which is non-deterministic and network-bound
 it is deliberately the WEAKEST kind of check: an advisory REPORT with **no exit-code
 authority, no auto-fix, and no live-fetch**. It reads the per-upstream-identity pin
 relation (schemas/currency/pins.v1.json) — where each upstream carries its own
-pinned_version + the date it was last verified (checked_at) + an advisory
+pinned_version + its retained recorded check date (checked_at) + an advisory
 poll-freshness SLA — and reports which pins are themselves PAST their SLA
 (checked_at older than the SLA window), i.e. which pins a human should re-verify
 against upstream. The SLA gates NOTHING except human attention.
