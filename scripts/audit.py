@@ -30,11 +30,14 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.dont_write_bytecode = True
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import classify as C  # noqa: E402
@@ -281,25 +284,85 @@ def gate_suffix(gate_id):
 def run_crap(repo, gate, commit_sha, runner, strict):
     enforcement = gate.get("enforcement", "advisory")
     try:
-        proc = subprocess.run([sys.executable, os.path.join(HERE, "crap-score.py")],
-                              cwd=repo, capture_output=True, text=True, timeout=120)
-        ok = proc.returncode == 0
-        detail = (proc.stdout or proc.stderr).strip().splitlines()[-1:] if (proc.stdout or proc.stderr) else []
+        # Never place generated reports in the subject, including when TMPDIR
+        # was configured to point there. The scorer also disables coverage/test
+        # generation: relocating only its reports would not make this read-only.
+        subject = os.path.realpath(repo)
+        temp_parent = os.path.realpath(tempfile.gettempdir())
+        if os.path.commonpath([subject, temp_parent]) == subject:
+            raise ValueError("temporary output must be outside the subject")
+        with tempfile.TemporaryDirectory(prefix="audit-crap-", dir=temp_parent) as output:
+            proc = subprocess.run([sys.executable, os.path.join(HERE, "crap-score.py"),
+                                   "--root", subject, "--out", output, "--json", "--read-only"],
+                                  cwd=repo, capture_output=True, text=True, timeout=120,
+                                  env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+            child = json.loads(proc.stdout)
+        if not isinstance(child, dict) or child.get("gate_id", "").rsplit(":", 1)[-1] != "crap-score":
+            raise ValueError("missing child measurement envelope")
+        for field in ("input_hash", "policy_hash"):
+            if not isinstance(child.get(field), str) or not re.fullmatch(r"sha256:[a-f0-9]{64}", child[field]):
+                raise ValueError(f"invalid child {field}")
+        metadata = child.get("metadata")
+        if not isinstance(metadata, dict) or metadata.get("requested_partitions") != ["src", "test"]:
+            raise ValueError("missing requested child partitions")
+        partitions = metadata.get("partitions")
+        if not isinstance(partitions, dict) or set(partitions) != {"src", "test"}:
+            raise ValueError("missing child partition measurements")
+        for name, p in partitions.items():
+            if (not isinstance(p, dict) or p.get("status") not in {"measured", "unmeasured", "empty"}
+                    or any(type(p.get(k)) is not int or p[k] < 0 for k in ("candidate_files", "methods_scored"))):
+                raise ValueError("invalid child partition measurement")
+            count_key = "production_methods_scored" if name == "src" else "test_methods_scored"
+            if type(metadata.get(count_key)) is not int or metadata[count_key] != p["methods_scored"]:
+                raise ValueError("inconsistent child method counts")
+            if (p["status"] == "empty" and (p["candidate_files"] or p["methods_scored"])
+                    or p["status"] == "measured" and (not p["candidate_files"] or not p["methods_scored"])):
+                raise ValueError("inconsistent child partition status")
+        for key, count in (("production_blockers_count", "production_methods_scored"),
+                           ("test_blockers_count", "test_methods_scored")):
+            if type(metadata.get(key)) is not int or not 0 <= metadata[key] <= metadata[count]:
+                raise ValueError("invalid child blocker counts")
+        if type(metadata.get("avg_fail")) is not bool:
+            raise ValueError("invalid child average verdict")
+        violated = bool(metadata["production_blockers_count"] or metadata["test_blockers_count"]
+                        or metadata["avg_fail"])
+        complete = all(p["status"] == "measured" and p["candidate_files"] > 0
+                       and p["methods_scored"] > 0 for p in partitions.values())
+        result = child.get("result")
+        if result not in {"PASS", "FAIL", "ADVISORY"}:
+            raise ValueError("invalid child verdict")
+        if result == "PASS" and (not complete or child["input_hash"] == EMPTY_SHA):
+            raise ValueError("child verdict has no complete nonempty measurement")
+        if (result == "FAIL") != violated:
+            raise ValueError("child verdict contradicts threshold measurements")
+        if result == "FAIL" and (child["input_hash"] == EMPTY_SHA or not sum(
+                p["methods_scored"] for p in partitions.values())):
+            raise ValueError("child failure has no nonempty input measurement")
+        if proc.returncode != {"PASS": 0, "FAIL": 1, "ADVISORY": 2}[result]:
+            raise ValueError("child exit and measurement verdict disagree")
     except Exception as e:
         return make_row(gate["gate_id"], "ADVISORY", policy_hash=sha256_str("crap:default"),
                         input_hash=EMPTY_SHA, commit_sha=commit_sha, runner=runner,
                         advisory_severity="warn",
                         metadata={"method": "crap-static", "indeterminate": True, "reason": str(e)})
-    if ok:
-        return make_row(gate["gate_id"], "PASS", policy_hash=sha256_str("crap:default"),
-                        input_hash=EMPTY_SHA, commit_sha=commit_sha, runner=runner,
-                        metadata={"method": "crap-static", "detail": detail})
+    detail = {k: v for k, v in metadata.items() if k != "summary_path"}
+    detail["method"] = "crap-static"
+    detail["reports"] = "temporary external output removed after reading"
+    if result == "ADVISORY":
+        detail["indeterminate"] = True
+        return make_row(gate["gate_id"], "ADVISORY", policy_hash=child["policy_hash"],
+                        input_hash=child["input_hash"], commit_sha=commit_sha, runner=runner,
+                        advisory_severity=child.get("advisory_severity", "warn"), metadata=detail)
+    if result == "PASS":
+        return make_row(gate["gate_id"], "PASS", policy_hash=child["policy_hash"],
+                        input_hash=child["input_hash"], commit_sha=commit_sha, runner=runner,
+                        metadata=detail)
     result, fm, sev = ("FAIL", "testing-depth:crap-threshold", None) if (strict or enforcement == "blocking") \
         else ("ADVISORY", None, "error")
-    return make_row(gate["gate_id"], result, policy_hash=sha256_str("crap:default"),
-                    input_hash=EMPTY_SHA, commit_sha=commit_sha, runner=runner,
+    return make_row(gate["gate_id"], result, policy_hash=child["policy_hash"],
+                    input_hash=child["input_hash"], commit_sha=commit_sha, runner=runner,
                     failure_mode=fm, advisory_severity=sev,
-                    metadata={"method": "crap-static", "detail": detail})
+                    metadata=detail)
 
 
 def run_presence(suffix, repo, deps, gate, commit_sha, runner, strict):

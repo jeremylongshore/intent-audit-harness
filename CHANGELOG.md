@@ -6,6 +6,22 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Breaking changes (next major; source merge held until version alignment)
+
+- CRAP scoring no longer reports a measured PASS for absent tools, empty or
+  partially measured requested partitions, or malformed collector results.
+  These produce an explicit ADVISORY and exit 2; measured threshold violations
+  retain FAIL/exit 1, including violations in an otherwise partial scope.
+  Deep audit reads validated child measurement counts and input/policy hashes,
+  isolates its reports outside the subject and disables automatic coverage/test
+  generation. Python includes nested Radon methods with source-AST inventory
+  verification; Go coverage joins use file/line/function identity instead of the
+  last function percentage in a file; Rust traverses function spaces rather than
+  scoring a containing implementation's aggregate. No threshold is lowered.
+  See [migration notes](docs/migrations/measured-crap.md).
+  This changes existing verdicts, stdout and exit behavior and requires a MAJOR
+  version at source landing. It is not a release or permission to publish.
+
 ### Added
 
 - An advisory CI baseline measures canonical Python scripts and Python tests

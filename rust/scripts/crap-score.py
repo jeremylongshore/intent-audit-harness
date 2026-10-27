@@ -15,9 +15,11 @@ Thresholds are configurable via --threshold (local tuning is logged).
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -35,6 +37,36 @@ class MethodScore:
     coverage: float
     crap: float
     kind: str  # "src" or "test"
+
+
+class MeasurementError(ValueError):
+    """The collector did not supply usable measurement evidence."""
+
+
+def positive_complexity(value) -> int:
+    if (isinstance(value, bool) or not isinstance(value, (int, float))
+            or not math.isfinite(value) or value < 1 or int(value) != value):
+        raise MeasurementError("missing or invalid method complexity")
+    return int(value)
+
+
+def source_inventory(root: Path, lang: str) -> dict[str, list[Path]]:
+    extensions = {"python": (".py",), "go": (".go",),
+                  "js": (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"),
+                  "rust": (".rs",)}
+    partitions: dict[str, list[Path]] = {"src": [], "test": []}
+    for directory, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if not is_excluded_dir(d))
+        for filename in sorted(files):
+            if not filename.endswith(extensions.get(lang, ())):
+                continue
+            path = Path(directory) / filename
+            rel = path.relative_to(root)
+            test = (any(p in {"tests", "test", "spec", "specs", "__tests__"} for p in rel.parts[:-1])
+                    or filename.startswith("test_") or filename.endswith(("_test.py", "_test.go"))
+                    or any(marker in filename for marker in (".test.", ".spec.")))
+            partitions["test" if test else "src"].append(path)
+    return partitions
 
 
 # Directories to skip during candidate discovery AND the --json input-hash
@@ -105,7 +137,8 @@ def run(cmd: list[str], cwd: Path) -> tuple[int, str, str]:
 
 # ---------- Python: radon + coverage ----------
 
-def score_python(root: Path, kind: str) -> list[MethodScore]:
+def score_python(root: Path, kind: str, *, read_only: bool = False,
+                 file_path: Path | None = None) -> list[MethodScore]:
     if kind == "src":
         candidates = ["src", "myapp", "app"]
         scanned = [t for t in candidates if (root / t).is_dir()]
@@ -121,31 +154,58 @@ def score_python(root: Path, kind: str) -> list[MethodScore]:
     else:
         candidates = ["tests", "test"]
         scanned = [t for t in candidates if (root / t).is_dir()]
+    if file_path is not None:
+        scanned = [str(file_path.relative_to(root))]
     if not scanned:
         return []
 
     if which_or_none("radon") is None:
-        print("[crap-score] radon not installed (pip install radon)", file=sys.stderr)
-        return []
+        raise MeasurementError("radon not installed")
 
-    complexity: dict[tuple[str, str], int] = {}
+    complexity: dict[tuple[str, str, int], int] = {}
+
+    def visit(fpath, blocks):
+        if not isinstance(blocks, list):
+            raise MeasurementError("malformed radon blocks")
+        for block in blocks:
+            if not isinstance(block, dict) or block.get("type") not in {"class", "method", "function"}:
+                raise MeasurementError("invalid radon block type")
+            if block["type"] != "class":
+                name, line = block.get("name"), block.get("lineno")
+                if not isinstance(name, str) or not name or type(line) is not int or line < 1:
+                    raise MeasurementError("invalid radon function identity")
+                key = (fpath, name, line)
+                value = positive_complexity(block["complexity"])
+                if key in complexity and complexity[key] != value:
+                    raise MeasurementError("conflicting duplicate radon function")
+                complexity[key] = value
+            for field in ("methods", "closures", "inner_classes"):
+                if field in block:
+                    visit(fpath, block[field])
+
     for tgt in scanned:
         rc, out, err = run(["radon", "cc", "-s", "-a", "-j", tgt], root)
         if rc != 0 or not out.strip():
-            continue
+            raise MeasurementError("radon failed or returned empty output")
         try:
             data = json.loads(out)
         except json.JSONDecodeError:
-            continue
+            raise MeasurementError("invalid radon JSON") from None
         for fpath, blocks in data.items():
-            for block in blocks:
-                name = block.get("name") or ""
-                method_key = (fpath, name)
-                complexity[method_key] = int(block.get("complexity", 0))
+            resolved = (root / fpath).resolve()
+            if root not in resolved.parents or not resolved.is_file():
+                raise MeasurementError("radon path is outside the source root")
+            visit(fpath, blocks)
+            tree = ast.parse((root / fpath).read_text())
+            definitions = {(node.name, node.lineno) for node in ast.walk(tree)
+                           if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+            measured = {(name, line) for path, name, line in complexity if path == fpath}
+            if definitions != measured:
+                raise MeasurementError("radon function inventory differs from source definitions")
 
     coverage: dict[str, float] = {}
     cov_json = root / "coverage.json"
-    if not cov_json.is_file() and which_or_none("coverage"):
+    if not read_only and not cov_json.is_file() and which_or_none("coverage"):
         run(["coverage", "json", "-o", "coverage.json", "--fail-under=0"], root)
     if cov_json.is_file():
         try:
@@ -157,13 +217,13 @@ def score_python(root: Path, kind: str) -> list[MethodScore]:
             pass
 
     scores: list[MethodScore] = []
-    for (fpath, name), c in complexity.items():
+    for (fpath, name, line), c in complexity.items():
         cov = coverage.get(fpath, 0.0)
         scores.append(
             MethodScore(
                 language="python",
                 path=fpath,
-                method=name,
+                method=f"{name}:{line}",
                 complexity=c,
                 coverage=cov,
                 crap=crap(c, cov),
@@ -175,39 +235,49 @@ def score_python(root: Path, kind: str) -> list[MethodScore]:
 
 # ---------- Go: gocyclo + go test -cover ----------
 
-def score_go(root: Path, kind: str) -> list[MethodScore]:
+def score_go(root: Path, kind: str, *, read_only: bool = False,
+             file_path: Path | None = None) -> list[MethodScore]:
     if which_or_none("gocyclo") is None:
-        print("[crap-score] gocyclo not installed", file=sys.stderr)
-        return []
+        raise MeasurementError("gocyclo not installed")
 
     # For kind="src", ignore *_test.go at the gocyclo level. For kind="test",
     # do NOT pass -ignore: a pattern like `.*\.go$` matches every analyzable
     # file (gocyclo only reads .go files), which silenced all test-kind output.
     # The include-filter below keeps only *_test.go rows for kind="test".
     gocyclo_cmd = ["gocyclo"]
-    if kind == "src":
+    if file_path is None and kind == "src":
         gocyclo_cmd += ["-ignore", "_test.go"]
-    gocyclo_cmd.append(".")
+    selected = str(file_path.relative_to(root)) if file_path is not None else None
+    gocyclo_cmd.append(selected or ".")
     rc, out, _ = run(gocyclo_cmd, root)
-    complexity: list[tuple[str, str, int]] = []
+    if rc != 0:
+        raise MeasurementError("gocyclo failed")
+    complexity: list[tuple[str, str, int, int]] = []
     for line in out.splitlines():
+        if not line.strip():
+            continue
         parts = line.strip().split()
         if len(parts) < 4:
-            continue
+            raise MeasurementError("malformed gocyclo row")
         try:
             c = int(parts[0])
         except ValueError:
-            continue
+            raise MeasurementError("invalid gocyclo complexity") from None
         pkg = parts[1]
         func = parts[2]
-        fpath = parts[3].split(":", 1)[0]
+        location = parts[3].rsplit(":", 2)
+        if len(location) != 3 or not location[1].isdigit() or not location[2].isdigit():
+            raise MeasurementError("invalid gocyclo source location")
+        fpath, line_number = location[0], int(location[1])
         include = fpath.endswith("_test.go") if kind == "test" else not fpath.endswith("_test.go")
+        if selected is not None:
+            include = (root / fpath).resolve() == file_path.resolve()
         if include:
-            complexity.append((fpath, f"{pkg}.{func}", c))
+            complexity.append((fpath, f"{pkg}.{func}", line_number, c))
 
-    coverage: dict[str, float] = {}
+    coverage: dict[tuple[str, int, str], float] = {}
     cov_out = root / "coverage.out"
-    if not cov_out.is_file() and which_or_none("go"):
+    if not read_only and not cov_out.is_file() and which_or_none("go"):
         run(["go", "test", "-coverprofile=coverage.out", "-covermode=atomic", "./..."], root)
     if cov_out.is_file() and which_or_none("go"):
         # `go tool cover -func` reports module-qualified paths
@@ -226,21 +296,29 @@ def score_go(root: Path, kind: str) -> list[MethodScore]:
             except OSError:
                 pass
         rc, out, _ = run(["go", "tool", "cover", "-func=coverage.out"], root)
+        if rc != 0:
+            raise MeasurementError("go coverage reader failed")
         for line in out.splitlines():
             parts = line.split()
             if len(parts) >= 3 and parts[-1].endswith("%"):
-                fpath = parts[0].split(":", 1)[0]
+                location = parts[0].rstrip(":").rsplit(":", 1)
+                if len(location) != 2 or not location[1].isdigit():
+                    continue  # `total: (statements) ...` is not a function.
+                fpath, line_number = location[0], int(location[1])
                 if module_prefix and fpath.startswith(module_prefix):
                     fpath = fpath[len(module_prefix):]
                 try:
                     pct = float(parts[-1].rstrip("%"))
                 except ValueError:
                     continue
-                coverage[fpath] = pct
+                key = (fpath, line_number, parts[1])
+                if key in coverage and coverage[key] != pct:
+                    raise MeasurementError("conflicting duplicate Go function coverage")
+                coverage[key] = pct
 
     scores: list[MethodScore] = []
-    for fpath, name, c in complexity:
-        cov = coverage.get(fpath, 0.0)
+    for fpath, name, line_number, c in complexity:
+        cov = coverage.get((fpath, line_number, name.rsplit(".", 1)[-1]), 0.0)
         scores.append(
             MethodScore(
                 language="go", path=fpath, method=name, complexity=c,
@@ -252,21 +330,23 @@ def score_go(root: Path, kind: str) -> list[MethodScore]:
 
 # ---------- JS/TS: complexity-report + c8 ----------
 
-def score_js(root: Path, kind: str) -> list[MethodScore]:
+def score_js(root: Path, kind: str, *, read_only: bool = False,
+             file_path: Path | None = None) -> list[MethodScore]:
     cr_bin = which_or_none("cr") or which_or_none("complexity-report")
     if cr_bin is None:
-        print("[crap-score] complexity-report not installed (npm i -D complexity-report)", file=sys.stderr)
-        return []
+        raise MeasurementError("complexity-report not installed")
     target = "src" if kind == "src" else "tests"
-    if not (root / target).is_dir():
+    if file_path is not None:
+        target = str(file_path.relative_to(root))
+    if not (root / target).exists():
         return []
     rc, out, _ = run([cr_bin, "--format", "json", target], root)
     if rc != 0 or not out.strip():
-        return []
+        raise MeasurementError("complexity-report failed or returned empty output")
     try:
         data = json.loads(out)
     except json.JSONDecodeError:
-        return []
+        raise MeasurementError("invalid complexity-report JSON") from None
 
     # c8/istanbul's json-summary reporter keys files by ABSOLUTE path while
     # complexity-report (run with a repo-relative target) reports repo-relative
@@ -297,7 +377,7 @@ def score_js(root: Path, kind: str) -> list[MethodScore]:
         fpath = report.get("path", "")
         cov = coverage.get(_rel_to_root(fpath), 0.0)
         for func in report.get("functions", []):
-            c = int(func.get("cyclomatic", 1))
+            c = positive_complexity(func["cyclomatic"])
             scores.append(
                 MethodScore(
                     language="js", path=fpath, method=func.get("name", "<anon>"),
@@ -309,27 +389,46 @@ def score_js(root: Path, kind: str) -> list[MethodScore]:
 
 # ---------- Rust: rust-code-analysis + tarpaulin ----------
 
-def score_rust(root: Path, kind: str) -> list[MethodScore]:
+def score_rust(root: Path, kind: str, *, read_only: bool = False,
+               file_path: Path | None = None) -> list[MethodScore]:
     rca = which_or_none("rust-code-analysis-cli")
     if rca is None:
-        print("[crap-score] rust-code-analysis-cli not installed", file=sys.stderr)
-        return []
+        raise MeasurementError("rust-code-analysis-cli not installed")
     target = "src" if kind == "src" else "tests"
-    if not (root / target).is_dir():
+    if file_path is not None:
+        target = str(file_path.relative_to(root))
+    if not (root / target).exists():
         return []
     rc, out, _ = run([rca, "-m", "-O", "json", "-p", target], root)
     if rc != 0 or not out.strip():
-        return []
+        raise MeasurementError("rust-code-analysis failed or returned empty output")
     complexity: list[tuple[str, str, int]] = []
-    for line in out.splitlines():
+
+    def visit(fpath, space):
+        if not isinstance(space, dict) or not isinstance(space.get("spaces"), list):
+            raise MeasurementError("invalid rust-code-analysis space")
+        space_kind = space.get("kind")
+        if space_kind == "function":
+            c = positive_complexity(space["metrics"]["cyclomatic"]["sum"])
+            complexity.append((fpath, space.get("name") or "<anon>", c))
+        elif space_kind not in {"unit", "impl", "class", "struct", "trait", "namespace", "interface"}:
+            raise MeasurementError("unsupported rust-code-analysis space kind")
+        for nested in space["spaces"]:
+            visit(fpath, nested)
+
+    # RCA serializes one nested FuncSpace per file. A container's aggregate
+    # metric is not a method; traverse to actual function spaces instead.
+    decoder = json.JSONDecoder()
+    remaining = out.strip()
+    while remaining:
         try:
-            rec = json.loads(line)
+            rec, offset = decoder.raw_decode(remaining)
         except json.JSONDecodeError:
-            continue
-        fpath = rec.get("name", "")
-        for func in rec.get("spaces", []):
-            c = int(func.get("metrics", {}).get("cyclomatic", {}).get("sum", 1))
-            complexity.append((fpath, func.get("name", "<anon>"), c))
+            raise MeasurementError("invalid rust-code-analysis JSON") from None
+        if not isinstance(rec, dict) or rec.get("kind") != "unit" or not isinstance(rec.get("name"), str):
+            raise MeasurementError("missing rust-code-analysis file unit")
+        visit(rec["name"], rec)
+        remaining = remaining[offset:].lstrip()
     scores: list[MethodScore] = []
     for fpath, name, c in complexity:
         scores.append(
@@ -357,6 +456,8 @@ def main() -> int:
     ap.add_argument("--target", choices=["src", "test", "both"], default="both")
     ap.add_argument("--format", choices=["csv", "json", "both"], default="both")
     ap.add_argument("--out", default="reports/crap", help="Output directory")
+    ap.add_argument("--read-only", action="store_true",
+                    help="Use existing coverage only; require --out outside the subject")
     ap.add_argument("--lang", default="auto",
                     help="Force language (python|go|js|rust); default auto-detect")
     ap.add_argument("--threshold-prod", type=float, default=30.0,
@@ -373,9 +474,9 @@ def main() -> int:
 
     root = Path(args.root).resolve()
     lang = args.lang if args.lang != "auto" else detect_language(root)
-    if lang not in DISPATCH:
-        print(f"[crap-score] unsupported language: {lang}", file=sys.stderr)
-        return 2
+    out_dir = (root / args.out).resolve()
+    if args.read_only and (out_dir == root or root in out_dir.parents):
+        ap.error("--read-only requires --out outside the subject")
 
     if any(t != d for t, d in (
         (args.threshold_prod, 30.0),
@@ -387,11 +488,44 @@ def main() -> int:
               file=sys.stderr)
 
     kinds = ["src", "test"] if args.target == "both" else [args.target]
+    inventory = source_inventory(root, lang)
+    partitions = {}
     all_scores: list[MethodScore] = []
     for kind in kinds:
-        all_scores.extend(DISPATCH[lang](root, kind))
+        files = inventory[kind]
+        observation = {"candidate_files": len(files), "methods_scored": 0,
+                       "status": "empty", "reason": "no candidate source files"}
+        partitions[kind] = observation
+        if lang not in DISPATCH:
+            observation.update(status="unmeasured", reason=f"unsupported language: {lang}")
+            continue
+        if not files:
+            continue
+        problems = []
+        scores = []
+        for file_path in files:
+            try:
+                methods = DISPATCH[lang](root, kind, read_only=args.read_only, file_path=file_path)
+                if not methods:
+                    raise MeasurementError("no scored methods; zero-method file remains unresolved")
+                for score in methods:
+                    path = (root / score.path).resolve()
+                    if (path != file_path.resolve() or score.kind != kind or not score.method
+                            or type(score.complexity) is not int or score.complexity < 1
+                            or not math.isfinite(score.coverage) or not 0 <= score.coverage <= 100
+                            or not math.isfinite(score.crap)
+                            or not math.isclose(score.crap, crap(score.complexity, score.coverage))):
+                        raise MeasurementError("invalid or out-of-scope collector method")
+                scores.extend(methods)
+            except (OSError, ValueError, TypeError, AttributeError, KeyError, ArithmeticError) as exc:
+                problems.append(f"{file_path.relative_to(root)}: {exc}")
+        observation["methods_scored"] = len(scores)
+        all_scores.extend(scores)
+        if problems:
+            observation.update(status="unmeasured", reason="; ".join(problems))
+        else:
+            observation.update(status="measured", reason="all candidate files have method measurements")
 
-    out_dir = root / args.out
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if args.format in ("csv", "both"):
@@ -416,9 +550,13 @@ def main() -> int:
 
     prod_blockers = [asdict(s) for s in src_scores if s.crap > args.threshold_prod]
     test_blockers = [asdict(s) for s in test_scores if s.crap > args.threshold_test]
-    avg_fail = prod_avg > args.threshold_avg
+    production_complete = partitions.get("src", {}).get("status") == "measured"
+    avg_fail = production_complete and prod_avg > args.threshold_avg
 
-    pass_ = not (prod_blockers or test_blockers or avg_fail)
+    complete = all(p["status"] == "measured" for p in partitions.values())
+    threshold_fail = bool(prod_blockers or test_blockers or avg_fail)
+    pass_ = complete and not threshold_fail
+    result = "FAIL" if threshold_fail else "PASS" if pass_ else "ADVISORY"
 
     summary = {
         "language": lang,
@@ -429,16 +567,18 @@ def main() -> int:
         },
         "production": {
             "methods_scored": len(src_scores),
-            "max_crap": round(prod_max, 2),
-            "avg_crap": round(prod_avg, 2),
+            "max_crap": round(prod_max, 2) if src_scores else None,
+            "avg_crap": round(prod_avg, 2) if production_complete else None,
             "blockers": prod_blockers,
         },
         "test": {
             "methods_scored": len(test_scores),
-            "max_crap": round(test_max, 2),
+            "max_crap": round(test_max, 2) if test_scores else None,
             "blockers": test_blockers,
         },
         "pass": pass_,
+        "result": result,
+        "partitions": partitions,
     }
 
     if args.format in ("json", "both"):
@@ -451,7 +591,8 @@ def main() -> int:
         # (node_modules, .venv, .git, build outputs) would otherwise dominate the walk
         # cost on big repos and waste IO on files we already filter out by extension.
         digest = hashlib.sha256()
-        exts = (".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".kt", ".cs", ".php", ".rb")
+        exts = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts",
+                ".go", ".rs", ".java", ".kt", ".cs", ".php", ".rb")
         collected: list[Path] = []
         for dirpath, dirs, files in os.walk(root):
             dirs[:] = [d for d in dirs if not is_excluded_dir(d)]
@@ -464,7 +605,6 @@ def main() -> int:
         # policy_hash: SHA256 over the threshold tuple (stable, deterministic)
         policy_repr = f"prod={args.threshold_prod}|test={args.threshold_test}|avg={args.threshold_avg}".encode()
         policy_hash = f"sha256:{hashlib.sha256(policy_repr).hexdigest()}"
-        result = "PASS" if pass_ else "FAIL"
         envelope = {
             "gate_id": f"audit-harness:{side}:crap-score",
             "result": result,
@@ -481,15 +621,23 @@ def main() -> int:
                 "test_methods_scored": summary["test"]["methods_scored"],
                 "test_blockers_count": len(test_blockers),
                 "avg_fail": avg_fail,
+                "requested_partitions": kinds,
+                "partitions": partitions,
+                "coverage_policy": "existing coverage joined where available; otherwise conservative zero",
+                "indeterminate": not complete,
                 "summary_path": str(out_dir / "summary.json"),
             },
         }
-        if not pass_:
+        if result == "FAIL":
             envelope["failure_mode"] = "crap-threshold-exceeded"
+        elif result == "ADVISORY":
+            envelope["advisory_severity"] = "warn" if any(
+                p["status"] == "unmeasured" for p in partitions.values()) else "info"
         print(json.dumps(envelope))
     else:
-        print(json.dumps({"pass": pass_, "summary_path": str(out_dir / "summary.json")}))
-    return 0 if pass_ else 1
+        print(json.dumps({"pass": pass_, "result": result,
+                          "summary_path": str(out_dir / "summary.json")}))
+    return {"PASS": 0, "FAIL": 1, "ADVISORY": 2}[result]
 
 
 if __name__ == "__main__":
