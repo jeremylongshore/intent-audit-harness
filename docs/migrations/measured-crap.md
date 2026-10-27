@@ -22,14 +22,32 @@ The proposed behavior is:
 
 `--target src` can measure production independently when no tests exist; default
 `both` cannot silently turn an empty test partition into a measured test PASS.
+The deep-audit adapter always requests both partitions: a repository without
+test candidates receives ADVISORY, never PASS, even with fully measured production.
+Exit 2 now means unsupported language or indeterminate measurement; integrations
+that previously interpreted it only as unsupported language must inspect metadata.
 Source-only declarations and files with zero methods remain explicitly
-unresolved rather than being counted as measured methods. The native collector
-fixtures cover Python, Go, JavaScript, TypeScript-shaped report output and Rust;
-these fixtures do not certify that a particular installed third-party tool can
-parse all TypeScript or Rust syntax. Unsupported syntax remains unmeasured.
+unresolved rather than being counted as measured methods. Hand-authored fixtures
+exercise the Python, Go and JavaScript collector output formats, TypeScript-shaped
+reports, and the Rust hierarchy derived from upstream source. These are adapter
+controls, not captured toolchain runs or certification of installed third-party
+parsers. One additional Go receiver-method fixture uses actual Go 1.27.3
+`go tool cover -func` stdout captured offline; its complexity rows remain
+synthetic. Bare coverage names join two same-named receiver methods by their
+distinct declaration lines. Other Go versions are not certified by that capture.
+Unsupported syntax remains unmeasured.
 Collection uses the same candidate-file partition as discovery, including tests
 beside production files. Each file is validated independently, so an unavailable
 or malformed different file cannot erase a known method-threshold violation.
+
+Discovery now walks the entire subject for the selected language extensions,
+excluding dot-directories and the scorer's explicit build/cache/vendor exclusions,
+rather than selecting only conventional source/test roots. Files under `tests/`,
+`test/`, `spec/`, `specs/` or `__tests__/`, names beginning `test_`, names ending
+`_test.py` or `_test.go`, and names containing `.test.` or `.spec.` are tests.
+Every other candidate is production, including root-level `setup.py`,
+`conftest.py`, `noxfile.py` and files under `scripts/`. A single unparseable
+candidate makes its partition unmeasured; individual known failures still fail.
 
 Python traverses Radon methods, closures and inner classes, deduplicates identical
 function identities and compares the resulting name/line inventory to source AST
@@ -66,6 +84,13 @@ retains the child's input/policy hashes and measurement counts. Missing, malform
 contradictory or timed-out child output yields ADVISORY indeterminate. Measured
 threshold violations retain the existing advisory/blocking/strict handling.
 
+The changed `scripts/audit.py` adapter is dispatched by the Node package only.
+The current Python and Rust command tables do not expose `audit` or bundle
+`audit.py`; their six bundled gate scripts include the synchronized scorer.
+This patch does not add a deep-audit command to those wrappers. The existing
+scorer `--json` option (separate from report-file `--format json`) prints the
+structured stdout envelope consumed by the adapter.
+
 Standalone `crap` keeps its explicit report-writing behavior. Use an external
 `--out` and `--read-only` when inspecting a subject without generating coverage.
 Existing complexity tools are still external programs; this is not a sandbox for
@@ -73,7 +98,7 @@ untrusted replacement executables. No network installation or provider call is
 introduced.
 
 Verification: `bash tests/crap-score/run-crap-score-tests.sh` exercises positive
-native-output adapters, missing tools, zero/partial/empty measurement, malformed
+collector-format adapters, missing tools, zero/partial/empty measurement, malformed
 collector/child output, measured failures and subject-content preservation.
 `bash tests/audit/run-audit-tests.sh` retains the ordinary audit contracts.
 The no-provider golden intentionally changes from PASS to ADVISORY; review its

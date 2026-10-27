@@ -335,6 +335,31 @@ class MeasurementControls(unittest.TestCase):
         self.assertEqual(scores[0].method, 'risk')
         self.assertGreater(scores[0].crap, 30)
 
+    def test_go_captured_receiver_method_coverage_joins_by_declaration_line(self):
+        mod = load_scorer()
+        (self.root / 'go.mod').write_text('module example.org/receiverprobe\n')
+        (self.root / 'coverage.out').write_text('mode: atomic\n')
+        # Actual `go tool cover -func=coverage.out` stdout, captured offline on
+        # Go 1.27.3 from value/pointer receiver methods both named Risk. This
+        # captures Go output only; gocyclo complexity rows below are synthetic.
+        covered = ('example.org/receiverprobe/probe.go:5:\tRisk\t\t100.0%\n'
+                   'example.org/receiverprobe/probe.go:6:\tRisk\t\t0.0%\n'
+                   'example.org/receiverprobe/probe.go:7:\tPlain\t\t100.0%\n'
+                   'total:\t\t\t\t\t(statements)\t66.7%\n')
+
+        def native(cmd, cwd):
+            if cmd[0] == 'gocyclo':
+                return 0, ('1 receiverprobe (A).Risk probe.go:5:1\n'
+                           '6 receiverprobe (*B).Risk probe.go:6:1\n'
+                           '1 receiverprobe Plain probe.go:7:1\n'), ''
+            return 0, covered, ''
+
+        with patch.object(mod, 'which_or_none', return_value='/stub/go'), \
+                patch.object(mod, 'run', side_effect=native):
+            scores = mod.score_go(self.root, 'src', read_only=True)
+        self.assertEqual([score.coverage for score in scores], [100, 0, 100])
+        self.assertGreater(scores[1].crap, 30)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
