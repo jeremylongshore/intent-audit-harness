@@ -6,7 +6,7 @@ Currency depends on upstream state, which is non-deterministic and network-bound
 it is deliberately the WEAKEST kind of check: an advisory REPORT with **no exit-code
 authority, no auto-fix, and no live-fetch**. It reads the per-upstream-identity pin
 relation (schemas/currency/pins.v1.json) — where each upstream carries its own
-pinned_version + the date it was last verified (checked_at) + an advisory
+pinned_version + its retained recorded check date (checked_at) + an advisory
 poll-freshness SLA — and reports which pins are themselves PAST their SLA
 (checked_at older than the SLA window), i.e. which pins a human should re-verify
 against upstream. The SLA gates NOTHING except human attention.
@@ -27,6 +27,7 @@ Stdlib only. No network. No filesystem mutation.
 import argparse
 import json
 import os
+from pathlib import PurePosixPath
 import sys
 from datetime import datetime, timezone
 
@@ -34,6 +35,42 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_PINS = os.path.join(HERE, "..", "schemas", "currency", "pins.v1.json")
 
 UNCLASSED = "(unclassed)"
+PIN_KINDS = {"snapshot-baseline", "historical-release-reference",
+             "compatibility-reference", "unverified-reference"}
+
+
+def validate_metadata(pin):
+    """Reject malformed new metadata before either output mode emits a report."""
+    if "pin_kind" in pin and (not isinstance(pin["pin_kind"], str) or
+                              pin["pin_kind"] not in PIN_KINDS):
+        raise ValueError("pin_kind must name a documented reference kind")
+    for key, required in (("latest_observation", ("observed_at", "outcome", "value", "evidence")),
+                          ("review_disposition", ("status", "reason"))):
+        if key not in pin:
+            continue
+        record = pin[key]
+        if not isinstance(record, dict):
+            raise ValueError(f"{key} must be an object")
+        for field in required:
+            if not isinstance(record.get(field), str) or not record[field].strip():
+                raise ValueError(f"{key}.{field} must be a nonempty string")
+        if key == "review_disposition":
+            if record["status"] not in {"retained", "pending", "indeterminate"}:
+                raise ValueError("review_disposition.status must be retained, pending or indeterminate")
+        else:
+            if record["outcome"] not in {"observed", "indeterminate"}:
+                raise ValueError("latest_observation.outcome must be observed or indeterminate")
+            try:
+                datetime.fromisoformat(record["observed_at"].replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError("latest_observation.observed_at must be an ISO date or timestamp") from exc
+            evidence = record["evidence"].split("#", 1)[0]
+            path = PurePosixPath(evidence)
+            if not evidence or path.is_absolute() or ".." in path.parts or ":" in evidence or "\\" in evidence:
+                raise ValueError("latest_observation.evidence must be a repository-relative path")
+            if "evidence_identity" in record and (not isinstance(record["evidence_identity"], str) or
+                                                  not record["evidence_identity"].strip()):
+                raise ValueError("latest_observation.evidence_identity must be a nonempty string")
 
 
 def parse_date(s):
@@ -58,6 +95,7 @@ def build_report(pins_doc, today):
     classes = pins_doc.get("staleness_classes", {})
     out = []
     for pin in pins_doc.get("pins", []):
+        validate_metadata(pin)
         checked = parse_date(pin.get("checked_at", ""))
         window = resolve_window(pin, classes, default_window)
         if checked is None:
@@ -65,7 +103,7 @@ def build_report(pins_doc, today):
         else:
             age = (today - checked).days
             status = "stale" if age > window else "current"
-        out.append({
+        row = {
             "identity": pin.get("identity"),
             "class": pin.get("class") or UNCLASSED,
             "pinned_version": pin.get("pinned_version"),
@@ -75,7 +113,14 @@ def build_report(pins_doc, today):
             "status": status,
             "source": pin.get("source"),
             "notes": pin.get("notes"),
-        })
+        }
+        # Evidence about a newer upstream surface is separate from the retained
+        # contract/baseline. Never use observed_at to refresh checked_at or infer
+        # compatibility. Legacy rows retain their existing JSON shape.
+        for key in ("pin_kind", "latest_observation", "review_disposition"):
+            if key in pin:
+                row[key] = pin[key]
+        out.append(row)
     return out
 
 
@@ -105,7 +150,11 @@ def main():
         sys.exit(2)
 
     today = parse_date(args.today) if args.today else datetime.now(timezone.utc).date()
-    report = build_report(pins_doc, today)
+    try:
+        report = build_report(pins_doc, today)
+    except ValueError as exc:
+        sys.stderr.write(f"currency: invalid pin metadata: {exc}\n")
+        sys.exit(2)
     grouped = group_by_class(report)
     stale = [r for r in report if r["status"] == "stale"]
     unknown = [r for r in report if r["status"] == "unknown-checked_at"]
@@ -142,11 +191,22 @@ def main():
                     mark = "? " + r["status"]
                 print(f"  {(r['identity'] or ''):<24} {(r['pinned_version'] or ''):<18} "
                       f"{(r['checked_at'] or ''):<12} {age:>5} {r['window_days']:>4}  {mark}")
+                observation = r.get("latest_observation")
+                if observation:
+                    print(f"    observed {observation.get('observed_at', '?')}: "
+                          f"{observation.get('outcome', '?')} — "
+                          f"{observation.get('value', '?')}")
+                disposition = r.get("review_disposition")
+                if disposition:
+                    print(f"    disposition {disposition.get('status', '?')}: "
+                          f"{disposition.get('reason', '')}")
         print()
         if stale:
             print(f"{len(stale)} pin(s) past their poll-freshness SLA — the SLA gates nothing but human "
-                  f"attention: re-verify against upstream, then bump pinned_version + checked_at in "
-                  f"schemas/currency/pins.v1.json:")
+                  f"attention: re-verify against upstream and record evidence plus a disposition in "
+                  f"schemas/currency/pins.v1.json. Advance checked_at only after supported "
+                  f"reverification; change pinned_version only for a deliberate baseline/contract update. "
+                  f"An observation alone proves neither freshness nor compatibility:")
             for r in stale:
                 print(f"  - {r['identity']} [{r['class']}]: last checked {r['checked_at']} "
                       f"({r['age_days']}d ago > {r['window_days']}d SLA)")

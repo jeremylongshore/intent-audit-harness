@@ -1,0 +1,594 @@
+{
+  "record": "upstream-reverification/v1",
+  "observed_on": "2026-10-26",
+  "scope": "18 stale identities; observations and explicit dispositions, not full compatibility certification",
+  "lab_commit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+  "lab_extractor_source": "https://github.com/jeremylongshore/intent-eval-lab/blob/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/scripts/spec-drift-check.sh",
+  "interpretation": "Body digests cover fetched bytes. Lab digests cover named extractor outputs; equality is byte evidence only. Lab baseline may differ from this harness historical prefix. No dates, baselines, schemas or runtime versions are adopted by this record.",
+  "identities": [
+    {
+      "identity": "agentskills-spec",
+      "retained_pinned_version": "1.0.0",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "compatibility-reference",
+      "sources": [
+        {
+          "url": "https://agentskills.io/specification.md",
+          "finalUrl": "https://agentskills.io/specification.md",
+          "observed": "2026-10-26T19:46:51.052291+00:00",
+          "status": 200,
+          "sha256": "9a67de89132948b2300b8dc87b93817971d47f9be89b644444965881a8dfde16",
+          "bytes": 7608,
+          "extracted_value": "raw sha256:9a67de89132948b2300b8dc87b93817971d47f9be89b644444965881a8dfde16"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "agentskills-spec",
+        "extractor": "fetch_agentskills_spec",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/agentskills-spec.sha",
+        "baselineSha256": "4c649bdf0e0a51c9e215d9f91009ecdca05ee9d073edb6f37c20265bbd829e11",
+        "observedExtractedSha256": "9a67de89132948b2300b8dc87b93817971d47f9be89b644444965881a8dfde16",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "retained",
+        "reason": "Retain existing baseline and name/description structural floor. Observed required pair is unchanged; complete standard conformance is not established by the floor."
+      },
+      "semantic_scope_evidence": "docs/currency/skill-floor-comparison-2026-10-26.json"
+    },
+    {
+      "identity": "platform-skills-overview",
+      "retained_pinned_version": "sha256:0bd9758afca5",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview.md",
+          "finalUrl": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview.md",
+          "observed": "2026-10-26T19:46:51.059749+00:00",
+          "status": 200,
+          "sha256": "3bfadf3faa9855e57a39b355200bb3c837df6c7a0048a1d3dbbef810c2c542ae",
+          "bytes": 21852,
+          "extracted_value": "raw sha256:3bfadf3faa9855e57a39b355200bb3c837df6c7a0048a1d3dbbef810c2c542ae"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "platform-skills-overview",
+        "extractor": "fetch_platform_skills_overview",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/platform-skills-overview.sha",
+        "baselineSha256": "acc3a81d482fc3bace77b88453a3c4c4460dc2e427255e0fb5fd628c3d24032d",
+        "observedExtractedSha256": "3bfadf3faa9855e57a39b355200bb3c837df6c7a0048a1d3dbbef810c2c542ae",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Current documentation bytes differ from the fixed Lab baseline. Preserve the recorded snapshot prefix until a semantic baseline review; HTTP success alone does not reverify it."
+      }
+    },
+    {
+      "identity": "mcp-spec-docs",
+      "retained_pinned_version": "2025-06-18",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "compatibility-reference",
+      "sources": [
+        {
+          "url": "https://modelcontextprotocol.io/specification/draft",
+          "finalUrl": "https://modelcontextprotocol.io/specification/draft",
+          "observed": "2026-10-26T19:46:51.064886+00:00",
+          "status": 200,
+          "sha256": "6fdb6c397884e0041f25a1cfc034aad47f1c39d12d8a207f623c1a6a7f7516da",
+          "bytes": 318337,
+          "extracted_value": "raw sha256:6fdb6c397884e0041f25a1cfc034aad47f1c39d12d8a207f623c1a6a7f7516da"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "mcp-spec-docs",
+        "extractor": "fetch_mcp_spec_docs",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/mcp-spec-docs.sha",
+        "baselineSha256": "82e9c63ce6ba6ee69af70a1518bf3d559368174a3d9d76032caf7c5fff9f2040",
+        "observedExtractedSha256": "6fdb6c397884e0041f25a1cfc034aad47f1c39d12d8a207f623c1a6a7f7516da",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "retained",
+        "reason": "Retain historical2025-06-18 reference. The bundled mcp-config schema checks launch/config structure, not wire protocol revision. Observing the newer draft does not establish full protocol compatibility."
+      }
+    },
+    {
+      "identity": "claude-hooks",
+      "retained_pinned_version": "sha256:0b644e2208f8",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://code.claude.com/docs/en/hooks.md",
+          "finalUrl": "https://code.claude.com/docs/en/hooks.md",
+          "observed": "2026-10-26T19:46:51.068084+00:00",
+          "status": 200,
+          "sha256": "86de346e7bfcfac466578190c46e003b5f0b17796855166f23806c8da26b6a0d",
+          "bytes": 282618,
+          "extracted_value": "raw sha256:86de346e7bfcfac466578190c46e003b5f0b17796855166f23806c8da26b6a0d"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "claude-hooks",
+        "extractor": "fetch_claude_hooks",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/claude-hooks.sha",
+        "baselineSha256": "755e30355fb80abada5a6a5ec10fe491cc1a57bf123232c80d1cc68312869ae5",
+        "observedExtractedSha256": "86de346e7bfcfac466578190c46e003b5f0b17796855166f23806c8da26b6a0d",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve the historical snapshot; hook-event/field compatibility needs a separate semantic comparison."
+      }
+    },
+    {
+      "identity": "claude-settings",
+      "retained_pinned_version": "sha256:491b623ae274",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://code.claude.com/docs/en/settings.md",
+          "finalUrl": "https://code.claude.com/docs/en/settings.md",
+          "observed": "2026-10-26T19:46:51.069598+00:00",
+          "status": 200,
+          "sha256": "0b062367ed54712ecd9e1a3d6b5d67e4eedc860e01962202176ce5e48f1915dc",
+          "bytes": 44773,
+          "extracted_value": "raw sha256:0b062367ed54712ecd9e1a3d6b5d67e4eedc860e01962202176ce5e48f1915dc"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "claude-settings",
+        "extractor": "fetch_claude_settings",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/claude-settings.sha",
+        "baselineSha256": "41ea72eb329492a8530f2d4730b093e930151422003f161656297e44cecbf074",
+        "observedExtractedSha256": "0b062367ed54712ecd9e1a3d6b5d67e4eedc860e01962202176ce5e48f1915dc",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending semantic settings/config review."
+      }
+    },
+    {
+      "identity": "claude-slash-commands",
+      "retained_pinned_version": "sha256:d7d367c7d004",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://code.claude.com/docs/en/slash-commands.md",
+          "finalUrl": "https://code.claude.com/docs/en/slash-commands.md",
+          "observed": "2026-10-26T19:46:51.071959+00:00",
+          "status": 200,
+          "sha256": "acb1f1388ee96a516f707c42bac1e834b22df90081e5c2eccb90a2f76a5430f6",
+          "bytes": 118172,
+          "extracted_value": "raw sha256:acb1f1388ee96a516f707c42bac1e834b22df90081e5c2eccb90a2f76a5430f6"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "claude-slash-commands",
+        "extractor": "fetch_claude_slash_commands",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/claude-slash-commands.sha",
+        "baselineSha256": "efdc415213d82e2aefd6f144f78b3d806fec595a89ff4e5cd0a7a665a11d2a70",
+        "observedExtractedSha256": "acb1f1388ee96a516f707c42bac1e834b22df90081e5c2eccb90a2f76a5430f6",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending semantic command/skill review."
+      }
+    },
+    {
+      "identity": "plugins-reference",
+      "retained_pinned_version": "sha256:bbb4618ec8b1",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://code.claude.com/docs/en/plugins-reference.md",
+          "finalUrl": "https://code.claude.com/docs/en/plugins-reference.md",
+          "observed": "2026-10-26T19:46:51.353438+00:00",
+          "status": 200,
+          "sha256": "a10a371d18d571e769f99720d4402f3ec13ceb668561266f57145cfa940fa4ed",
+          "bytes": 43335,
+          "extracted_value": "raw sha256:a10a371d18d571e769f99720d4402f3ec13ceb668561266f57145cfa940fa4ed"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "plugins-reference",
+        "extractor": "fetch_plugins_reference",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/plugins-reference.sha",
+        "baselineSha256": "45289e551da96e9c4a3a5968b3bdcdd7fd766f0c735c019f60d71d06f28a58d1",
+        "observedExtractedSha256": "a10a371d18d571e769f99720d4402f3ec13ceb668561266f57145cfa940fa4ed",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending plugin-field comparison against bundled structural schema."
+      }
+    },
+    {
+      "identity": "sub-agents",
+      "retained_pinned_version": "sha256:824162201ae4",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://code.claude.com/docs/en/sub-agents.md",
+          "finalUrl": "https://code.claude.com/docs/en/sub-agents.md",
+          "observed": "2026-10-26T19:46:51.378159+00:00",
+          "status": 200,
+          "sha256": "d66f847bed2cd73de0a45f29bf9c8dff7782dc7b66dc63d8285176ae6a176cdb",
+          "bytes": 116355,
+          "extracted_value": "raw sha256:d66f847bed2cd73de0a45f29bf9c8dff7782dc7b66dc63d8285176ae6a176cdb"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "sub-agents",
+        "extractor": "fetch_sub_agents",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/sub-agents.sha",
+        "baselineSha256": "436c792e87396a1c929af41f4dbae943d61757e9575728ad40ac5fa7c48a4393",
+        "observedExtractedSha256": "d66f847bed2cd73de0a45f29bf9c8dff7782dc7b66dc63d8285176ae6a176cdb",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending agent-field comparison against bundled structural schema."
+      }
+    },
+    {
+      "identity": "plugin-marketplaces",
+      "retained_pinned_version": "sha256:1f37e87ff344",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://code.claude.com/docs/en/plugin-marketplaces.md",
+          "finalUrl": "https://code.claude.com/docs/en/plugin-marketplaces.md",
+          "observed": "2026-10-26T19:46:51.382428+00:00",
+          "status": 200,
+          "sha256": "e8efdce4f1045fbeaec9c047dc30c95ef04292d7864110dd1b8761d5931312e1",
+          "bytes": 15748,
+          "extracted_value": "raw sha256:e8efdce4f1045fbeaec9c047dc30c95ef04292d7864110dd1b8761d5931312e1"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "plugin-marketplaces",
+        "extractor": "fetch_plugin_marketplaces",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/plugin-marketplaces.sha",
+        "baselineSha256": "0597250fec9a5eb9734df9c6821409431623604656129cf8e462f93460db6a84",
+        "observedExtractedSha256": "e8efdce4f1045fbeaec9c047dc30c95ef04292d7864110dd1b8761d5931312e1",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending catalog-field comparison."
+      }
+    },
+    {
+      "identity": "mcp-schema-ts",
+      "retained_pinned_version": "sha256:1bf94a601817",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main/schema/draft/schema.ts",
+          "finalUrl": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main/schema/draft/schema.ts",
+          "observed": "2026-10-26T19:46:51.383604+00:00",
+          "status": 200,
+          "sha256": "b2d3a00d4094e413a48628560fec60652169a3d2b427e8c629238e13f987723f",
+          "bytes": 98406,
+          "extracted_value": "2026-07-28"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "mcp-schema-ts",
+        "extractor": "fetch_mcp_schema_ts",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/mcp-schema-ts.sha",
+        "baselineSha256": "b2d3a00d4094e413a48628560fec60652169a3d2b427e8c629238e13f987723f",
+        "observedExtractedSha256": "b2d3a00d4094e413a48628560fec60652169a3d2b427e8c629238e13f987723f",
+        "byteDrift": false,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Observed raw schema matches fixed Lab baseline but differs from this harness recorded prefix. Lab equality does not reverify the older harness baseline; no schema adoption or protocol compatibility inferred."
+      }
+    },
+    {
+      "identity": "skills-releases",
+      "retained_pinned_version": "sha256:8ab0fc2a54fa",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://github.com/anthropics/skills/releases.atom",
+          "finalUrl": "https://github.com/anthropics/skills/releases.atom",
+          "observed": "2026-10-26T19:46:51.536439+00:00",
+          "status": 200,
+          "sha256": "6676a17294f71027f4f9fa24391206750b2c04d0f27b27182c4016afb60dddca",
+          "bytes": 516,
+          "extracted_value": "empty feed"
+        },
+        {
+          "url": "https://github.com/anthropics/skills/commits/main.atom",
+          "finalUrl": "https://github.com/anthropics/skills/commits/main.atom",
+          "observed": "2026-10-26T19:46:51.561000+00:00",
+          "status": 200,
+          "sha256": "951dd903dfffe77616669601a4fc83bfdca347bcc36e864c53f5b9a786c1a6e1",
+          "bytes": 33943,
+          "extracted_value": "tag:github.com,2008:Grit::Commit/dbd4588f9e1033efb41dad4bef2f7947c8993d44"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "skills-releases",
+        "extractor": "fetch_skills_releases_atom",
+        "reimplementedFromInspectedSource": true,
+        "mode": "first feed IDs plus newline, concatenated",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/skills-releases.sha",
+        "baselineSha256": "8ab0fc2a54fa7c0323e1585b61e53a5a6e8d9a98435134428bfd5b8624d41ae1",
+        "observedExtractedSha256": "8ab0fc2a54fa7c0323e1585b61e53a5a6e8d9a98435134428bfd5b8624d41ae1",
+        "byteDrift": false,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "retained",
+        "reason": "Observed first feed-ID projection matches the recorded hash prefix and fixed Lab baseline. Release feed is empty; commit feed has a first entry. This narrow signal comparison does not certify skill compatibility."
+      }
+    },
+    {
+      "identity": "mcp-releases",
+      "retained_pinned_version": "sha256:1b180712c47f",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/releases.atom",
+          "finalUrl": "https://github.com/modelcontextprotocol/modelcontextprotocol/releases.atom",
+          "observed": "2026-10-26T19:46:51.572956+00:00",
+          "status": 200,
+          "sha256": "3ba9bada7d91ec39f535e019d0ace2bb5b274cf11ca6ead1687a97d7678ff0ac",
+          "bytes": 11611,
+          "extracted_value": "tag:github.com,2008:Repository/862570523/2026-07-28"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "mcp-releases",
+        "extractor": "fetch_mcp_releases_atom",
+        "reimplementedFromInspectedSource": true,
+        "mode": "first feed IDs plus newline, concatenated",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/mcp-releases.sha",
+        "baselineSha256": "1b180712c47fbf17e7bd4256a568508709ccd7240a6c32c18a5daffa3f962dad",
+        "observedExtractedSha256": "1b180712c47fbf17e7bd4256a568508709ccd7240a6c32c18a5daffa3f962dad",
+        "byteDrift": false,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "retained",
+        "reason": "Observed first release-ID projection matches the recorded prefix and fixed Lab baseline. This is a feed signal comparison, not adoption of a protocol revision."
+      }
+    },
+    {
+      "identity": "claude-code-changelog",
+      "retained_pinned_version": "2.1.152",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "historical-release-reference",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+          "finalUrl": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
+          "observed": "2026-10-26T19:46:51.604992+00:00",
+          "status": 200,
+          "sha256": "27d7a0e1d5c1b98cce5153a4c9e467e8a361550c4cfe9d0aa471f46b8dc0ed83",
+          "bytes": 1085784,
+          "extracted_value": "2.1.310"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "claude-code-changelog",
+        "extractor": "fetch_cc_changelog",
+        "reimplementedFromInspectedSource": true,
+        "mode": "raw bytes",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/claude-code-changelog.sha",
+        "baselineSha256": "c2073a2eb811b9322317fe8496bfa38634984a3de1147cc8ef3439f91e0be9a1",
+        "observedExtractedSha256": "27d7a0e1d5c1b98cce5153a4c9e467e8a361550c4cfe9d0aa471f46b8dc0ed83",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Latest observed heading differs from2.1.152. Preserve historical release reference pending a deliberate baseline update and downstream compatibility review."
+      }
+    },
+    {
+      "identity": "claude-code-npm",
+      "retained_pinned_version": "2.1.152",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "historical-release-reference",
+      "sources": [
+        {
+          "url": "https://registry.npmjs.org/@anthropic-ai%2fclaude-code/latest",
+          "finalUrl": "https://registry.npmjs.org/@anthropic-ai%2fclaude-code/latest",
+          "observed": "2026-10-26T19:46:51.715543+00:00",
+          "status": 200,
+          "sha256": "7e25043ff5423bfc9813c92505c55d50257641aa5686362dd510d84538c1a56f",
+          "bytes": 3531,
+          "extracted_value": "2.1.310"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "claude-code-npm",
+        "extractor": "fetch_cc_npm_version",
+        "reimplementedFromInspectedSource": true,
+        "mode": "npm version without newline",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/claude-code-npm.sha",
+        "baselineSha256": "5fef7bd6468ec2c512217b6e4f12e63754c137f92039b03f6f119183e6f94f82",
+        "observedExtractedSha256": "c7bd3bb68246a448a938b39de32c8dccced86dc5aaface5d3d3cf19fb2185b46",
+        "byteDrift": true,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "pending",
+        "reason": "Registry latest differs from2.1.152. Preserve historical release reference; no install, runtime adoption or compatibility proof is implied."
+      }
+    },
+    {
+      "identity": "claude-code-releases",
+      "retained_pinned_version": "sha256:556b4faba702",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://github.com/anthropics/claude-code/releases.atom",
+          "finalUrl": "https://github.com/anthropics/claude-code/releases.atom",
+          "observed": "2026-10-26T19:46:51.607186+00:00",
+          "status": 200,
+          "sha256": "f669b6a4cacbd4d9d67e7b1df3bcbd91fede2e845f9eff016fe85b7877556654",
+          "bytes": 78839,
+          "extracted_value": "tag:github.com,2008:Repository/937253475/v2.1.310"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "claude-code-releases",
+        "extractor": "fetch_cc_releases_atom",
+        "reimplementedFromInspectedSource": true,
+        "mode": "first feed IDs plus newline, concatenated",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+        "baselineUrl": "https://raw.githubusercontent.com/jeremylongshore/intent-eval-lab/dd42d4598b4ef1eadef143b31ef5eab1e2de6d13/specs/snapshots/.sha/claude-code-releases.sha",
+        "baselineSha256": "556b4faba702ab3977637554457b52e4316ea37998bcc316fc5a5b27273afb54",
+        "observedExtractedSha256": "556b4faba702ab3977637554457b52e4316ea37998bcc316fc5a5b27273afb54",
+        "byteDrift": false,
+        "semanticCompatibility": "NOT ESTABLISHED by byte comparison"
+      },
+      "disposition": {
+        "status": "retained",
+        "reason": "Observed first release-ID projection matches recorded prefix and fixed Lab baseline, while latest version is newer than historical changelog/npm references. Feed digest equality does not make those version references current."
+      }
+    },
+    {
+      "identity": "anthropic-engineering",
+      "retained_pinned_version": "sha256:f99507064aeb",
+      "retained_checked_at": "2026-06-12",
+      "pin_kind": "snapshot-baseline",
+      "sources": [
+        {
+          "url": "https://www.anthropic.com/engineering",
+          "finalUrl": "https://www.anthropic.com/engineering",
+          "observed": "2026-10-26T19:46:51.641662+00:00",
+          "status": 200,
+          "sha256": "7eddb2b5ab97a3f22f80c4b73be36a5300b49107a989eefcdd3d59e518054fd9",
+          "bytes": 392385,
+          "extracted_value": "raw sha256:7eddb2b5ab97a3f22f80c4b73be36a5300b49107a989eefcdd3d59e518054fd9"
+        }
+      ],
+      "lab_comparison": {
+        "identity": "anthropic-engineering",
+        "error": "Expected first relative /engineering/<slug> href sentinel absent from HTTP200 HTML; intended extractor signal indeterminate.",
+        "baselineLabCommit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13"
+      },
+      "disposition": {
+        "status": "indeterminate",
+        "reason": "The inspected Lab extractor expects a relative article href absent in current HTTP200 HTML. Preserve baseline and stale date; never substitute an empty hash or a clean/current verdict."
+      }
+    },
+    {
+      "identity": "skill-md-schema",
+      "retained_pinned_version": "3.7.0",
+      "retained_checked_at": "2026-06-06",
+      "pin_kind": "compatibility-reference",
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/jeremylongshore/tons-of-skills-marketplace/main/000-docs/SCHEMA_CHANGELOG.md",
+          "finalUrl": "https://raw.githubusercontent.com/jeremylongshore/tons-of-skills-marketplace/main/000-docs/SCHEMA_CHANGELOG.md",
+          "observed": "2026-10-26T19:47:50.730318+00:00",
+          "status": 200,
+          "sha256": "da90cb37d704753d59857d5b8cec695b77f6bebc2595898e087ae8ee53f15820",
+          "bytes": 84697,
+          "extracted_value": "4.1.0"
+        }
+      ],
+      "lab_comparison": null,
+      "disposition": {
+        "status": "retained",
+        "reason": "Observed schema changelog is4.1.0. Retain historical3.7.0 reference; bundled name/description floor is explicitly distinct from the enterprise rubric and pinned marketplace kernel. Full4.1.0 adoption is not established."
+      }
+    },
+    {
+      "identity": "anthropic-sdk",
+      "retained_pinned_version": "unverified",
+      "retained_checked_at": "2026-06-06",
+      "pin_kind": "unverified-reference",
+      "sources": [
+        {
+          "url": "https://api.github.com/repos/anthropics/anthropic-sdk-python/releases/latest",
+          "finalUrl": "https://api.github.com/repos/anthropics/anthropic-sdk-python/releases/latest",
+          "observed": "2026-10-26T19:46:51.772144+00:00",
+          "status": 200,
+          "sha256": "0bf0033c7885ded1ad27ed0bc8285a3c97ca4536053d81a0678088bce2f52438",
+          "bytes": 3224,
+          "extracted_value": "v2.3.0"
+        },
+        {
+          "url": "https://api.github.com/repos/anthropics/anthropic-sdk-typescript/releases/latest",
+          "finalUrl": "https://api.github.com/repos/anthropics/anthropic-sdk-typescript/releases/latest",
+          "observed": "2026-10-26T19:46:51.772818+00:00",
+          "status": 200,
+          "sha256": "6027137baae94b4944b6a002a7034a86acaf371b71deb1b5edc0b64ccc6eec63",
+          "bytes": 3044,
+          "extracted_value": "sdk-v1.3.0"
+        }
+      ],
+      "lab_comparison": null,
+      "disposition": {
+        "status": "pending",
+        "reason": "Observed Python and TypeScript release tags are separate signals. Keep unverified: no SDK API or downstream compatibility verification has occurred."
+      }
+    }
+  ]
+}

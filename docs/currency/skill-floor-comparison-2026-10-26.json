@@ -1,0 +1,117 @@
+{
+  "record": "skill-floor-comparison/v1",
+  "scope": "Required field-set equality only, plus demonstrated structural-floor omissions. No claim of complete standard, enterprise rubric, directory-context or kernel compatibility.",
+  "author_recorded": true,
+  "execution_evidence": "Unsigned author-run validator observations. Inputs and reported outcomes are recorded below; this file is not an independent execution receipt or certified reproduction.",
+  "harness_source_parent": "d11049ecb95851c48cdb2f7ba996b7e1e6807195",
+  "bundled_schema": {
+    "path": "schemas/conform/v1/skillmd-frontmatter.schema.json",
+    "sha256": "027621eb7f291885310420f3aaea61314f29bdf82c0524c907da5a50345ef752",
+    "required_fields": [
+      "description",
+      "name"
+    ]
+  },
+  "baseline": {
+    "lab_commit": "dd42d4598b4ef1eadef143b31ef5eab1e2de6d13",
+    "path": "_vendor/upstream/skill-frontmatter/agentskills-spec-v1.0.md",
+    "sha256": "baf88bdba9ea84f37113b6ebf45ece9613c9897cc6d0474f3b99e84a8569106d",
+    "documented_fields": [
+      "allowed-tools",
+      "compatibility",
+      "description",
+      "license",
+      "metadata",
+      "name"
+    ],
+    "required_fields": [
+      "description",
+      "name"
+    ]
+  },
+  "current": {
+    "source": {
+      "url": "https://agentskills.io/specification.md",
+      "finalUrl": "https://agentskills.io/specification.md",
+      "observed": "2026-10-26T19:46:51.052291+00:00",
+      "status": 200,
+      "sha256": "9a67de89132948b2300b8dc87b93817971d47f9be89b644444965881a8dfde16",
+      "bytes": 7608
+    },
+    "documented_fields": [
+      "allowed-tools",
+      "compatibility",
+      "description",
+      "license",
+      "metadata",
+      "name"
+    ],
+    "required_fields": [
+      "description",
+      "name"
+    ]
+  },
+  "comparison": {
+    "required_pair_equal": true,
+    "documented_field_names_equal": true,
+    "scope": "table Yes/No cells, not prose constraints"
+  },
+  "counterexamples": [
+    {
+      "case": "uppercase-name",
+      "input": {
+        "name": "PDF-processing",
+        "description": "A valid nonempty description"
+      },
+      "bundled_floor": "accepted",
+      "current_standard_constraint": "The current standard requires lowercase names.",
+      "conclusion": "floor acceptance does not establish complete standard conformance"
+    },
+    {
+      "case": "consecutive-hyphens",
+      "input": {
+        "name": "pdf--processing",
+        "description": "A valid nonempty description"
+      },
+      "bundled_floor": "accepted",
+      "current_standard_constraint": "The current standard forbids consecutive hyphens.",
+      "conclusion": "floor acceptance does not establish complete standard conformance"
+    },
+    {
+      "case": "overlong-name",
+      "input": {
+        "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "description": "A valid nonempty description"
+      },
+      "bundled_floor": "accepted",
+      "current_standard_constraint": "The current standard limits names to 64 characters.",
+      "conclusion": "floor acceptance does not establish complete standard conformance"
+    },
+    {
+      "case": "overlong-description",
+      "input": {
+        "name": "example",
+        "description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "bundled_floor": "accepted",
+      "current_standard_constraint": "The current standard limits descriptions to 1024 characters.",
+      "conclusion": "floor acceptance does not establish complete standard conformance"
+    },
+    {
+      "case": "array-allowed-tools",
+      "input": {
+        "name": "example",
+        "description": "A valid nonempty description",
+        "allowed-tools": [
+          "Read",
+          "Grep"
+        ]
+      },
+      "bundled_floor": "accepted",
+      "current_standard_constraint": "The current open standard describes a space-separated string.",
+      "conclusion": "floor acceptance does not establish complete standard conformance"
+    }
+  ],
+  "unrepresented_context": "The bundled JSON object schema has no parent-directory context and cannot prove name/directory agreement.",
+  "historical_limit": "The retained Lab baseline already documents these stricter constraints; these examples are not evidence that upstream newly introduced them in October."
+}

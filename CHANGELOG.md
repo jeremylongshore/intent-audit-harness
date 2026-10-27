@@ -6,6 +6,24 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-27
+
+### Changed
+
+- **Breaking:** release the accumulated security-scanner and wrapper corrections
+  under a major version, as `SEMVER.md` requires for changed existing failure
+  outcomes and text-output contracts. Fail-closed scanner runs now refuse
+  operationally incomplete required measurements; Python module dispatch
+  preserves gate failure exits. See [migration notes](docs/migration-2.0.0.md)
+  before upgrading pinned CI.
+- **Breaking:** currency reports preserve optional per-identity observation and
+  disposition evidence separately from retained references and checked dates. A
+  dated record covers 18 stale upstream identities without updating their dates,
+  baselines or compatibility status. Pending and indeterminate results remain
+  visible. The default text output changes; exact-text consumers must migrate
+  using [`docs/currency/MIGRATION-2.md`](docs/currency/MIGRATION-2.md). Refs
+  `compile-then-govern-8pg` (reverification still in progress).
+
 ### Added
 
 - An advisory CI baseline measures canonical Python scripts and Python tests
@@ -19,6 +37,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- The private CI signing reconciler resolves Zod 4.6.7, correcting the affected
+  transitive resolution without changing the published zero-runtime-dependency
+  surface or the canonical kernel pin.
+
 - Refresh the development lockfile from `brace-expansion` 5.0.9 to 5.0.12,
   removing the known brace-parser denial-of-service advisories reached through
   ESLint and minimatch. Only that locked package changes; direct dependency
@@ -26,6 +48,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Refs bead `bd_000-projects-wcze.8`.
 
 ### Fixed
+
+- The installer copies documentation from the selected release archive, keeping
+  README links usable; older archives without docs remain installable. Profile
+  and structural-conformance documentation distinguishes timestamps, classifier
+  versions and omitted semantic checks without changing existing CLI help.
 
 - Node CLI timeouts supervise a POSIX process group through TERM and the
   subsequent bounded KILL cleanup even when its immediate shell exits first.
@@ -641,7 +668,8 @@ Initial release. Extracted from the `audit-tests` Claude Code skill v7.0.0 to en
 - **`audit-harness gherkin-lint`** — advisory Gherkin quality check.
 - **`audit-harness crap`** — CRAP (Complexity × Coverage) scorer for Python, JS/TS, Go, Rust.
 
-[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.1...v2.0.0
 [1.5.1]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.3.1...v1.4.0

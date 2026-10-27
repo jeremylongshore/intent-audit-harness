@@ -1,7 +1,7 @@
 {
   "pins_version": "currency-pins/v1",
-  "description": "Per-upstream-identity pin relation. Each upstream the harness/skills depend on carries ITS OWN pinned version + the date it was last verified against upstream (checked_at) + an advisory poll-freshness SLA (staleness_window_days, resolvable from the pin's class). The `currency` advisory report reads this datum and flags pins whose checked_at is older than their SLA — i.e. it makes the PIN'S OWN STALENESS detectable, without ever live-fetching. The SLA gates NOTHING except human attention: currency is advisory-only — it reports + (in /sync-testing-harness) opens PRs; it has no exit-code authority and never auto-fixes. Updating a pin (after a human re-verifies against upstream) is an engineer edit to this file + a fresh checked_at. Pins whose identity matches a surface in the intent-eval-lab upstream-surface registry (specs/upstream-surface-registry.v1.json, 16 monitored surfaces) use the registry surface id as their identity; where the registry declares no version, pinned_version is the sha256 prefix of the lab's vendored snapshot baseline (intent-eval-lab specs/snapshots/.sha/<surface>.sha).",
-  "$comment": "2026-06-12 [9k5h.10]: terminology — the former 'bounded-staleness window' framing is now the advisory 'poll-freshness SLA' (same datum, honest name: it is a polling-attention SLA, not a consistency bound, and it gates nothing). Renamed pins to lab-registry surface ids: 'mcp-spec' -> 'mcp-spec-docs', 'claude-code' -> 'claude-code-changelog' ('agentskills-spec' already matched). Added one pin per remaining registry surface (13 new; 16 registry pins total) + kept the 3 internal-contract pins (skill-md-schema, gate-result-predicate, anthropic-sdk). The per-pin 'class' field is an additive, backward-compatible v1 extension (window resolution: explicit staleness_window_days > class SLA > default_staleness_window_days), so no pins.v2.json bump is needed.",
+  "description": "Per-identity advisory poll-freshness relation. checked_at is the retained recorded check date used for poll freshness; legacy rows, including an unverified SDK reference, do not establish successful baseline/contract verification. Future date advances require supported reverification of the specific reference and scope, not merely a successful fetch. pinned_version retains a deliberately selected reference or snapshot. Optional pin_kind, latest_observation and review_disposition distinguish retained authority from newly observed evidence. Observation metadata never refreshes checked_at, adopts a version or establishes compatibility; pending and indeterminate dispositions remain visible. Currency is offline, read-only and advisory. SLA resolution and existing status semantics are unchanged. See docs/currency/README.md.",
+  "$comment": "2026-06-12 [9k5h.10]: terminology \u2014 the former 'bounded-staleness window' framing is now the advisory 'poll-freshness SLA' (same datum, honest name: it is a polling-attention SLA, not a consistency bound, and it gates nothing). Renamed pins to lab-registry surface ids: 'mcp-spec' -> 'mcp-spec-docs', 'claude-code' -> 'claude-code-changelog' ('agentskills-spec' already matched). Added one pin per remaining registry surface (13 new; 16 registry pins total) + kept the 3 internal-contract pins (skill-md-schema, gate-result-predicate, anthropic-sdk). The per-pin 'class' field is an additive, backward-compatible v1 extension (window resolution: explicit staleness_window_days > class SLA > default_staleness_window_days), so no pins.v2.json bump is needed.",
   "default_staleness_window_days": 90,
   "staleness_classes": {
     "spec-page": {
@@ -10,11 +10,11 @@
     },
     "schema-file": {
       "staleness_window_days": 7,
-      "description": "Machine-readable schema files (e.g. the MCP schema.ts) — exact field-level diff possible upstream. Re-verify weekly."
+      "description": "Machine-readable schema files (e.g. the MCP schema.ts) \u2014 exact field-level diff possible upstream. Re-verify weekly."
     },
     "release-feed": {
       "staleness_window_days": 3,
-      "description": "Release/version signals (GH releases.atom, commits.atom, npm version probes, changelogs, engineering-blog index) — earliest material-change signal, so the tightest SLA. Re-verify every 3 days."
+      "description": "Release/version signals (GH releases.atom, commits.atom, npm version probes, changelogs, engineering-blog index) \u2014 earliest material-change signal, so the tightest SLA. Re-verify every 3 days."
     },
     "internal-contract": {
       "staleness_window_days": null,
@@ -29,7 +29,19 @@
       "source": "https://agentskills.io/specification.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "Open SKILL.md standard (compatibility/metadata/license fields). Lab-registry surface (wave 0, official-spec)."
+      "notes": "Open SKILL.md standard (compatibility/metadata/license fields). Lab-registry surface (wave 0, official-spec).",
+      "pin_kind": "compatibility-reference",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.052291+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:9a67de89132948b2300b8dc87b93817971d47f9be89b644444965881a8dfde16",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "agentskills-spec"
+      },
+      "review_disposition": {
+        "status": "retained",
+        "reason": "Retain existing baseline and name/description structural floor. Observed required pair is unchanged; complete standard conformance is not established by the floor."
+      }
     },
     {
       "identity": "platform-skills-overview",
@@ -38,7 +50,19 @@
       "source": "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "Anthropic doc page about agent skills. Lab-registry surface (wave 0, anthropic-doc); version = vendored snapshot sha prefix."
+      "notes": "Anthropic doc page about agent skills. Lab-registry surface (wave 0, anthropic-doc); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.059749+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:3bfadf3faa9855e57a39b355200bb3c837df6c7a0048a1d3dbbef810c2c542ae",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "platform-skills-overview"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Current documentation bytes differ from the fixed Lab baseline. Preserve the recorded snapshot prefix until a semantic baseline review; HTTP success alone does not reverify it."
+      }
     },
     {
       "identity": "mcp-spec-docs",
@@ -47,7 +71,19 @@
       "source": "https://modelcontextprotocol.io/specification/draft",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "MCP protocol spec revision the .mcp.json conform schema targets. Lab-registry surface (wave 1, official-spec); renamed from 'mcp-spec' 2026-06-12."
+      "notes": "Historical MCP specification reference. The bundled .mcp.json schema validates launch/config structure, not protocol wire-version compliance. Lab surface identity retained; no newer draft adoption.",
+      "pin_kind": "compatibility-reference",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.064886+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:6fdb6c397884e0041f25a1cfc034aad47f1c39d12d8a207f623c1a6a7f7516da",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "mcp-spec-docs"
+      },
+      "review_disposition": {
+        "status": "retained",
+        "reason": "Retain historical2025-06-18 reference. The bundled mcp-config schema checks launch/config structure, not wire protocol revision. Observing the newer draft does not establish full protocol compatibility."
+      }
     },
     {
       "identity": "claude-hooks",
@@ -56,7 +92,19 @@
       "source": "https://code.claude.com/docs/en/hooks.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "Claude Code hooks reference (hook-config contract). Lab-registry surface (wave 1, reference); version = vendored snapshot sha prefix."
+      "notes": "Claude Code hooks reference (hook-config contract). Lab-registry surface (wave 1, reference); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.068084+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:86de346e7bfcfac466578190c46e003b5f0b17796855166f23806c8da26b6a0d",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "claude-hooks"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve the historical snapshot; hook-event/field compatibility needs a separate semantic comparison."
+      }
     },
     {
       "identity": "claude-settings",
@@ -65,7 +113,19 @@
       "source": "https://code.claude.com/docs/en/settings.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "Claude Code settings reference (hook-config contract). Lab-registry surface (wave 1, reference); version = vendored snapshot sha prefix."
+      "notes": "Claude Code settings reference (hook-config contract). Lab-registry surface (wave 1, reference); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.069598+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:0b062367ed54712ecd9e1a3d6b5d67e4eedc860e01962202176ce5e48f1915dc",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "claude-settings"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending semantic settings/config review."
+      }
     },
     {
       "identity": "claude-slash-commands",
@@ -74,7 +134,19 @@
       "source": "https://code.claude.com/docs/en/slash-commands.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "Claude Code slash-commands reference. Lab-registry surface (wave 1, reference); version = vendored snapshot sha prefix."
+      "notes": "Claude Code slash-commands reference. Lab-registry surface (wave 1, reference); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.071959+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:acb1f1388ee96a516f707c42bac1e834b22df90081e5c2eccb90a2f76a5430f6",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "claude-slash-commands"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending semantic command/skill review."
+      }
     },
     {
       "identity": "plugins-reference",
@@ -83,7 +155,19 @@
       "source": "https://code.claude.com/docs/en/plugins-reference.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "Claude Code plugin-manifest reference. Lab-registry surface (wave 2, reference); version = vendored snapshot sha prefix."
+      "notes": "Claude Code plugin-manifest reference. Lab-registry surface (wave 2, reference); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.353438+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:a10a371d18d571e769f99720d4402f3ec13ceb668561266f57145cfa940fa4ed",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "plugins-reference"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending plugin-field comparison against bundled structural schema."
+      }
     },
     {
       "identity": "sub-agents",
@@ -92,7 +176,19 @@
       "source": "https://code.claude.com/docs/en/sub-agents.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "Claude Code sub-agents reference (agent-definition contract). Lab-registry surface (wave 2, reference); version = vendored snapshot sha prefix."
+      "notes": "Claude Code sub-agents reference (agent-definition contract). Lab-registry surface (wave 2, reference); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.378159+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:d66f847bed2cd73de0a45f29bf9c8dff7782dc7b66dc63d8285176ae6a176cdb",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "sub-agents"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending agent-field comparison against bundled structural schema."
+      }
     },
     {
       "identity": "plugin-marketplaces",
@@ -101,7 +197,19 @@
       "source": "https://code.claude.com/docs/en/plugin-marketplaces.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "Claude Code marketplace-catalog reference. Lab-registry surface (wave 2, reference); version = vendored snapshot sha prefix."
+      "notes": "Claude Code marketplace-catalog reference. Lab-registry surface (wave 2, reference); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.382428+00:00",
+        "outcome": "observed",
+        "value": "raw sha256:e8efdce4f1045fbeaec9c047dc30c95ef04292d7864110dd1b8761d5931312e1",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "plugin-marketplaces"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Current reference bytes differ from fixed Lab baseline. Preserve historical snapshot pending catalog-field comparison."
+      }
     },
     {
       "identity": "mcp-schema-ts",
@@ -110,7 +218,19 @@
       "source": "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main/schema/draft/schema.ts",
       "checked_at": "2026-06-12",
       "staleness_window_days": 7,
-      "notes": "MCP machine-readable schema (mcp-config contract; exact field-level diff possible). Lab-registry surface (wave 1, official-spec-machine-readable); version = vendored snapshot sha prefix."
+      "notes": "Historical machine-readable MCP schema snapshot prefix. This is not the bundled MCP launch/config JSON schema and does not certify wire-protocol conformance. Lab surface identity retained.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.383604+00:00",
+        "outcome": "observed",
+        "value": "2026-07-28",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "mcp-schema-ts"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Observed raw schema matches fixed Lab baseline but differs from this harness recorded prefix. Lab equality does not reverify the older harness baseline; no schema adoption or protocol compatibility inferred."
+      }
     },
     {
       "identity": "skills-releases",
@@ -119,7 +239,19 @@
       "source": "https://github.com/anthropics/skills/releases.atom + commits/main.atom",
       "checked_at": "2026-06-12",
       "staleness_window_days": 3,
-      "notes": "anthropics/skills release + commit feeds (skill-frontmatter contract). Lab-registry surface (wave 0, release-feed); version = vendored snapshot sha prefix."
+      "notes": "anthropics/skills release + commit feeds (skill-frontmatter contract). Lab-registry surface (wave 0, release-feed); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.536439+00:00",
+        "outcome": "observed",
+        "value": "empty feed | tag:github.com,2008:Grit::Commit/dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "skills-releases"
+      },
+      "review_disposition": {
+        "status": "retained",
+        "reason": "Observed first feed-ID projection matches the recorded hash prefix and fixed Lab baseline. Release feed is empty; commit feed has a first entry. This narrow signal comparison does not certify skill compatibility."
+      }
     },
     {
       "identity": "mcp-releases",
@@ -128,7 +260,19 @@
       "source": "https://github.com/modelcontextprotocol/modelcontextprotocol/releases.atom",
       "checked_at": "2026-06-12",
       "staleness_window_days": 3,
-      "notes": "MCP spec-repo release feed (mcp-config contract). Lab-registry surface (wave 2, release-feed); version = vendored snapshot sha prefix."
+      "notes": "MCP spec-repo release feed (mcp-config contract). Lab-registry surface (wave 2, release-feed); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.572956+00:00",
+        "outcome": "observed",
+        "value": "tag:github.com,2008:Repository/862570523/2026-07-28",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "mcp-releases"
+      },
+      "review_disposition": {
+        "status": "retained",
+        "reason": "Observed first release-ID projection matches the recorded prefix and fixed Lab baseline. This is a feed signal comparison, not adoption of a protocol revision."
+      }
     },
     {
       "identity": "claude-code-changelog",
@@ -137,7 +281,19 @@
       "source": "https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md",
       "checked_at": "2026-06-12",
       "staleness_window_days": 3,
-      "notes": "Claude Code release changelog (version-signal contract; 2.1.152 added disallowed-tools frontmatter). Lab-registry surface (wave 0, changelog); renamed from 'claude-code' 2026-06-12."
+      "notes": "Claude Code release changelog (version-signal contract; 2.1.152 added disallowed-tools frontmatter). Lab-registry surface (wave 0, changelog); renamed from 'claude-code' 2026-06-12.",
+      "pin_kind": "historical-release-reference",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.604992+00:00",
+        "outcome": "observed",
+        "value": "2.1.310",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "claude-code-changelog"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Latest observed heading differs from2.1.152. Preserve historical release reference pending a deliberate baseline update and downstream compatibility review."
+      }
     },
     {
       "identity": "claude-code-npm",
@@ -146,7 +302,19 @@
       "source": "npm view @anthropic-ai/claude-code version",
       "checked_at": "2026-06-12",
       "staleness_window_days": 3,
-      "notes": "Claude Code npm version probe (version-signal contract). Lab-registry surface (wave 0, changelog); version mirrors the last verified npm version."
+      "notes": "Claude Code npm version probe (version-signal contract). Lab-registry surface (wave 0, changelog); version mirrors the last verified npm version.",
+      "pin_kind": "historical-release-reference",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.715543+00:00",
+        "outcome": "observed",
+        "value": "2.1.310",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "claude-code-npm"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Registry latest differs from2.1.152. Preserve historical release reference; no install, runtime adoption or compatibility proof is implied."
+      }
     },
     {
       "identity": "claude-code-releases",
@@ -155,7 +323,19 @@
       "source": "https://github.com/anthropics/claude-code/releases.atom",
       "checked_at": "2026-06-12",
       "staleness_window_days": 3,
-      "notes": "Claude Code GH release feed (version-signal contract). Lab-registry surface (wave 2, release-feed); version = vendored snapshot sha prefix."
+      "notes": "Claude Code GH release feed (version-signal contract). Lab-registry surface (wave 2, release-feed); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.607186+00:00",
+        "outcome": "observed",
+        "value": "tag:github.com,2008:Repository/937253475/v2.1.310",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "claude-code-releases"
+      },
+      "review_disposition": {
+        "status": "retained",
+        "reason": "Observed first release-ID projection matches recorded prefix and fixed Lab baseline, while latest version is newer than historical changelog/npm references. Feed digest equality does not make those version references current."
+      }
     },
     {
       "identity": "anthropic-engineering",
@@ -164,7 +344,19 @@
       "source": "https://www.anthropic.com/engineering",
       "checked_at": "2026-06-12",
       "staleness_window_days": 3,
-      "notes": "Anthropic engineering-blog index (cross-cutting-signal contract). Lab-registry surface (wave 0, release-feed); version = vendored snapshot sha prefix."
+      "notes": "Anthropic engineering-blog index (cross-cutting-signal contract). Lab-registry surface (wave 0, release-feed); version = vendored snapshot sha prefix.",
+      "pin_kind": "snapshot-baseline",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.641662+00:00",
+        "outcome": "indeterminate",
+        "value": "raw sha256:7eddb2b5ab97a3f22f80c4b73be36a5300b49107a989eefcdd3d59e518054fd9",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "anthropic-engineering"
+      },
+      "review_disposition": {
+        "status": "indeterminate",
+        "reason": "The inspected Lab extractor expects a relative article href absent in current HTTP200 HTML. Preserve baseline and stale date; never substitute an empty hash or a clean/current verdict."
+      }
     },
     {
       "identity": "skill-md-schema",
@@ -173,7 +365,19 @@
       "source": "claude-code-plugins 000-docs/SCHEMA_CHANGELOG.md",
       "checked_at": "2026-06-06",
       "staleness_window_days": 90,
-      "notes": "IS SKILL.md schema the conform skillmd-frontmatter floor tracks (full rubric stays in /validate-skillmd)."
+      "notes": "Historical IS schema reference. The bundled name/description structural floor is distinct from the full enterprise rubric and the separately pinned marketplace kernel; not a full3.7.0 compatibility certification.",
+      "pin_kind": "compatibility-reference",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:47:50.730318+00:00",
+        "outcome": "observed",
+        "value": "4.1.0",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "skill-md-schema"
+      },
+      "review_disposition": {
+        "status": "retained",
+        "reason": "Observed schema changelog is4.1.0. Retain historical3.7.0 reference; bundled name/description floor is explicitly distinct from the enterprise rubric and pinned marketplace kernel. Full4.1.0 adoption is not established."
+      }
     },
     {
       "identity": "gate-result-predicate",
@@ -191,7 +395,19 @@
       "source": "https://github.com/anthropics/anthropic-sdk-python (+ -typescript)",
       "checked_at": "2026-06-06",
       "staleness_window_days": 90,
-      "notes": "Anthropic SDK surface referenced by downstream skills; pinned_version=unverified until first deliberate verification."
+      "notes": "Anthropic SDK surface referenced by downstream skills; pinned_version=unverified until first deliberate verification.",
+      "pin_kind": "unverified-reference",
+      "latest_observation": {
+        "observed_at": "2026-10-26T19:46:51.772144+00:00",
+        "outcome": "observed",
+        "value": "v2.3.0 | sdk-v1.3.0",
+        "evidence": "docs/currency/reverification-2026-10-26.json",
+        "evidence_identity": "anthropic-sdk"
+      },
+      "review_disposition": {
+        "status": "pending",
+        "reason": "Observed Python and TypeScript release tags are separate signals. Keep unverified: no SDK API or downstream compatibility verification has occurred."
+      }
     }
   ]
 }
