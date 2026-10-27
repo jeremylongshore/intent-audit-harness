@@ -115,18 +115,18 @@ class MeasurementControls(unittest.TestCase):
                 def native(cmd, cwd, calls=calls, source=source, test=test):
                     calls.append(cmd)
                     if cmd[0] == "radon":
-                        path = source if cmd[-1] == 'src' else test
+                        path = cmd[-1]
                         return 0, json.dumps({path: [{"name": "f", "type": "function",
                                                      "lineno": 1, "complexity": 2}]}), ''
                     if cmd[0] == "gocyclo":
                         paths = [source] if '-ignore' in cmd else [source, test]
                         return 0, '\n'.join(f'2 pkg f {p}:1:1' for p in paths), ''
                     if cmd[0] == '/stub/cr':
-                        path = source if cmd[-1] == 'src' else test
+                        path = cmd[-1]
                         return 0, json.dumps({"reports": [{"path": path,
                                                 "functions": [{"name": "f", "cyclomatic": 2}]}]}), ''
                     if cmd[0] == '/stub/rust-code-analysis-cli':
-                        path = source if cmd[-1] == 'src' else test
+                        path = cmd[-1]
                         return 0, json.dumps({"name": path, "kind": "unit", "spaces": [
                             {"name": "f", "kind": "function", "spaces": [],
                              "metrics": {"cyclomatic": {"sum": 2}}}]}), ''
@@ -176,6 +176,37 @@ class MeasurementControls(unittest.TestCase):
             code, row = self.score(mod, 'js')
         self.assertEqual(code, 1)
         self.assertEqual(row['result'], 'FAIL')
+
+    def test_partial_average_cannot_be_a_project_average_failure(self):
+        mod = load_scorer()
+        (self.root / 'src/extra.ts').write_text('export function extra() {}')
+        measured = mod.MethodScore('js', 'src/main.ts', 'run', 3, 0, 12, 'src')
+        with patch.dict(mod.DISPATCH, {'js': lambda *a, **k: [measured]}):
+            code, row = self.score(mod, 'js')
+        self.assertEqual(code, 2)
+        self.assertEqual(row['result'], 'ADVISORY')
+        self.assertFalse(row['metadata']['avg_fail'])
+        self.assertIsNone(row['metadata']['production_avg_crap'])
+
+    def test_colocated_javascript_tests_use_their_own_threshold(self):
+        (self.root / 'src/main.ts').unlink()
+        for name in ['main.js', 'main.test.js']:
+            (self.root / 'src' / name).write_text('function f() {}')
+        mod = load_scorer()
+        for src_complexity, test_complexity, expected in [(1, 1, 'PASS'), (6, 1, 'FAIL'), (1, 4, 'FAIL')]:
+            def native(cmd, cwd, src_complexity=src_complexity, test_complexity=test_complexity):
+                target = cmd[-1]
+                files = ['src/main.js', 'src/main.test.js'] if target == 'src' else [target]
+                reports = [{'path': path, 'functions': [{'name': 'f', 'cyclomatic':
+                            test_complexity if '.test.' in path else src_complexity}]} for path in files]
+                return 0, json.dumps({'reports': reports}), ''
+
+            with self.subTest(src=src_complexity, test=test_complexity), \
+                    patch.object(mod, 'which_or_none', return_value='/stub/cr'), \
+                    patch.object(mod, 'run', side_effect=native):
+                code, row = self.score(mod, 'js')
+            self.assertEqual(row['result'], expected)
+            self.assertEqual(code, 0 if expected == 'PASS' else 1)
 
     def test_failed_or_malformed_collectors_are_not_passes(self):
         mod = load_scorer()

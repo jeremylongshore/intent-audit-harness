@@ -11,7 +11,7 @@
       "src": {
         "candidate_files": 1,
         "methods_scored": 0,
-        "reason": "radon not installed",
+        "reason": "src/messy.py: radon not installed",
         "status": "unmeasured"
       },
       "test": {
@@ -21,9 +21,9 @@
         "status": "empty"
       }
     },
-    "production_avg_crap": 0.0,
+    "production_avg_crap": null,
     "production_blockers_count": 0,
-    "production_max_crap": 0.0,
+    "production_max_crap": null,
     "production_methods_scored": 0,
     "requested_partitions": [
       "src",
@@ -31,7 +31,7 @@
     ],
     "summary_path": "<OUT>/summary.json",
     "test_blockers_count": 0,
-    "test_max_crap": 0.0,
+    "test_max_crap": null,
     "test_methods_scored": 0,
     "thresholds": {
       "production_max": 30.0,

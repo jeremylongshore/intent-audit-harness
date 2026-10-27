@@ -16,7 +16,7 @@ The proposed behavior is:
 | Scorer observation | Result and exit |
 | --- | --- |
 | Every requested partition has candidate files and usable method measurements for all those files; thresholds pass | PASS, 0 |
-| A measured method or production average exceeds an unchanged threshold, including in partial scope | FAIL, 1 |
+| A measured method or a complete production-partition average exceeds an unchanged threshold, including when another partition is unmeasured | FAIL, 1 |
 | Missing/failed/malformed collector, no scored methods or any candidate file without method evidence | ADVISORY, 2 |
 | Requested partition contains no candidate source files | ADVISORY, 2, explicit `empty` partition status |
 
@@ -27,6 +27,9 @@ unresolved rather than being counted as measured methods. The native collector
 fixtures cover Python, Go, JavaScript, TypeScript-shaped report output and Rust;
 these fixtures do not certify that a particular installed third-party tool can
 parse all TypeScript or Rust syntax. Unsupported syntax remains unmeasured.
+Collection uses the same candidate-file partition as discovery, including tests
+beside production files. Each file is validated independently, so an unavailable
+or malformed different file cannot erase a known method-threshold violation.
 
 Python traverses Radon methods, closures and inner classes, deduplicates identical
 function identities and compares the resulting name/line inventory to source AST
@@ -48,6 +51,11 @@ execution coverage. Consumers must inspect the result and measurement metadata,
 not just the presence of a report or threshold values. Update integrations that
 assumed every zero-method run exits zero. No gate predicate URI or kernel schema
 is redefined by these tool-specific metadata fields.
+Maximum scores with no scored methods and averages without a complete production
+partition are `null`, not measured zeroes. A partial subset's average cannot
+prove the complete project's average exceeds its floor; known individual-method
+violations still fail. A complete production average remains enforceable when
+the test partition is empty or unmeasured.
 
 `audit --deep` now passes `--read-only --json` and a temporary output directory
 outside the subject to the scorer. `--read-only` refuses an output path within

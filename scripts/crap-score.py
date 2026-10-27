@@ -137,7 +137,8 @@ def run(cmd: list[str], cwd: Path) -> tuple[int, str, str]:
 
 # ---------- Python: radon + coverage ----------
 
-def score_python(root: Path, kind: str, *, read_only: bool = False) -> list[MethodScore]:
+def score_python(root: Path, kind: str, *, read_only: bool = False,
+                 file_path: Path | None = None) -> list[MethodScore]:
     if kind == "src":
         candidates = ["src", "myapp", "app"]
         scanned = [t for t in candidates if (root / t).is_dir()]
@@ -153,6 +154,8 @@ def score_python(root: Path, kind: str, *, read_only: bool = False) -> list[Meth
     else:
         candidates = ["tests", "test"]
         scanned = [t for t in candidates if (root / t).is_dir()]
+    if file_path is not None:
+        scanned = [str(file_path.relative_to(root))]
     if not scanned:
         return []
 
@@ -232,7 +235,8 @@ def score_python(root: Path, kind: str, *, read_only: bool = False) -> list[Meth
 
 # ---------- Go: gocyclo + go test -cover ----------
 
-def score_go(root: Path, kind: str, *, read_only: bool = False) -> list[MethodScore]:
+def score_go(root: Path, kind: str, *, read_only: bool = False,
+             file_path: Path | None = None) -> list[MethodScore]:
     if which_or_none("gocyclo") is None:
         raise MeasurementError("gocyclo not installed")
 
@@ -241,9 +245,10 @@ def score_go(root: Path, kind: str, *, read_only: bool = False) -> list[MethodSc
     # file (gocyclo only reads .go files), which silenced all test-kind output.
     # The include-filter below keeps only *_test.go rows for kind="test".
     gocyclo_cmd = ["gocyclo"]
-    if kind == "src":
+    if file_path is None and kind == "src":
         gocyclo_cmd += ["-ignore", "_test.go"]
-    gocyclo_cmd.append(".")
+    selected = str(file_path.relative_to(root)) if file_path is not None else None
+    gocyclo_cmd.append(selected or ".")
     rc, out, _ = run(gocyclo_cmd, root)
     if rc != 0:
         raise MeasurementError("gocyclo failed")
@@ -265,6 +270,8 @@ def score_go(root: Path, kind: str, *, read_only: bool = False) -> list[MethodSc
             raise MeasurementError("invalid gocyclo source location")
         fpath, line_number = location[0], int(location[1])
         include = fpath.endswith("_test.go") if kind == "test" else not fpath.endswith("_test.go")
+        if selected is not None:
+            include = (root / fpath).resolve() == file_path.resolve()
         if include:
             complexity.append((fpath, f"{pkg}.{func}", line_number, c))
 
@@ -323,12 +330,15 @@ def score_go(root: Path, kind: str, *, read_only: bool = False) -> list[MethodSc
 
 # ---------- JS/TS: complexity-report + c8 ----------
 
-def score_js(root: Path, kind: str, *, read_only: bool = False) -> list[MethodScore]:
+def score_js(root: Path, kind: str, *, read_only: bool = False,
+             file_path: Path | None = None) -> list[MethodScore]:
     cr_bin = which_or_none("cr") or which_or_none("complexity-report")
     if cr_bin is None:
         raise MeasurementError("complexity-report not installed")
     target = "src" if kind == "src" else "tests"
-    if not (root / target).is_dir():
+    if file_path is not None:
+        target = str(file_path.relative_to(root))
+    if not (root / target).exists():
         return []
     rc, out, _ = run([cr_bin, "--format", "json", target], root)
     if rc != 0 or not out.strip():
@@ -379,12 +389,15 @@ def score_js(root: Path, kind: str, *, read_only: bool = False) -> list[MethodSc
 
 # ---------- Rust: rust-code-analysis + tarpaulin ----------
 
-def score_rust(root: Path, kind: str, *, read_only: bool = False) -> list[MethodScore]:
+def score_rust(root: Path, kind: str, *, read_only: bool = False,
+               file_path: Path | None = None) -> list[MethodScore]:
     rca = which_or_none("rust-code-analysis-cli")
     if rca is None:
         raise MeasurementError("rust-code-analysis-cli not installed")
     target = "src" if kind == "src" else "tests"
-    if not (root / target).is_dir():
+    if file_path is not None:
+        target = str(file_path.relative_to(root))
+    if not (root / target).exists():
         return []
     rc, out, _ = run([rca, "-m", "-O", "json", "-p", target], root)
     if rc != 0 or not out.strip():
@@ -488,26 +501,30 @@ def main() -> int:
             continue
         if not files:
             continue
-        try:
-            scores = DISPATCH[lang](root, kind, read_only=args.read_only)
-            expected = {str(p.resolve()) for p in files}
-            measured = set()
-            for score in scores:
-                path = str((root / score.path).resolve())
-                if (path not in expected or score.kind != kind or not score.method
-                        or type(score.complexity) is not int or score.complexity < 1
-                        or not math.isfinite(score.coverage) or not 0 <= score.coverage <= 100
-                        or not math.isfinite(score.crap)
-                        or not math.isclose(score.crap, crap(score.complexity, score.coverage))):
-                    raise MeasurementError("invalid or out-of-scope collector method")
-                measured.add(path)
-            observation["methods_scored"] = len(scores)
-            all_scores.extend(scores)
-            if not scores or measured != expected:
-                raise MeasurementError("candidate files were not all measured; zero-method files remain unresolved")
+        problems = []
+        scores = []
+        for file_path in files:
+            try:
+                methods = DISPATCH[lang](root, kind, read_only=args.read_only, file_path=file_path)
+                if not methods:
+                    raise MeasurementError("no scored methods; zero-method file remains unresolved")
+                for score in methods:
+                    path = (root / score.path).resolve()
+                    if (path != file_path.resolve() or score.kind != kind or not score.method
+                            or type(score.complexity) is not int or score.complexity < 1
+                            or not math.isfinite(score.coverage) or not 0 <= score.coverage <= 100
+                            or not math.isfinite(score.crap)
+                            or not math.isclose(score.crap, crap(score.complexity, score.coverage))):
+                        raise MeasurementError("invalid or out-of-scope collector method")
+                scores.extend(methods)
+            except (OSError, ValueError, TypeError, AttributeError, KeyError, ArithmeticError) as exc:
+                problems.append(f"{file_path.relative_to(root)}: {exc}")
+        observation["methods_scored"] = len(scores)
+        all_scores.extend(scores)
+        if problems:
+            observation.update(status="unmeasured", reason="; ".join(problems))
+        else:
             observation.update(status="measured", reason="all candidate files have method measurements")
-        except (OSError, ValueError, TypeError, AttributeError, KeyError, ArithmeticError) as exc:
-            observation.update(status="unmeasured", reason=str(exc))
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -533,7 +550,8 @@ def main() -> int:
 
     prod_blockers = [asdict(s) for s in src_scores if s.crap > args.threshold_prod]
     test_blockers = [asdict(s) for s in test_scores if s.crap > args.threshold_test]
-    avg_fail = prod_avg > args.threshold_avg
+    production_complete = partitions.get("src", {}).get("status") == "measured"
+    avg_fail = production_complete and prod_avg > args.threshold_avg
 
     complete = all(p["status"] == "measured" for p in partitions.values())
     threshold_fail = bool(prod_blockers or test_blockers or avg_fail)
@@ -549,13 +567,13 @@ def main() -> int:
         },
         "production": {
             "methods_scored": len(src_scores),
-            "max_crap": round(prod_max, 2),
-            "avg_crap": round(prod_avg, 2),
+            "max_crap": round(prod_max, 2) if src_scores else None,
+            "avg_crap": round(prod_avg, 2) if production_complete else None,
             "blockers": prod_blockers,
         },
         "test": {
             "methods_scored": len(test_scores),
-            "max_crap": round(test_max, 2),
+            "max_crap": round(test_max, 2) if test_scores else None,
             "blockers": test_blockers,
         },
         "pass": pass_,
