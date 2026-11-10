@@ -356,13 +356,26 @@ def statement_coverage(record, path, root, text, type_only):
             values = hits[key] if map_name == "branchMap" else [hits[key]]
             if not isinstance(ranges, list) or not isinstance(values, list) or len(ranges) != len(values):
                 raise ValueError("invalid Istanbul branch counters")
-            for location, value in zip(ranges, values):
-                if (
-                    not isinstance(location, dict)
-                    or point(location.get("start")) > point(location.get("end"))
-                    or type(value) is not int
-                    or not 0 <= value <= 2**53 - 1
-                ):
+            # ast-v8-to-istanbul emits an absent IfStatement.alternate as
+            # undefined endpoints, serialized to exactly {start: {}, end: {}}.
+            # It has a counter but no source span. No other missing location
+            # is exempt, and the enclosing if and its first arm must be valid.
+            implicit_else = (
+                map_name == "branchMap"
+                and entry.get("type") == "if"
+                and len(ranges) == 2
+                and ranges[1] == {"start": {}, "end": {}}
+            )
+            if implicit_else:
+                parent = entry.get("loc")
+                if not isinstance(parent, dict) or point(parent.get("start")) > point(parent.get("end")):
+                    raise ValueError("invalid Istanbul implicit-else parent location")
+            for index, (location, value) in enumerate(zip(ranges, values)):
+                if type(value) is not int or not 0 <= value <= 2**53 - 1:
+                    raise ValueError("invalid Istanbul counter or location")
+                if implicit_else and index == 1:
+                    continue
+                if not isinstance(location, dict) or point(location.get("start")) > point(location.get("end")):
                     raise ValueError("invalid Istanbul counter or location")
     if not counts and not type_only:
         raise ValueError("empty Istanbul statements for runtime file")

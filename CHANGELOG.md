@@ -6,6 +6,14 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Strict Istanbul validation recognizes the exact implicit-else branch sentinel
+  emitted by ast-v8-to-istanbul. The absent else arm has a counter and no source
+  span; its enclosing if and first arm must still have valid locations. Missing
+  statement/function locations, invalid counters and nonfinite columns remain
+  rejected. Refs bead `bd_000-projects-h08j.6.7`.
+
 ### Added
 
 - Strict TypeScript CRAP measurement through a caller-installed compiler, with
