@@ -8,11 +8,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Strict TypeScript CRAP measurement through a caller-installed compiler, with
+  explicit function inventory and validated Istanbul file-statement coverage
+  proxy. Missing runtime evidence refuses completion; type-only files are
+  classified explicitly. Node, Python and Rust distributions bundle the helper;
+  no runtime dependency or consumer upgrade is added. Actual J-Rig test coverage
+  collection remains outstanding. Refs bead `bd_000-projects-h08j.6.7`.
+
 - Opt-in `crap --strict-measurement` with explicit source/test globs, Python
   AST/Radon inventory reconciliation, validated coverage.py line evidence, and
   requested/discovered/scored denominators. Incomplete measurement refuses to
   pass; legacy defaults remain unchanged. File coverage is a function coverage
-  proxy, and TypeScript measurement remains unsupported. Refs bead
+  proxy rather than per-function coverage. Refs bead
   `bd_000-projects-h08j.6.6`.
 
 ## [2.0.0] - 2026-10-27

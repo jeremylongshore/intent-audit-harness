@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Opt-in complete Python CRAP measurement; legacy scoring is unchanged.
+"""Opt-in complete Python or TypeScript CRAP measurement; legacy scoring is unchanged.
 
-Complexity is measured by Radon. File line coverage is a function coverage
-proxy, not function coverage. Coverage is supplied by the caller; this command
-validates joins and line evidence but does not attest its execution provenance.
+Python uses Radon complexity and a file line coverage proxy. TypeScript uses
+the caller-installed compiler AST and a file statement coverage proxy. Neither
+proxy is per-function coverage. The canonical TypeScript helper owns function
+inventory; no independent second parser checks its completeness. Caller-supplied
+coverage is validated but its execution provenance is not attested.
 """
 
 from __future__ import annotations
@@ -158,18 +160,19 @@ def measure(root, requested, coverage_path, language):
                 reasons.append(f"{kind}: invalid scope pattern {pattern!r}")
                 continue
             try:
-                # pathlib's recursive glob silently skips symlink directories.
-                # Reject symlinks under the static search prefix instead of
-                # claiming a complete inventory after silently skipping a tree.
-                prefix = root
-                for part in Path(pattern).parts:
-                    if any(char in part for char in "*?["):
-                        break
-                    prefix = prefix / part
-                if prefix.is_dir():
-                    for directory, dirs, _ in os.walk(prefix, followlinks=False):
-                        if Path(directory).is_symlink() or any((Path(directory) / d).is_symlink() for d in dirs):
+                # pathlib's ** silently skips symlink directories. Check only
+                # directories reached by the prefix preceding the first **;
+                # e.g. packages/*/src must not scan unrelated node_modules.
+                parts = Path(pattern).parts
+                if "**" in parts:
+                    index = parts.index("**")
+                    prefixes = list(root.glob("/".join(parts[:index]))) if index else [root]
+                    for prefix in prefixes:
+                        if any(p.is_symlink() for p in (prefix, *prefix.parents) if p != root.parent):
                             raise ValueError("symlink directory in scope search")
+                        for directory, dirs, _ in os.walk(prefix, followlinks=False):
+                            if any((Path(directory) / d).is_symlink() for d in dirs):
+                                raise ValueError("symlink directory in scope search")
                 matches = list(root.glob(pattern))
             except (OSError, ValueError, NotImplementedError):
                 reasons.append(f"{kind}: invalid scope pattern {pattern!r}")
@@ -187,13 +190,18 @@ def measure(root, requested, coverage_path, language):
                     item = {"kind": kind, "sha256": hashlib.sha256(data).hexdigest()}
                     inventory[name] = item
                     scopes[kind]["discovered_files"] += 1
+                    if language in ("auto", "typescript") and path.suffix in (".ts", ".tsx", ".mts", ".cts"):
+                        item["typescript"] = True
+                        continue
                     if language not in ("auto", "python") or path.suffix != ".py":
-                        raise ValueError("unsupported strict provider; Python files only")
+                        raise ValueError("unsupported strict provider; Python or TypeScript files only")
                     item["definitions"] = definitions(data)
                     item["line_count"] = len(data.splitlines())
                     scopes[kind]["discovered_functions"] += len(item["definitions"])
                 except (OSError, ValueError, SyntaxError) as error:
                     reasons.append(f"{kind}: {path.relative_to(root)}: {error}")
+    if language == "typescript" or (language == "auto" and any(i.get("typescript") for i in inventory.values())):
+        return measure_typescript(root, inventory, scopes, reasons, coverage_path)
     coverage = {}
     coverage_hash = None
     try:
@@ -302,6 +310,264 @@ def measure(root, requested, coverage_path, language):
             "provider_executable_sha256": provider_hash,
             "provider": "radon" if provider else None,
         },
+        "reasons": reasons,
+        "methods": rows,
+    }
+
+
+TS_PROXY = "file statement coverage used as a function coverage proxy"
+
+
+def statement_coverage(record, path, root, text, type_only):
+    if not isinstance(record, dict) or relative(root, record.get("path")) != path:
+        raise ValueError("invalid Istanbul path")
+    locations, counts = record.get("statementMap"), record.get("s")
+    if not isinstance(locations, dict) or not isinstance(counts, dict) or set(locations) != set(counts):
+        raise ValueError("Istanbul statement/count inventory mismatch")
+    lines = text.split("\n")
+
+    def point(value):
+        if not isinstance(value, dict):
+            raise ValueError("invalid Istanbul location")
+        line, column = value.get("line"), value.get("column")
+        if (
+            type(line) is not int
+            or type(column) is not int
+            or not 1 <= line <= len(lines)
+            or not 0 <= column <= len(lines[line - 1].encode("utf-16-le")) // 2
+        ):
+            raise ValueError("invalid Istanbul location")
+        return line, column
+
+    for key, location in locations.items():
+        if not isinstance(location, dict) or point(location.get("start")) > point(location.get("end")):
+            raise ValueError("invalid Istanbul statement range")
+        if type(counts[key]) is not int or not 0 <= counts[key] <= 2**53 - 1:
+            raise ValueError("invalid Istanbul statement count")
+    # Validate the other Istanbul counters even though they are not the proxy.
+    for map_name, count_name in (("fnMap", "f"), ("branchMap", "b")):
+        mapping, hits = record.get(map_name), record.get(count_name)
+        if not isinstance(mapping, dict) or not isinstance(hits, dict) or set(mapping) != set(hits):
+            raise ValueError("Istanbul counter inventory mismatch")
+        for key, entry in mapping.items():
+            if not isinstance(entry, dict):
+                raise ValueError("invalid Istanbul counter entry")
+            ranges = entry.get("locations") if map_name == "branchMap" else [entry.get("loc")]
+            values = hits[key] if map_name == "branchMap" else [hits[key]]
+            if not isinstance(ranges, list) or not isinstance(values, list) or len(ranges) != len(values):
+                raise ValueError("invalid Istanbul branch counters")
+            for location, value in zip(ranges, values):
+                if (
+                    not isinstance(location, dict)
+                    or point(location.get("start")) > point(location.get("end"))
+                    or type(value) is not int
+                    or not 0 <= value <= 2**53 - 1
+                ):
+                    raise ValueError("invalid Istanbul counter or location")
+    if not counts and not type_only:
+        raise ValueError("empty Istanbul statements for runtime file")
+    return 100 * sum(value > 0 for value in counts.values()) / len(counts) if counts else None
+
+
+def ts_inventory(record, item, text):
+    if not isinstance(record, dict) or record.get("sha256") != item["sha256"]:
+        raise ValueError("TypeScript source identity mismatch")
+    if type(record.get("type_only")) is not bool:
+        raise ValueError("invalid TypeScript type-only classification")
+    definitions, methods = record.get("inventory"), record.get("methods")
+    if not isinstance(definitions, list) or not isinstance(methods, list):
+        raise ValueError("invalid TypeScript function inventory")
+    expected = {}
+    encoded = text.encode("utf-16-le")
+    length = len(encoded) // 2
+    for entry in definitions:
+        if not isinstance(entry, dict):
+            raise ValueError("invalid TypeScript function")
+        start, end, line = entry.get("start"), entry.get("end"), entry.get("line")
+        if (
+            type(start) is not int
+            or type(end) is not int
+            or not 0 <= start < end <= length
+            or type(line) is not int
+            or not 1 <= line <= len(text.split("\n"))
+            or line != encoded[: start * 2].decode("utf-16-le", errors="surrogatepass").count("\n") + 1
+            or entry.get("id") != f"{start}:{end}"
+            or entry["id"] in expected
+            or not isinstance(entry.get("name"), str)
+            or not entry["name"]
+            or entry.get("kind")
+            not in (
+                "FunctionDeclaration",
+                "FunctionExpression",
+                "ArrowFunction",
+                "MethodDeclaration",
+                "Constructor",
+                "GetAccessor",
+                "SetAccessor",
+            )
+        ):
+            raise ValueError("invalid or duplicate TypeScript function")
+        expected[entry["id"]] = entry
+    return expected
+
+
+def ts_complexities(record, expected):
+    found = {}
+    for entry in record["methods"]:
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+            raise ValueError("invalid TypeScript complexity")
+        identifier, value = entry["id"], entry.get("complexity")
+        if identifier not in expected or identifier in found or type(value) is not int or not 1 <= value <= 1_000_000:
+            raise ValueError("invalid or duplicate TypeScript complexity")
+        found[identifier] = value
+    if set(found) != set(expected) or (record["type_only"] and expected):
+        raise ValueError("TypeScript function inventory mismatch")
+    return [(expected[key], value) for key, value in found.items()]
+
+
+def measure_typescript(root, inventory, scopes, reasons, coverage_path):
+    rows, public_inventory, coverage, records = [], [], {}, {}
+    inputs = {"provider": "typescript", "coverage_sha256": None}
+    checks = []
+
+    def capture(label, path):
+        data = path.read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        inputs[label + "_sha256"] = digest
+        checks.append((label, path, digest))
+        return data
+
+    try:
+        coverage = decode(capture("coverage", coverage_path).decode())
+        if not isinstance(coverage, dict):
+            raise ValueError("Istanbul coverage must be an object")
+        normalized = {}
+        for path, record in coverage.items():
+            name = relative(root, path)
+            if name in normalized:
+                raise ValueError("duplicate normalized Istanbul file")
+            normalized[name] = record
+        coverage = normalized
+    except (OSError, ValueError, TypeError) as error:
+        reasons.append(f"coverage unavailable or invalid: {error}")
+        coverage = {}
+    try:
+        if any(not item.get("typescript") for item in inventory.values()):
+            raise ValueError("mixed or unsupported TypeScript source inventory")
+        helper = Path(__file__).with_name("crap_typescript.mjs")
+        capture("helper", helper)
+        node = shutil.which("node")
+        if not node:
+            raise ValueError("missing Node TypeScript provider executable")
+        capture("provider_executable", Path(node))
+        # Explicit target-root installation; never search parent/global packages.
+        parser = (root / "node_modules/typescript/lib/typescript.js").resolve(strict=True)
+        parser_hash = hashlib.sha256(capture("parser", parser)).hexdigest()
+        result = subprocess.run(
+            [node, str(helper)],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+            input=json.dumps(
+                {
+                    "root": str(root),
+                    "files": [{"path": name, "sha256": item["sha256"]} for name, item in sorted(inventory.items())],
+                }
+            ),
+        )
+        if result.returncode:
+            raise ValueError(f"TypeScript provider failed (exit {result.returncode}): {result.stderr.strip()}")
+        report = decode(result.stdout)
+        if not isinstance(report, dict) or report.get("schema_version") != "crap-typescript/v1":
+            raise ValueError("invalid TypeScript provider report")
+        identity = report.get("provider")
+        if (
+            not isinstance(identity, dict)
+            or identity.get("name") != "typescript"
+            or identity.get("path") != str(parser)
+            or identity.get("sha256") != parser_hash
+            or not isinstance(identity.get("version"), str)
+            or not identity["version"]
+            or report.get("complexity_definition") != "typescript-function-decisions/v1"
+        ):
+            raise ValueError("TypeScript provider identity mismatch")
+        inputs["parser_version"] = identity["version"]
+        records = report.get("files")
+        if not isinstance(records, dict) or set(records) != set(inventory):
+            raise ValueError("TypeScript provider file inventory mismatch")
+    except (OSError, ValueError, TypeError, subprocess.TimeoutExpired) as error:
+        reasons.append(str(error))
+        records = {}
+    for name, item in sorted(inventory.items()):
+        public = {"path": name, "kind": item["kind"], "sha256": item["sha256"]}
+        public_inventory.append(public)
+        if name not in records:
+            continue
+        try:
+            text = (root / name).read_bytes().decode("utf-8")
+            expected = ts_inventory(records[name], item, text)
+            scope = scopes[item["kind"]]
+            scope["discovered_functions"] += len(expected)
+            public["type_only"] = records[name]["type_only"]
+            public["functions"] = list(expected.values())
+            functions = ts_complexities(records[name], expected)
+            if name not in coverage:
+                if not public["type_only"]:
+                    raise ValueError("coverage missing for requested runtime file")
+                percent = None
+            else:
+                percent = statement_coverage(coverage[name], name, root, text, public["type_only"])
+            if public["type_only"]:
+                scope["type_only_files"] = scope.get("type_only_files", 0) + 1
+            else:
+                scope["scored_files"] += 1
+            scope["scored_functions"] += len(functions)
+            for function, complexity in functions:
+                rows.append(
+                    {
+                        "path": name,
+                        "method": function["name"],
+                        "line": function["line"],
+                        "function_id": function["id"],
+                        "kind": item["kind"],
+                        "complexity": complexity,
+                        "coverage": percent,
+                        "crap": complexity**2 * (1 - percent / 100) ** 3 + complexity,
+                    }
+                )
+        except (OSError, ValueError, TypeError) as error:
+            reasons.append(f"{name}: {error}")
+    for kind, scope in scopes.items():
+        if not scope["scored_functions"]:
+            reasons.append(f"{kind}: no functions scored")
+    for name, item in inventory.items():
+        checks.append((name, root / name, item["sha256"]))
+    try:
+        if (
+            "parser_sha256" in inputs
+            and (root / "node_modules/typescript/lib/typescript.js").resolve(strict=True) != parser
+        ):
+            reasons.append("parser resolution changed during measurement")
+    except OSError:
+        reasons.append("parser unavailable after measurement")
+    for label, path, expected in checks:
+        try:
+            if (label in inventory and not regular(root, path)) or hashlib.sha256(
+                path.read_bytes()
+            ).hexdigest() != expected:
+                reasons.append(f"{label} changed during measurement")
+        except OSError:
+            reasons.append(f"{label} unavailable after measurement")
+    return {
+        "schema_version": "crap-measurement/v1",
+        "complete": not reasons,
+        "coverage_basis": TS_PROXY,
+        "complexity_definition": "typescript-function-decisions/v1",
+        "scopes": scopes,
+        "inventory": public_inventory,
+        "inputs": inputs,
         "reasons": reasons,
         "methods": rows,
     }
