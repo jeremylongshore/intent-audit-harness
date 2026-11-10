@@ -76,6 +76,39 @@ curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness
 
 ## Quick usage
 
+### Strict CRAP measurement (unreleased)
+
+The opt-in `crap --strict-measurement` mode rejects incomplete measurement
+instead of accepting an empty score set. Its initial provider supports Python
+functions using Radon and caller-supplied coverage.py JSON. JavaScript and
+TypeScript are explicitly unsupported in strict mode; this is not yet a
+workspace TypeScript measurement solution.
+
+```bash
+audit-harness crap --strict-measurement --lang python --target both \
+  --source-glob 'packages/*/src/*.py' --test-glob 'tests/test_*.py' \
+  --coverage-json coverage.json --out reports/crap-strict --json
+```
+
+Install Radon separately and collect coverage for both requested scopes before
+running the command. Repeat the glob options to declare additional files.
+Strict scope discovery rejects symlink directories beneath each glob’s static
+prefix, including directories that might not match the remainder of the glob.
+The report distinguishes requested patterns, discovered files/functions and
+scored files/functions. Missing providers, unmatched patterns, omitted function
+measurements, malformed results, and missing coverage produce incomplete
+measurement, not a pass. Exit codes are 0 for complete measurement within the
+limits, 1 for measured threshold violations, and 2 for incomplete measurement
+or invalid arguments. Existing non-strict commands keep their previous behavior.
+
+CRAP uses each file's line coverage as a **function coverage proxy**. It does
+not claim function-level coverage or attest that caller-supplied coverage was
+executed against the current source. Source and coverage hashes and the Radon launcher hash
+bind the inputs observed by this invocation; the launcher hash does not attest
+the installed Radon package or its dependencies, and execution provenance remains the
+caller's responsibility. Existing threshold options apply; no consumer policy
+is automatically promoted by installing this mode.
+
 ### Pre-commit hook (`.husky/pre-commit`)
 
 ```bash

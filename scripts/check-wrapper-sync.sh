@@ -39,12 +39,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CANONICAL_DIR="${REPO_ROOT}/scripts"
 
-# The set of scripts the Python + Rust wrappers DISPATCH. Keep this in lock-step
+# The set of scripts the Python + Rust wrappers dispatch or import as helpers.
+# Keep embedded files in lock-step
 # with:
 #   * python/src/intent_audit_harness/cli.py     (COMMANDS dict)
 #   * rust/src/main.rs                           (SCRIPTS array)
-# If a wrapper starts dispatching a new canonical script, add it here AND to both
-# wrapper sources, and copy it into both mirror dirs.
+# New dispatch targets need command mappings; imported helpers need packaging
+# and Rust embedding only. Copy either kind into both mirror directories.
 MIRRORED_SCRIPTS=(
   "harness-hash.sh"
   "escape-scan.sh"
@@ -52,6 +53,7 @@ MIRRORED_SCRIPTS=(
   "bias-count.sh"
   "gherkin-lint.sh"
   "crap-score.py"
+  "crap_strict.py"
 )
 
 # Each mirror directory that bundles a copy of the canonical scripts.

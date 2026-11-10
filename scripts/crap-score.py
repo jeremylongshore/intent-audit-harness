@@ -352,7 +352,12 @@ DISPATCH = {
 # ---------- CLI ----------
 
 def main() -> int:
+    if "--strict-measurement" in sys.argv[1:]:
+        from crap_strict import main as strict_main
+        return strict_main(sys.argv[1:])
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--strict-measurement", action="store_true",
+                    help="Require complete explicit scope measurement (see --strict-measurement --help)")
     ap.add_argument("--root", default=".", help="Repository root")
     ap.add_argument("--target", choices=["src", "test", "both"], default="both")
     ap.add_argument("--format", choices=["csv", "json", "both"], default="both")
