@@ -14,6 +14,7 @@
 # Deterministic gate scripts (the policy)
 scripts/*.sh
 scripts/*.py
+scripts/*.mjs
 
 # CLI dispatcher (thin per design rule 1; pinned so the dispatcher's command
 # routing can't drift silently from the scripts it dispatches to)
@@ -29,6 +30,7 @@ rust/src/*.rs
 tests/**/*.sh
 tests/**/*.py
 tests/**/*.cjs
+tests/crap-score/fixtures/typescript/*.ts
 
 # Profiles and conform schemas decide what is applicable and what evidence is
 # valid; they are policy, not ordinary documentation.
@@ -41,6 +43,7 @@ ci/*.mjs
 ci/*.json
 ci/requirements.txt
 ci/measurement-requirements.txt
+ci/typescript-provider/*.json
 tests/fixtures/gate-result*.schema.json
 
 # Shared lint configs (iep-shared-lint-configs / bd_000-projects-e3ey). These

@@ -79,10 +79,9 @@ curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness
 ### Strict CRAP measurement (unreleased)
 
 The opt-in `crap --strict-measurement` mode rejects incomplete measurement
-instead of accepting an empty score set. Its initial provider supports Python
-functions using Radon and caller-supplied coverage.py JSON. JavaScript and
-TypeScript are explicitly unsupported in strict mode; this is not yet a
-workspace TypeScript measurement solution.
+instead of accepting an empty score set. It supports Python functions using Radon
+and coverage.py JSON, or TypeScript functions using a caller-installed TypeScript
+compiler and Istanbul `coverage-final.json`. Mixed-language scopes are refused.
 
 ```bash
 audit-harness crap --strict-measurement --lang python --target both \
@@ -92,8 +91,9 @@ audit-harness crap --strict-measurement --lang python --target both \
 
 Install Radon separately and collect coverage for both requested scopes before
 running the command. Repeat the glob options to declare additional files.
-Strict scope discovery rejects symlink directories beneath each glob’s static
-prefix, including directories that might not match the remainder of the glob.
+Recursive scope discovery rejects symlink directories beneath the resolved
+prefix before the first `**`; unrelated package dependency symlinks outside
+a requested `src` tree do not expand its scope.
 The report distinguishes requested patterns, discovered files/functions and
 scored files/functions. Missing providers, unmatched patterns, omitted function
 measurements, malformed results, and missing coverage produce incomplete
@@ -101,13 +101,48 @@ measurement, not a pass. Exit codes are 0 for complete measurement within the
 limits, 1 for measured threshold violations, and 2 for incomplete measurement
 or invalid arguments. Existing non-strict commands keep their previous behavior.
 
-CRAP uses each file's line coverage as a **function coverage proxy**. It does
+Python CRAP uses each file's line coverage as a **function coverage proxy**. It does
 not claim function-level coverage or attest that caller-supplied coverage was
 executed against the current source. Source and coverage hashes and the Radon launcher hash
 bind the inputs observed by this invocation; the launcher hash does not attest
 the installed Radon package or its dependencies, and execution provenance remains the
 caller's responsibility. Existing threshold options apply; no consumer policy
 is automatically promoted by installing this mode.
+
+### Strict TypeScript measurement (unreleased)
+
+```bash
+audit-harness crap --strict-measurement --lang typescript --target src \
+  --source-glob 'packages/*/src/**/*.ts' \
+  --coverage-json coverage/coverage-final.json --out reports/crap-typescript --json
+```
+
+The target root must contain `node_modules/typescript/lib/typescript.js` and
+Node must be on PATH. The harness adds no npm runtime dependency. Declare scopes
+that classify source and tests without overlap; a broad source glob above also
+includes colocated tests, which require their own coverage if included. Repeat
+explicit globs or paths to match the intended inventory.
+
+The provider inventories body-bearing functions, arrows, methods, constructors
+and accessors. Its `typescript-function-decisions/v1` complexity starts at one
+and adds conditional/loop/catch/non-default-case decisions, logical operators
+and assignments, and optional accesses/calls. Nested functions score separately;
+module and class initializer expressions are not claimed as functions.
+
+TypeScript CRAP uses **file statement coverage as a function coverage proxy**.
+It does not match remapped Istanbul function spans to AST functions or claim
+per-function coverage. Runtime files require coverage, including files without
+functions; narrowly proven type-only files are explicitly classified and exempt
+from runtime coverage. A requested source/test kind with zero scored functions
+cannot pass. Missing/malformed files, counters, source locations or provider
+results make measurement incomplete.
+
+Evidence binds source, coverage, helper, Node and compiler-file hashes plus the
+compiler version. This identifies observed inputs, not coverage execution
+provenance or every installed dependency. Ordinary Vitest coverage excludes its
+test files even when configured exclusions are empty: requesting tests requires
+a collector that actually covers them. J-Rig adoption remains incomplete until
+that evidence exists; this command does not waive it or upgrade consumers.
 
 ### Pre-commit hook (`.husky/pre-commit`)
 

@@ -30,6 +30,7 @@ const SCRIPTS: &[(&str, &[u8])] = &[
     ("gherkin-lint.sh", include_bytes!("../scripts/gherkin-lint.sh")),
     ("crap-score.py",   include_bytes!("../scripts/crap-score.py")),
     ("crap_strict.py",  include_bytes!("../scripts/crap_strict.py")),
+    ("crap_typescript.mjs", include_bytes!("../scripts/crap_typescript.mjs")),
 ];
 
 /// Maps a CLI command to (script filename, default args).

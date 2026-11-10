@@ -735,7 +735,14 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+      - name: Install locked optional TypeScript test provider
+        run: npm ci --ignore-scripts --prefix ci/typescript-provider
       - name: Run crap-score join-regression suite
+        env:
+          AUDIT_HARNESS_TYPESCRIPT_ROOT: ${{ github.workspace }}/ci/typescript-provider
         run: bash tests/crap-score/run-crap-score-tests.sh
 
   golden:

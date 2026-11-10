@@ -54,6 +54,7 @@ MIRRORED_SCRIPTS=(
   "gherkin-lint.sh"
   "crap-score.py"
   "crap_strict.py"
+  "crap_typescript.mjs"
 )
 
 # Each mirror directory that bundles a copy of the canonical scripts.
