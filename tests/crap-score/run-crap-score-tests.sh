@@ -20,3 +20,5 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 python3 "$ROOT/tests/crap-score/test_crap_score_joins.py"
+
+python3 "$ROOT/tests/crap-score/test_crap_strict.py"
