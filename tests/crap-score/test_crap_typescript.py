@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Hermetic provider-contract tests; opt-in real compiler tests never download it."""
 
+import copy
 import hashlib
 import importlib.util
 import json
@@ -178,6 +179,92 @@ class TypeScriptContract(unittest.TestCase):
     def test_coverage_malformed_unused_counters(self):
         self.coverage["code.ts"]["f"] = {"invented": 1}
         self.incomplete("counter inventory mismatch")
+
+    def implicit_else(self):
+        location = {"start": {"line": 1, "column": 0}, "end": {"line": 1, "column": 28}}
+        self.coverage["code.ts"]["branchMap"] = {
+            "0": {"type": "if", "loc": location, "locations": [copy.deepcopy(location), {"start": {}, "end": {}}]}
+        }
+        self.coverage["code.ts"]["b"] = {"0": [1, 0]}
+
+    def test_implicit_else_no_source_location(self):
+        self.implicit_else()
+        report = self.measure()
+        self.assertTrue(report["complete"], report["reasons"])
+        self.assertEqual(report["methods"][0]["coverage"], 100)
+        self.assertEqual(self.coverage["code.ts"]["branchMap"]["0"]["locations"][1], {"start": {}, "end": {}})
+        self.coverage["code.ts"]["b"]["0"] = [0, 2]
+        self.assertTrue(self.measure()["complete"])
+
+    def test_implicit_else_rejects_near_miss_shapes(self):
+        def replace_type(entry):
+            entry["type"] = "cond-expr"
+
+        def reverse(entry):
+            entry["locations"].reverse()
+
+        def third(entry):
+            entry["locations"].append(copy.deepcopy(entry["locations"][0]))
+
+        def absent_parent(entry):
+            del entry["loc"]
+
+        def empty_parent(entry):
+            entry["loc"] = {"start": {}, "end": {}}
+
+        def invalid_parent(entry):
+            entry["loc"]["end"]["column"] = 999
+
+        def empty_first(entry):
+            entry["locations"][0] = {"start": {}, "end": {}}
+
+        def invalid_first(entry):
+            entry["locations"][0]["start"]["column"] = -1
+
+        mutations = [
+            replace_type,
+            reverse,
+            third,
+            absent_parent,
+            empty_parent,
+            invalid_parent,
+            empty_first,
+            invalid_first,
+        ]
+        for mutate in mutations:
+            with self.subTest(mutation=mutate.__name__):
+                self.implicit_else()
+                mutate(self.coverage["code.ts"]["branchMap"]["0"])
+                report = self.measure()
+                self.assertFalse(report["complete"])
+        for sentinel in (
+            {},
+            {"start": {}},
+            {"start": None, "end": None},
+            {"start": {}, "end": {}, "extra": True},
+            {"start": {"line": 1, "column": float("nan")}, "end": {}},
+            {"start": {}, "end": {"line": 1, "column": float("inf")}},
+        ):
+            with self.subTest(sentinel=sentinel):
+                self.implicit_else()
+                self.coverage["code.ts"]["branchMap"]["0"]["locations"][1] = sentinel
+                self.assertFalse(self.measure()["complete"])
+
+    def test_implicit_else_still_requires_valid_counters(self):
+        for values in ([1, -1], [1, True], [1, float("inf")], [1, None], [1], [1, 0, 0]):
+            with self.subTest(values=values):
+                self.implicit_else()
+                self.coverage["code.ts"]["b"]["0"] = values
+                self.assertFalse(self.measure()["complete"])
+
+    def test_empty_locations_remain_invalid_for_functions_and_statements(self):
+        empty = {"start": {}, "end": {}}
+        self.coverage["code.ts"]["statementMap"]["0"] = empty
+        self.incomplete("invalid Istanbul location")
+        self.coverage["code.ts"] = coverage_record("code.ts")
+        self.coverage["code.ts"]["fnMap"] = {"0": {"loc": empty}}
+        self.coverage["code.ts"]["f"] = {"0": 1}
+        self.incomplete("invalid Istanbul location")
 
     def test_zero_function_runtime_requires_coverage(self):
         self.record.update(inventory=[], methods=[])
