@@ -1,0 +1,13 @@
+{
+  "name": "example-plugin-11",
+  "version": "2.11.0",
+  "description": "Generate a concise summary of a pull request diff, highlighting risk areas, then propose follow-up tests.",
+  "author": {
+    "name": "Jeremy Longshore",
+    "email": "jeremy@intentsolutions.io"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/example-plugin-11",
+  "keywords": ["plugin", "kw-11"],
+  "commands": ["/example-11"]
+}

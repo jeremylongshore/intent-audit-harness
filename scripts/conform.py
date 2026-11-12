@@ -511,7 +511,7 @@ def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor
     enforcement = gate.get("enforcement", "advisory")
     registry = {}
     tier_meta = {"tier": "floor"}
-    if tier == "marketplace" and kind in ("skillmd", "marketplace"):
+    if tier == "marketplace" and kind in ("skillmd", "marketplace", "agent", "plugin"):
         schema, registry, policy_hash, label, reason = load_kernel(kind)
         if schema is None:
             rows.append(make_row(
@@ -581,7 +581,7 @@ def main():
                     help="Treat every conformance violation as FAIL (exit 1), ignoring advisory default")
     ap.add_argument("--tier", choices=TIERS, default="floor",
                     help="Schema tier: 'floor' (default, harness conform/v1 floor) or 'marketplace' "
-                         "(SKILL.md and catalogs against pinned kernel authoring/v1 contracts)")
+                         "(skills, agents, plugins and catalogs against pinned kernel authoring/v1 contracts)")
     ap.add_argument("--registry", default=C.DEFAULT_REGISTRY, help="Path to the dimension-to-gate registry")
     ap.add_argument("--profile", default=None,
                     help="Use a pinned audit-profile/v1 (PATH or '-' for stdin) instead of classifying")

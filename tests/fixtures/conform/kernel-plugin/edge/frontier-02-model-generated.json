@@ -1,0 +1,13 @@
+{
+  "name": "example-plugin-12",
+  "version": "2.12.0",
+  "description": "Triage an inbound support ticket: classify intent, extract entities, and draft a grounded reply.",
+  "author": {
+    "name": "Jeremy Longshore",
+    "email": "jeremy@intentsolutions.io"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/example-plugin-12",
+  "keywords": ["plugin", "kw-12"],
+  "commands": ["/example-12"]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "example-plugin-8",
+  "version": "2.8.0",
+  "description": "Example plugin number 8.",
+  "author": {
+    "name": "Jeremy Longshore",
+    "email": "jeremy@intentsolutions.io"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/example-plugin-8",
+  "keywords": ["plugin", "kw-8"],
+  "commands": ["/example-8"],
+  "unknownVendorField": {
+    "foo": "bar"
+  }
+}

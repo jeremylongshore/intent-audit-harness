@@ -1,0 +1,9 @@
+{
+  "name": "example-agent-0",
+  "tools": ["Read"],
+  "model": "sonnet",
+  "color": "blue",
+  "version": "1.0.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-0"]
+}

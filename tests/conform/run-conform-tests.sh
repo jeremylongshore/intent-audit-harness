@@ -279,5 +279,11 @@ else
   fail "published marketplace catalog corpus and CLI admission"
 fi
 
+if python3 "$ROOT/tests/conform/test_agent_plugin_kernel.py"; then
+  pass "published agent/plugin corpora and CLI admission"
+else
+  fail "published agent/plugin corpora and CLI admission"
+fi
+
 echo "conform suite: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
