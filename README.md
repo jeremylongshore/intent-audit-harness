@@ -50,6 +50,12 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 The npm package is the canonical, actively released distribution. The Rust
 wrapper remains an optional crates.io distribution.
 
+The command table above describes the npm CLI. `classify` and `conform`, including
+their bundled registry and schemas, are supported through npm and `install.sh`.
+The Rust and frozen Python wrappers expose only `verify`, `init`, `list`,
+`escape-scan`, `arch`, `bias`, `gherkin-lint`, and `crap`; they do not provide
+`classify` or `conform`. See the [distribution contract](000-docs/015-AT-DECR-classify-conform-distribution-contract-2026-11-12.md).
+
 **Node / JS / TS** (from npm):
 
 ```bash
@@ -67,6 +73,10 @@ package above or use the vendored-script path below.
 ```bash
 cargo install intent-audit-harness
 ```
+
+For classification and conformance in Rust or Python projects, use the npm package
+or the vendored installer below. The language of the audited project does not
+require the same-language wrapper.
 
 **Any other language** (Go, Ruby, PHP, Java, .NET, shell, etc.) — vendor the scripts:
 
