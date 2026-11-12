@@ -8,6 +8,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Ignore local Git replacement refs when preparing release assets, so the pinned
+  commit cannot label substituted installer or archive bytes. Refs bead
+  `bd_000-projects-k5e22.1`.
+
 - Stage vendored harness upgrades before replacing the existing installation,
   preserving its tree and wrapper on failed downloads, invalid archives,
   publication errors and catchable interruption. Refuse unsafe archive entries
