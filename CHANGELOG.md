@@ -16,6 +16,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Advisory native Node coverage collected alongside the existing Python
+  measurement run, using an isolated locked c8 provider. Exact source/report
+  inventories retain unexecuted files and reject incomplete or inconsistent
+  observations. Public CLI defaults, runtime dependencies and policy thresholds
+  are unchanged; Node AST complexity and mutation remain unmeasured. Refs bead
+  `bd_000-projects-0wvb`.
+
 - Strict TypeScript CRAP measurement through a caller-installed compiler, with
   explicit function inventory and validated Istanbul file-statement coverage
   proxy. Missing runtime evidence refuses completion; type-only files are
