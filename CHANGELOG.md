@@ -25,6 +25,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Opt-in published marketplace catalog conformance with content-pinned kernel
+  schemas, explicit unsupported-schema admission and upstream corpus parity.
+
 - Prepare installer release assets from an exact tag/commit, sign their checksum
   manifest with the pinned release-workflow identity and verify private snapshots
   before publication or consumer execution. Include offline identity, tamper and

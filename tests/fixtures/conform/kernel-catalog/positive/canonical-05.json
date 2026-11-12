@@ -1,0 +1,17 @@
+{
+  "name": "example-marketplace-5",
+  "owner": {
+    "name": "Jeremy Longshore"
+  },
+  "plugins": [
+    {
+      "name": "plugin-5",
+      "source": "./plugins/plugin-5"
+    }
+  ],
+  "version": "1.5.0",
+  "description": "Example marketplace catalog number 5.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/marketplace-5",
+  "keywords": ["marketplace", "kw-5"]
+}

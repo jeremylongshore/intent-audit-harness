@@ -273,5 +273,11 @@ else
 fi
 
 echo ""
+if python3 "$ROOT/tests/conform/test_catalog_kernel.py"; then
+  pass "published marketplace catalog corpus and CLI admission"
+else
+  fail "published marketplace catalog corpus and CLI admission"
+fi
+
 echo "conform suite: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

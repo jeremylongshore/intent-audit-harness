@@ -1,0 +1,17 @@
+{
+  "name": "example-marketplace-12",
+  "owner": {
+    "name": "Jeremy Longshore"
+  },
+  "plugins": [
+    {
+      "name": "plugin-12",
+      "source": "./plugins/plugin-12"
+    }
+  ],
+  "version": "1.12.0",
+  "description": "Triage an inbound support ticket: classify intent, extract entities, and draft a grounded reply.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/marketplace-12",
+  "keywords": ["marketplace", "kw-12"]
+}

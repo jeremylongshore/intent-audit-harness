@@ -1,0 +1,15 @@
+{
+  "name": "example-marketplace-0",
+  "owner": "should-be-object",
+  "plugins": [
+    {
+      "name": "plugin-0",
+      "source": "./plugins/plugin-0"
+    }
+  ],
+  "version": "1.0.0",
+  "description": "Example marketplace catalog number 0.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/marketplace-0",
+  "keywords": ["marketplace", "kw-0"]
+}

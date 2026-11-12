@@ -1,0 +1,17 @@
+{
+  "name": "example-marketplace-11",
+  "owner": {
+    "name": "Jeremy Longshore"
+  },
+  "plugins": [
+    {
+      "name": "plugin-11",
+      "source": "./plugins/plugin-11"
+    }
+  ],
+  "version": "1.11.0",
+  "description": "Generate a concise summary of a pull request diff, highlighting risk areas, then propose follow-up tests.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/marketplace-11",
+  "keywords": ["marketplace", "kw-11"]
+}
