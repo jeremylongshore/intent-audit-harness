@@ -84,6 +84,21 @@ require the same-language wrapper.
 curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/main/install.sh | bash
 ```
 
+The installer prepares a replacement before changing the existing harness or
+wrapper. Failed downloads, invalid archives and catchable publication failures
+leave the prior installation usable. Archive links/special files and symlink
+installation destinations are refused. Explicit versions and offline tarball
+URLs remain supported; this validation is not release-signature verification.
+
+A repository-local `.audit-harness-install.lock` serializes installations. On
+SIGKILL or power loss, traps cannot restore state: the lock and private
+`.audit-harness-install.*` directory remain for inspection. Do not simply delete
+them and retry. With no installer running, inspect `previous-tree` and
+`previous-wrapper` backups, restore the prior pair if publication was incomplete,
+and retain recovery evidence before removing the stale lock. Two destination
+renames are recoverable on ordinary failure, not a single atomic filesystem
+transaction or a guarantee against concurrent external edits.
+
 ## Quick usage
 
 ### Strict CRAP measurement (unreleased)
