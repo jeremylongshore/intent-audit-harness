@@ -57,7 +57,10 @@ gh release download "$HARNESS_RELEASE_TAG" \
 python3 "$TRUSTED_HARNESS/scripts/verify-release-assets.py" \
   --source "$downloads" --output "$downloads/verified" \
   --tag "$HARNESS_RELEASE_TAG" --expected-commit "$HARNESS_RELEASE_COMMIT"
-AUDIT_HARNESS_TARBALL_URL="file://$downloads/verified/audit-harness.tar.gz" \
+verified_archive_uri="$(python3 -c \
+  'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().as_uri())' \
+  "$downloads/verified/audit-harness.tar.gz")"
+AUDIT_HARNESS_TARBALL_URL="$verified_archive_uri" \
   bash "$downloads/verified/install.sh" --version "$HARNESS_RELEASE_TAG"
 )
 ```
