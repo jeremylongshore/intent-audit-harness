@@ -99,6 +99,14 @@ and retain recovery evidence before removing the stale lock. Two destination
 renames are recoverable on ordinary failure, not a single atomic filesystem
 transaction or a guarantee against concurrent external edits.
 
+**Verified release assets (unreleased):** the next release workflow prepares a
+commit-bound installer/archive checksum manifest and Sigstore verification
+bundle. Use an independently trusted verifier and expected release commit before
+executing either payload. The current `curl | bash` example does not perform that
+verification. See the [verified installer contract](000-docs/016-AT-SPEC-verified-installer-release-assets-2026-11-12.md)
+for the download, verification and installation sequence; existing releases are
+not claimed to contain these assets.
+
 ## Quick usage
 
 ### Strict CRAP measurement (unreleased)

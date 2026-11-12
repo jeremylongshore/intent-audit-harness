@@ -21,6 +21,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Prepare installer release assets from an exact tag/commit, sign their checksum
+  manifest with the pinned release-workflow identity and verify private snapshots
+  before publication or consumer execution. Include offline identity, tamper and
+  filesystem-boundary tests. Signing assets remain unreleased; the verifier must
+  come from an independently trusted source. Refs bead `bd_000-projects-k5e22`.
+
 - Advisory native Node coverage collected alongside the existing Python
   measurement run, using an isolated locked c8 provider. Exact source/report
   inventories retain unexecuted files and reject incomplete or inconsistent

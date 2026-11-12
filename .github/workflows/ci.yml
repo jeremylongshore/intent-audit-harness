@@ -644,6 +644,8 @@ jobs:
         run: bash tests/conform/run-conform-tests.sh
       - name: Run installer offline suite (fresh install.sh can run conform)
         run: bash tests/install/run-install-tests.sh
+      - name: Verify release asset identity and pre-execution checks offline
+        run: python3 -m unittest discover -s tests/release-assets -p 'test_*.py'
 
   audit:
     name: audit golden suite (testing-depth gate-runner)
