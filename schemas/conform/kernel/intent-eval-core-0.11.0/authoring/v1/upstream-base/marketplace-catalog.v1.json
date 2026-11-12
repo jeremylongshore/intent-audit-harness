@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/upstream-base/marketplace-catalog.v1.json",
+  "title": "marketplace-catalog — UPSTREAM BASE (authored by Anthropic/Claude Code, not by IS)",
+  "description": "The upstream projection of the marketplace-catalog contract: the `.claude-plugin/marketplace.json` catalog shape owned by Claude Code. THIS FILE IS A VENDORED PROJECTION — it encodes ONLY what the upstream documents, never an IS-specific rule. IS-specific required fields and constraints live in is-overlay/marketplace-catalog.v1.json. Convergence (upstream makes one of our overlay extras required) is a mechanical MOVE of a field from is-overlay → here, not an in-place re-edit. Per the upstream doc the Required fields are exactly [name, owner, plugins]; owner is an object with a required `name`; each plugin entry needs at minimum a `name` and a `source`. So the standardFloor here is [name, owner, plugins].",
+  "$comment": "PROVENANCE. Authority (registry contract 'marketplace-catalog' primary surfaces): code.claude.com/docs/en/plugin-marketplaces § 'Required fields' / 'Owner fields' / 'Plugin entries' tables; github.com/anthropics/claude-plugins-official. Captured 2026-06-11 from code.claude.com/docs/en/plugin-marketplaces; no vendored deep-capture exists yet (registry vendored=null) — a vendored reconciliation is a PUBLISHED-promotion precondition (DR-049). VERBATIM upstream facts encoded here: (1) Required fields table: name (string), owner (object), plugins (array) ⇒ required:[name, owner, plugins]. (2) name = string, 'Marketplace identifier (kebab-case, no spaces)' ⇒ kebab-case + non-empty (the corpus constraint-name-empty / constraint-name-spaces / constraint-name-uppercase negatives). (3) owner = object; Owner fields table: name (string, Required Yes), email (string, Required No) ⇒ object with required inner name (the corpus constraint-owner-missing-name supplies {} and type-owner supplies a bare string). (4) plugins = array; 'List of available plugins'; 'Each plugin entry needs at minimum a name and source' ⇒ array of objects each requiring [name, source]. The corpus constraint-plugins-empty rejects [] (a catalog with zero plugins is not a marketplace), so minItems:1; type-plugins supplies a bare string. NOTE: the base does NOT cap description length — the universal disclosureMarkers fold (1536) is the operative IS cap. NOTE: the optional `metadata` object (metadata.pluginRoot upstream; vendor namespaces) is a generic object — the corpus edge-02-extra-optional-metadata fixture exercises it.",
+  "type": "object",
+  "required": ["name", "owner", "plugins"],
+  "properties": {
+    "name": {
+      "$comment": "code.claude.com/docs/en/plugin-marketplaces (Required fields table): string, 'Marketplace identifier (kebab-case, no spaces)'. The pattern enforces the kebab-case + non-empty surface the corpus tests (constraint-name-empty / constraint-name-spaces / constraint-name-uppercase).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    },
+    "owner": {
+      "$comment": "code.claude.com/docs/en/plugin-marketplaces (Required fields + Owner fields tables): object, 'Marketplace maintainer information'. The Owner fields table marks `name` Required:Yes and `email` Required:No, so the base requires the inner name (the corpus constraint-owner-missing-name supplies {}; type-owner supplies a bare string).",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "email": { "type": "string" }
+      }
+    },
+    "plugins": {
+      "$comment": "code.claude.com/docs/en/plugin-marketplaces (Required fields + Plugin entries tables): array, 'List of available plugins'. Each entry 'needs at minimum a name and source', so each is an object requiring [name, source]. The corpus constraint-plugins-empty rejects [] (minItems:1) and type-plugins supplies a bare string.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "metadata": {
+      "$comment": "code.claude.com/docs/en/plugin-marketplaces (Optional fields): a metadata object (e.g. metadata.pluginRoot) + vendor namespaces. Left as a generic object so a vendor namespace conforms. The corpus edge-02-extra-optional-metadata fixture exercises this.",
+      "type": "object"
+    }
+  }
+}

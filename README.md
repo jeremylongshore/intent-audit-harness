@@ -35,7 +35,7 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 | `audit-harness crap` | CRAP (Complexity × Coverage) scorer — Python, Go, JS/TS, Rust |
 | `audit-harness emit-evidence` | Wrap a gate-result JSON envelope in an in-toto Statement v1 (predicate `gate-result/v1`); `--output FILE` writes one row, `--append-to BUNDLE` appends it to the JSON-array bundle `intent-rollout-gate` consumes |
 | `audit-harness classify` | Read-only repo classifier → an `audit-profile/v1` value (never writes) |
-| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks SKILL.md against the encoded structural rules of the pinned kernel `authoring/v1` skill-frontmatter contract (default `--tier floor`: name + description) |
+| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks SKILL.md and marketplace catalogs against their encoded pinned kernel `authoring/v1` contracts (default `--tier floor`: name + description) |
 | `audit-harness audit` | Read-only testing-depth gate-runner → coverage presence per pyramid layer + crap-score |
 | `audit-harness scan` | Security/hygiene/skill-quality gates; `--fail-closed` requires OSV and profile-required security scanners; optional SBOM export stays outside the audited repo |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
@@ -332,3 +332,31 @@ structural conformance limits and the pinned snapshot’s allowed-tools prose
 discrepancy. The installer copies available `docs/` alongside README so its
 relative documentation links remain usable. Older archives without docs remain
 installable; this does not add files to previously published releases.
+
+### Marketplace catalog conformance
+
+`audit-harness conform . --tier marketplace` now includes a discovered
+`.claude-plugin/marketplace.json` or `marketplace.json`, using the unmodified
+published `@intentsolutions/core@0.11.0` authoring/v1 catalog composition and
+shared folds. Invalid catalogs produce advisory findings by default; `--strict`
+turns measured violations into failures. The default floor tier still reports
+catalogs as unmeasured. Hook conformance remains unmeasured in either tier.
+
+The pin identifies the package archive and every bundled schema byte. Its hash
+binds the selected policy in each result. Expanding this shared manifest also
+changes the policy hash of existing marketplace-tier skill rows, although their
+schema bytes and rules are unchanged. Missing or changed schema bytes,
+unresolved/recursive references, and unsupported reachable assertion keywords
+produce an explicit indeterminate advisory instead of a passing verdict. This
+is the encoded published v1 structural contract, not the internal v2 contract,
+source-directory existence checks, license ratification, or the skills' rubric.
+The 40 upstream catalog fixtures are retained with their exact tag, commit and
+hashes and checked against a reference JSON Schema validator in the existing
+conformance suite. This proves parity on that corpus, not arbitrary-schema
+equivalence. The reference runs without a FormatChecker; the existing embedded
+URI/URL check recognizes a lexical scheme and does not establish complete URI
+validity. The published skill schema explicitly reserves its
+`x-mutually-exclusive-fields` annotation for generated Zod; that existing
+cross-field carve-out remains outside structural conformance. Other unknown
+keywords are not implicitly admitted. No production JSON Schema dependency or
+network fetch is added.

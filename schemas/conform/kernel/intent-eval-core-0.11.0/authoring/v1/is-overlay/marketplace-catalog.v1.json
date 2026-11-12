@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/is-overlay/marketplace-catalog.v1.json",
+  "title": "marketplace-catalog — IS OVERLAY (authored by Intent Solutions)",
+  "description": "The Intent-Solutions-only delta on top of upstream-base/marketplace-catalog.v1.json. THIS FILE IS THE ONLY PLACE IS POLICY LIVES for this contract. Upstream requires [name, owner, plugins]; the IS marketplace tier promotes five upstream-optional fields (version, description, license, homepage, keywords) to IS-required and narrows `version` to strict SemVer 2.0.0. By the monotonic-additive invariant (DR-044 D7 + CSO position): the overlay may only ADD required fields and NARROW constraints relative to the base — never subtract a base requirement or loosen a base constraint. Each field carries its upstream-convergence trigger.",
+  "$comment": "OVERLAY REQUIRED DELTA (beyond the base floor [name, owner, plugins]): [version, description, license, homepage, keywords]. Union with the base floor = the IS 8-field marketplace-catalog required set {name, owner, plugins, version, description, license, homepage, keywords} — the corpus's missing-* negatives (one per field) are the ground truth this delta is decomposed against. This required set evolves under ISEDC Class-1 ratification only (the 2026-04-28-debacle guard). Citations: code.claude.com/docs/en/plugin-marketplaces; tests/authoring/v1/fixtures/marketplace-catalog/ (the corpus-first golden ground truth, plan 033 § 14.21).",
+  "type": "object",
+  "required": ["version", "description", "license", "homepage", "keywords"],
+  "properties": {
+    "version": {
+      "$comment": "IS: promoted from upstream-OPTIONAL ('Marketplace manifest version') to IS-REQUIRED, and NARROWED to strict SemVer 2.0.0 (the upstream does not pin a grammar). The corpus type-version negative supplies a number; missing-version requires presence. CONVERGENCE TRIGGER: if code.claude.com/docs/en/plugin-marketplaces makes version required (or pins SemVer), move the required-membership (and/or pattern) to upstream-base.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "description": {
+      "$comment": "IS: promoted from upstream-OPTIONAL ('Brief marketplace description') to IS-REQUIRED (the universal disclosureMarkers fold caps its length at 1536). CONVERGENCE TRIGGER: if the upstream makes description required, move the required-membership to upstream-base.",
+      "type": "string",
+      "minLength": 1
+    },
+    "license": {
+      "$comment": "IS: net-new IS-required field (the marketplace.json Optional fields table has no top-level license; the IS marketplace tier requires every published catalog to declare a license, mirroring the skill/plugin marketplace-tier requirement). The corpus missing-license requires presence. CONVERGENCE TRIGGER: if the upstream adds a required top-level license, move the required-membership to upstream-base.",
+      "type": "string",
+      "minLength": 1
+    },
+    "homepage": {
+      "$comment": "IS: net-new IS-required field (the marketplace.json has no top-level homepage; the IS marketplace tier requires a documentation/source URL). URI format enforced (the corpus fixtures supply github.com URLs). CONVERGENCE TRIGGER: if the upstream adds a required top-level homepage, move the required-membership to upstream-base.",
+      "type": "string",
+      "format": "uri"
+    },
+    "keywords": {
+      "$comment": "IS: net-new IS-required discovery field (array of strings; the corpus type-keywords negative supplies a bare string). Mirrors the plugin-manifest keywords requirement. CONVERGENCE TRIGGER: if the upstream adds a required top-level keywords array, move the required-membership to upstream-base.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

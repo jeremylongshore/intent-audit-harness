@@ -1,0 +1,17 @@
+{
+  "name": "example-marketplace-4",
+  "owner": {
+    "name": "Jeremy Longshore"
+  },
+  "plugins": [
+    {
+      "name": "plugin-4",
+      "source": "./plugins/plugin-4"
+    }
+  ],
+  "version": "1.4.0",
+  "description": "A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/marketplace-4",
+  "keywords": ["marketplace", "kw-4"]
+}

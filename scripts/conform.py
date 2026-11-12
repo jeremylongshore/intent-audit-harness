@@ -128,6 +128,56 @@ def _resolve_ref(ref, ctx):
     return node, {"root": doc, "registry": ctx["registry"]}
 
 
+def kernel_schema_admission(schema, registry):
+    """Refuse unsupported reachable kernel assertions rather than silently ignore them."""
+    supported = {
+        "$schema", "$id", "$ref", "$defs", "$comment", "title", "description",
+        "default", "examples", "type", "enum", "const", "minLength", "maxLength",
+        "pattern", "format", "minItems", "maxItems", "items", "required",
+        "properties", "additionalProperties", "allOf", "anyOf", "oneOf", "not",
+        # Published kyh9 annotation explicitly belongs to generated Zod, not JSON Schema.
+        "x-mutually-exclusive-fields",
+    }
+    active, checked = set(), set()
+
+    def visit(node, ctx):
+        if not isinstance(node, dict):
+            return "unsupported non-object kernel schema"
+        identity = (id(node), id(ctx["root"]))
+        if identity in active:
+            return "recursive kernel schema is unsupported"
+        if identity in checked:
+            return None
+        unknown = sorted(set(node) - supported)
+        if unknown:
+            return "unsupported kernel schema keyword: " + ", ".join(unknown)
+        if "format" in node and node["format"] not in ("uri", "url"):
+            return "unsupported kernel schema format: " + str(node["format"])
+        active.add(identity)
+        children = [(child, ctx) for child in node.get("properties", {}).values()]
+        for keyword in ("items", "not"):
+            if keyword in node:
+                children.append((node[keyword], ctx))
+        if isinstance(node.get("additionalProperties"), dict):
+            children.append((node["additionalProperties"], ctx))
+        for keyword in ("allOf", "anyOf", "oneOf"):
+            children.extend((child, ctx) for child in node.get(keyword, []))
+        if "$ref" in node:
+            target, target_ctx = _resolve_ref(node["$ref"], ctx)
+            if target is None:
+                return "unresolvable kernel schema reference: " + node["$ref"]
+            children.append((target, target_ctx))
+        for child, child_ctx in children:
+            reason = visit(child, child_ctx)
+            if reason:
+                return reason
+        active.remove(identity)
+        checked.add(identity)
+        return None
+
+    return visit(schema, {"root": schema, "registry": registry})
+
+
 def validate_instance(inst, schema, path="$", _ctx=None):
     """Return a list of human-readable violation strings ([] == valid)."""
     errs = []
@@ -449,6 +499,9 @@ def load_kernel(kind, kernel_dir=None):
     if entry not in pin.get("files", {}):
         return None, None, None, None, f"kernel entry {entry} is not pinned"
     schema = C.read_json(os.path.join(kdir, entry))
+    reason = kernel_schema_admission(schema, registry)
+    if reason:
+        return None, None, None, None, reason
     label = f"{pin.get('package', '?')}@{pin.get('version', '?')}"
     return schema, registry, C.sha256_file(pin_path), label, None
 
@@ -458,7 +511,7 @@ def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor
     enforcement = gate.get("enforcement", "advisory")
     registry = {}
     tier_meta = {"tier": "floor"}
-    if tier == "marketplace" and kind == "skillmd":
+    if tier == "marketplace" and kind in ("skillmd", "marketplace"):
         schema, registry, policy_hash, label, reason = load_kernel(kind)
         if schema is None:
             rows.append(make_row(
@@ -528,7 +581,7 @@ def main():
                     help="Treat every conformance violation as FAIL (exit 1), ignoring advisory default")
     ap.add_argument("--tier", choices=TIERS, default="floor",
                     help="Schema tier: 'floor' (default, harness conform/v1 floor) or 'marketplace' "
-                         "(SKILL.md against the pinned kernel authoring/v1 skill-frontmatter contract)")
+                         "(SKILL.md and catalogs against pinned kernel authoring/v1 contracts)")
     ap.add_argument("--registry", default=C.DEFAULT_REGISTRY, help="Path to the dimension-to-gate registry")
     ap.add_argument("--profile", default=None,
                     help="Use a pinned audit-profile/v1 (PATH or '-' for stdin) instead of classifying")
@@ -562,7 +615,7 @@ def main():
                 runner=runner, metadata={"kind": kind, "reason": "no matching artifact found in repo"},
             ))
             continue
-        if kind in BUNDLED:
+        if kind in BUNDLED or (args.tier == "marketplace" and kind == "marketplace"):
             rows += run_bundled(kind, gate, files, commit_sha, runner, repo, args.strict, args.tier)
         elif kind in SHELLOUT:
             rows += run_shellout(kind, gate, files, commit_sha, runner, repo, args.strict)
