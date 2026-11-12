@@ -18,7 +18,9 @@ def git_env():
 
 
 def git(repo, *args):
-    return subprocess.check_output(["git", "-C", str(repo), *args], env=git_env())
+    return subprocess.check_output(
+        ["git", "--no-replace-objects", "-C", str(repo), *args], env=git_env(),
+    )
 
 
 def build_assets(repo, tag, expected_commit, output):
@@ -45,7 +47,7 @@ def build_assets(repo, tag, expected_commit, output):
         with archive.open("wb") as stream:
             with gzip.GzipFile(filename="", mode="wb", fileobj=stream, mtime=0) as compressed:
                 with subprocess.Popen(
-                    ["git", "-C", str(repo), "archive", "--format=tar",
+                    ["git", "--no-replace-objects", "-C", str(repo), "archive", "--format=tar",
                      f"--prefix=intent-audit-harness-{tag[1:]}/", commit],
                     stdout=subprocess.PIPE,
                     env=git_env(),

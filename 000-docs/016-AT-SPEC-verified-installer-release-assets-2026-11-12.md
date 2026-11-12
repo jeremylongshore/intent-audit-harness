@@ -10,6 +10,8 @@ The tag-only release workflow builds `install.sh`, `audit-harness.tar.gz` and
 resolve to that full commit and its package version must match the tag. The
 builder reads Git objects rather than dirty or untracked worktree files, and
 discards inherited `GIT_*` settings that could redirect repository selection.
+All object reads also disable local replacement refs, so an unchanged reported
+commit cannot refer to substituted installer or archive content.
 The archive uses a deterministic gzip header. Existing output is never replaced.
 
 `SHA256SUMS` binds exactly those three payloads, including the repository, tag,

@@ -94,6 +94,23 @@ class ReleaseAssets(unittest.TestCase):
             self.build()
         self.assertEqual((self.root / "assets/install.sh").read_bytes(), self.installer)
 
+    def test_replacement_refs_cannot_substitute_bytes_under_the_original_commit(self):
+        replacement = b"#!/usr/bin/env bash\nprintf 'replacement fixture only\\n'\n"
+        (self.repo / "install.sh").write_bytes(replacement)
+        self.git("add", "install.sh")
+        self.git("commit", "-qm", "replacement fixture")
+        replacement_commit = self.git("rev-parse", "HEAD").strip()
+        self.git("replace", self.commit, replacement_commit)
+        # Establish the fixture really redirects an ordinary Git object read.
+        self.assertEqual(self.git("show", f"{self.commit}:install.sh").encode(), replacement)
+        self.assertEqual(self.build()["commit"], self.commit)
+        self.assertEqual((self.root / "assets/install.sh").read_bytes(), self.installer)
+        with tarfile.open(self.root / "assets/audit-harness.tar.gz") as archive:
+            self.assertEqual(
+                archive.extractfile("intent-audit-harness-2.0.0/install.sh").read(),
+                self.installer,
+            )
+
     def test_rejects_symbolic_commit_and_nonversion_tag(self):
         for kwargs in ({"expected_commit": "HEAD"}, {"tag": "main"}, {"tag": "v2.0.0/other"}):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
