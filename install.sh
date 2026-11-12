@@ -106,24 +106,83 @@ cd "$REPO_ROOT"
 
 echo "→ installing @intentsolutions/audit-harness ${VERSION} into ${REPO_ROOT}  [version from: ${VERSION_SOURCE}]"
 
-# Clean previous install
-if [[ -d "${TARGET_DIR}" ]]; then
-  echo "  removing existing ${TARGET_DIR}/"
-  rm -rf "${TARGET_DIR}"
+# Refuse redirected destinations before staging or touching the existing install.
+for path in "$TARGET_DIR" "$WRAPPER_DIR" "$WRAPPER_PATH"; do
+  if [[ -L "$path" ]]; then
+    echo "✗ refusing symlink install destination: $path" >&2
+    exit 2
+  fi
+done
+if [[ ( -e "$TARGET_DIR" && ! -d "$TARGET_DIR" ) ||
+      ( -e "$WRAPPER_DIR" && ! -d "$WRAPPER_DIR" ) ||
+      ( -e "$WRAPPER_PATH" && ! -f "$WRAPPER_PATH" ) ]]; then
+  echo "✗ install destinations have incompatible file types" >&2
+  exit 2
 fi
 
-mkdir -p "${TARGET_DIR}" "${WRAPPER_DIR}"
+# Serialize cooperating installers. A stale lock is refused, never stolen.
+LOCK_DIR=".audit-harness-install.lock"
+if ! mkdir "$LOCK_DIR"; then
+  echo "✗ another install or retained recovery lock exists: $LOCK_DIR" >&2
+  exit 2
+fi
+TMP_DIR=""
+INSTALLING=0
+COMMITTED=0
+CREATED_WRAPPER_DIR=0
+cleanup_install() {
+  local rc=$? recovery_failed=0
+  trap - EXIT HUP INT TERM
+  if [[ "$INSTALLING" -eq 1 && "$COMMITTED" -eq 0 ]]; then
+    # Backups are renamed, not copied: retain original bytes and permissions.
+    if [[ -d "$TMP_DIR/previous-tree" ]]; then
+      if rm -rf "$REPO_ROOT/.audit-harness"; then
+        mv -f "$TMP_DIR/previous-tree" "$REPO_ROOT/.audit-harness" || recovery_failed=1
+      else
+        recovery_failed=1
+      fi
+    elif [[ ! -e "$TMP_DIR/new-tree" ]]; then
+      rm -rf "$REPO_ROOT/.audit-harness"
+    fi
+    if [[ -f "$TMP_DIR/previous-wrapper" ]]; then
+      if rm -f "$REPO_ROOT/scripts/audit-harness"; then
+        mv -f "$TMP_DIR/previous-wrapper" "$REPO_ROOT/scripts/audit-harness" || recovery_failed=1
+      else
+        recovery_failed=1
+      fi
+    elif [[ ! -e "$TMP_DIR/new-wrapper" ]]; then
+      rm -f "$REPO_ROOT/scripts/audit-harness"
+    fi
+    if [[ "$CREATED_WRAPPER_DIR" -eq 1 ]]; then
+      rmdir "$REPO_ROOT/scripts" 2>/dev/null || true
+    fi
+  fi
+  if [[ "$recovery_failed" -eq 1 ]]; then
+    echo "✗ recovery incomplete; retained backups at $TMP_DIR and lock $LOCK_DIR" >&2
+    exit 2
+  fi
+  [[ -z "$TMP_DIR" ]] || rm -rf "$TMP_DIR"
+  rmdir "$LOCK_DIR"
+  exit "$rc"
+}
+trap cleanup_install EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# Stage on the destination filesystem so all publication/rollback moves rename.
+TMP_DIR="$(mktemp -d "$REPO_ROOT/.audit-harness-install.XXXXXX")"
+FINAL_TARGET_DIR="$TARGET_DIR"
+FINAL_WRAPPER_PATH="$WRAPPER_PATH"
+TARGET_DIR="$TMP_DIR/new-tree"
+WRAPPER_PATH="$TMP_DIR/new-wrapper"
+mkdir "$TARGET_DIR"
 
-# Download tarball from GitHub release. AUDIT_HARNESS_TARBALL_URL overrides the
-# source (any URL curl/wget accepts, including file:// for an air-gapped mirror);
-# the override is recorded in PROVENANCE so the vendored tree stays traceable.
+# The override remains supported for explicit offline release archives.
 TARBALL_URL="${AUDIT_HARNESS_TARBALL_URL:-https://github.com/${REPO}/archive/refs/tags/${VERSION}.tar.gz}"
-TMP_DIR="$(mktemp -d)"
-trap 'rm -rf "${TMP_DIR}"' EXIT
 
 echo "  downloading ${TARBALL_URL}"
 if command -v curl >/dev/null 2>&1; then
-  curl -sSL "${TARBALL_URL}" -o "${TMP_DIR}/audit-harness.tar.gz"
+  curl -fsSL "${TARBALL_URL}" -o "${TMP_DIR}/audit-harness.tar.gz"
 elif command -v wget >/dev/null 2>&1; then
   wget -q "${TARBALL_URL}" -O "${TMP_DIR}/audit-harness.tar.gz"
 else
@@ -131,19 +190,40 @@ else
   exit 2
 fi
 
-echo "  extracting"
-tar -xzf "${TMP_DIR}/audit-harness.tar.gz" -C "${TMP_DIR}"
-
-# GitHub release tarball unpacks as: <repo>-<version>/ — i.e.
-# intent-audit-harness-<version>/ after the repo rename (stripped leading
-# 'v' in the dir name). The glob is leading-wildcard so it stays tolerant to
-# both the current `intent-audit-harness` repo name and the legacy
-# `audit-harness` name (pre-rename tags).
-UNPACKED_DIR="$(find "${TMP_DIR}" -maxdepth 1 -type d -name '*audit-harness-*' | head -1)"
-if [[ -z "${UNPACKED_DIR}" ]]; then
-  echo "✗ could not find unpacked dir in ${TMP_DIR}" >&2
-  exit 2
-fi
+# Validate members before extraction: one release root, regular files/directories
+# only, no traversal or link/device entries. No downloaded code is executed.
+tar -tzf "$TMP_DIR/audit-harness.tar.gz" > "$TMP_DIR/members"
+ROOT_NAME=""
+while IFS= read -r member; do
+  if [[ -z "$member" || "$member" == /* || "$member" == *\\* ||
+        "$member" =~ [[:cntrl:]] || "/$member/" == *"/../"* || "/$member/" == *"/./"* ]]; then
+    echo "✗ unsafe archive path" >&2
+    exit 2
+  fi
+  member_root="${member%%/*}"
+  if [[ "$member_root" != *audit-harness-* ||
+        ( -n "$ROOT_NAME" && "$member_root" != "$ROOT_NAME" ) ]]; then
+    echo "✗ archive must contain exactly one audit-harness release root" >&2
+    exit 2
+  fi
+  ROOT_NAME="$member_root"
+done < "$TMP_DIR/members"
+[[ -n "$ROOT_NAME" ]] || { echo "✗ empty archive" >&2; exit 2; }
+LC_ALL=C tar -tvzf "$TMP_DIR/audit-harness.tar.gz" > "$TMP_DIR/member-types"
+while IFS= read -r entry; do
+  case "$entry" in
+    -*|d*) ;;
+    *) echo "✗ archive contains a link or special file" >&2; exit 2 ;;
+  esac
+done < "$TMP_DIR/member-types"
+echo "  extracting into private staging directory"
+mkdir "$TMP_DIR/extracted"
+tar -xzf "$TMP_DIR/audit-harness.tar.gz" -C "$TMP_DIR/extracted"
+UNPACKED_DIR="$TMP_DIR/extracted/$ROOT_NAME"
+[[ -d "$UNPACKED_DIR/scripts" ]] || { echo "✗ release scripts directory missing" >&2; exit 2; }
+for required in harness-hash.sh escape-scan.sh; do
+  [[ -f "$UNPACKED_DIR/scripts/$required" ]] || { echo "✗ release missing $required" >&2; exit 2; }
+done
 
 # Copy scripts/ and metadata into .audit-harness/
 cp -r "${UNPACKED_DIR}/scripts" "${TARGET_DIR}/scripts"
@@ -287,6 +367,26 @@ esac
 WRAPPER_EOF
 
 chmod +x "${WRAPPER_PATH}"
+
+# Publish only after every staging operation has succeeded. EXIT/signal cleanup
+# restores both original paths if either rename fails. SIGKILL/power loss cannot
+# run traps; their retained lock/staging directory must be inspected for recovery.
+INSTALLING=1
+if [[ -d "$FINAL_TARGET_DIR" ]]; then
+  mv -f "$FINAL_TARGET_DIR" "$TMP_DIR/previous-tree"
+fi
+if [[ -f "$FINAL_WRAPPER_PATH" ]]; then
+  mv -f "$FINAL_WRAPPER_PATH" "$TMP_DIR/previous-wrapper"
+fi
+if [[ ! -d "$WRAPPER_DIR" ]]; then
+  mkdir "$WRAPPER_DIR"
+  CREATED_WRAPPER_DIR=1
+fi
+mv -f "$TARGET_DIR" "$FINAL_TARGET_DIR"
+mv -f "$WRAPPER_PATH" "$FINAL_WRAPPER_PATH"
+COMMITTED=1
+TARGET_DIR="$FINAL_TARGET_DIR"
+WRAPPER_PATH="$FINAL_WRAPPER_PATH"
 
 # Ensure .audit-harness/ is tracked (committed)
 # Don't add to .gitignore — we want engineers to see updates via PR

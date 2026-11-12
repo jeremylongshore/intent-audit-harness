@@ -8,6 +8,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Stage vendored harness upgrades before replacing the existing installation,
+  preserving its tree and wrapper on failed downloads, invalid archives,
+  publication errors and catchable interruption. Refuse unsafe archive entries
+  and symlink destinations; retain recovery state after uncatchable termination.
+
 - Strict Istanbul validation recognizes the exact implicit-else branch sentinel
   emitted by ast-v8-to-istanbul. The absent else arm has a counter and no source
   span; its enclosing if and first arm must still have valid locations. Missing
