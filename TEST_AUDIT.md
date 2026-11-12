@@ -147,3 +147,68 @@ The corrected report-only diff passed hash verification (97 existing pins) and
 escape scan (exit 0; zero REFUSE, CHALLENGE or FLAG findings). Markdown lint and
 offline local-link checks passed. Source, tests, thresholds, CI, protection,
 and contributor guides are unchanged.
+
+## Implementation addendum — 2026-11-12
+
+The sections above describe the historical October diagnostic, not current
+implementation status. The Python observation phase was delivered in PR #207;
+this continuation adds native Node observations to the same behavioral run.
+The original implementation plan accepts a nonempty actual Python baseline,
+explicit other-language limits, preserved default behavior and golden output,
+reviewed manifest initialization, and documented required-presence decisions.
+It does not establish a whole-repository coverage or mutation threshold.
+
+The corrected local candidate passed its combined qualification in 298.786
+seconds, including root dependency installation. The local driver substituted
+`npm run check` for `npm test` and retained the report-lineage and emit-evidence
+supplements. Each behavioral suite ran once; hosted CI retains its default
+invocation. Source/provider identity checks passed. Caches were uncontrolled;
+this is execution evidence, not a comparative speed or billing claim.
+
+| Measured scope | Files | Covered lines | Covered branches |
+| --- | --- | --- | --- |
+| Canonical Python production | 12 | 2550 / 3165 | 1127 / 1564 |
+| Canonical Python tests | 10 | 1696 / 1701 | 178 / 194 |
+| Canonical Node production | 2 | 314 / 380 | 66 / 83 |
+| Canonical Node tests | 1 | 163 / 164 | 41 / 44 |
+
+Python has 174 production and 228 test functions with complete joins; its CRAP
+calculation uses file-line coverage as a function proxy. Native Node functions
+are not AST function identities; Node complexity and CRAP remain unavailable.
+Shell, installer code, wrappers, CI tooling and packaged mirrors remain outside
+these measured denominators. Existing behavior and byte-sync tests do not imply
+coverage measurements for those scopes. Mutation remains unmeasured.
+
+Independent review caught a line-summary inconsistency before publication.
+The adapter now derives line counts from Istanbul statement start lines,
+using the maximum hit count for statements sharing a line. Negative and
+same-line regressions passed. Generated Markdown formatting was also corrected.
+All 19 Node measurement tests, the existing runner/report tests, the complete
+aggregate and both supplements passed. Missing providers, inconsistent reports
+and source drift cannot support a measured-pass claim. No default CLI semantics,
+golden output, public runtime dependency or blocking threshold changed.
+
+The 2026-11-12 branch-protection observation still names 18 required contexts.
+These five configured contexts remain explicit carried engineer decisions:
+
+- Canonical dashboard evidence contracts
+- Shipped architecture, bias and port behavior
+- CI supply-chain input policy
+- report-lineage + sample-balance contract suite
+- signing reconciler security-state suite
+
+The merge guard's rejection of observed failures does not require an absent
+context to appear. Protection, administrator enforcement and required contexts
+were not changed. Threshold promotion and changes to legacy default output also
+remain separate policy decisions. The historical credential incident `wcze.4`
+is now closed: the owner confirmed revocation, history was deliberately retained,
+and the narrow disposition shipped in PR #228 and v2.0.0. PyPI publishing is
+retired at v1.4.0; its absence is not an unimplemented release target.
+
+Local receipts, exact source inventories and provider hashes are retained under
+the canonical checkout's `.git/task-receipts/0wvb-node-measurement/`, including
+the original run and the failed intermediate validation. The corrected receipt
+is `iep-harness-node-line-qualification-receipt.json`. Documentation and normal
+manifest updates follow that frozen source run. This addendum records local
+qualification; remote required checks, hosted artifacts and delivery must be
+verified before closing `bd_000-projects-0wvb`.

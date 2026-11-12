@@ -27,7 +27,11 @@ SUITES=(
 cd "$ROOT"
 for suite in "${SUITES[@]}"; do
   echo "==> $suite"
-  bash "$suite"
+  if [[ "$suite" == tests/crap-score/run-crap-score-tests.sh && -n "${AUDIT_HARNESS_MEASUREMENT_TYPESCRIPT_ROOT:-}" ]]; then
+    AUDIT_HARNESS_TYPESCRIPT_ROOT="$AUDIT_HARNESS_MEASUREMENT_TYPESCRIPT_ROOT" bash "$suite"
+  else
+    bash "$suite"
+  fi
 done
 
 node --test tests/cli/timeout.test.cjs
@@ -36,5 +40,6 @@ python3 tests/supply-chain/test_policy.py
 python3 tests/shipped/test_gates_and_wrappers.py
 python3 tests/measurement/test_measurement_baseline.py
 python3 tests/measurement/test_measurement_runner.py
+python3 tests/measurement/test_node_measurement.py
 
 echo "All deterministic core suites passed."

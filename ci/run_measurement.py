@@ -19,6 +19,7 @@ import sys
 import tempfile
 
 from measurement_baseline import source_inventory
+import node_measurement
 
 
 BEHAVIOR_COMMANDS = (
@@ -100,6 +101,10 @@ def behavioral_environment(
         raise ValueError("radon remains on behavioral PATH; use a provider-free parent PATH")
     env.pop("COVERAGE_PROCESS_START", None)
     env.pop("COVERAGE_FILE", None)
+    env.pop("NODE_V8_COVERAGE", None)
+    env.pop("AUDIT_HARNESS_TYPESCRIPT_ROOT", None)
+    env.pop("AUDIT_HARNESS_MEASUREMENT_TYPESCRIPT_ROOT", None)
+    env.pop("AUDIT_HARNESS_NODE_TEST_PROVIDER_ROOT", None)
     if config:
         startup = scratch / "startup"
         startup.mkdir()
@@ -128,13 +133,15 @@ def git_value(root: Path, *args: str) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def collect(root: Path, output: Path, coverage_python: str, complexity_python: str) -> int:
+def collect(root: Path, output: Path, coverage_python: str, complexity_python: str,
+            node_provider_root: Path | None = None) -> int:
     if output.exists() and any(output.iterdir()):
         raise ValueError("output directory must be empty to prevent stale measurement artifacts")
     output.mkdir(parents=True, exist_ok=True)
     sources = source_inventory(root)
     inventory = output / "source-files.json"
     write_json(inventory, sources)
+    node_state = node_measurement.prepare(root, output, node_provider_root) if node_provider_root else None
     providers = {"coverage": provider(coverage_python, "coverage"), "radon": provider(complexity_python, "radon")}
     provenance = {
         "schema_version": "audit-harness-self-measurement-input/v1",
@@ -185,6 +192,13 @@ def collect(root: Path, output: Path, coverage_python: str, complexity_python: s
             for argv in BEHAVIOR_COMMANDS:
                 provenance["commands"].append({"argv": list(argv), "exit_code": None, "reason": str(exc)})
         else:
+            if node_state:
+                env["NODE_V8_COVERAGE"] = node_state["raw_directory"]
+                if node_state["provider"]["status"] == "available":
+                    env["AUDIT_HARNESS_NODE_TEST_PROVIDER_ROOT"] = str(node_provider_root)
+                parser = node_provider_root / "node_modules/typescript/lib/typescript.js"
+                if parser.is_file():
+                    env["AUDIT_HARNESS_MEASUREMENT_TYPESCRIPT_ROOT"] = str(node_provider_root)
             provenance["behavioral_radon_executable"] = shutil.which("radon", path=env["PATH"])
             for index, argv in enumerate(BEHAVIOR_COMMANDS):
                 record = run_command(list(argv), root, env, output / f"behavior-{index + 1}.log")
@@ -194,6 +208,7 @@ def collect(root: Path, output: Path, coverage_python: str, complexity_python: s
         clean_env = dict(os.environ)
         clean_env.pop("COVERAGE_PROCESS_START", None)
         clean_env.pop("COVERAGE_FILE", None)
+        clean_env.pop("NODE_V8_COVERAGE", None)
         if coverage_ready:
             combine = run_command(
                 [coverage_python, "-m", "coverage", "combine", f"--rcfile={config}", "--keep", str(data)],
@@ -224,6 +239,10 @@ def collect(root: Path, output: Path, coverage_python: str, complexity_python: s
     if not provenance["source_unchanged_after_commands"]:
         provenance["limitations"].append("Eligible source changed during collection; measurements are invalid.")
     provenance["git_status_after"] = git_value(root, "status", "--porcelain", "--untracked-files=all")
+    if node_state:
+        node_state["base_commit"] = provenance["commit_sha"]
+        node_state["behavioral_commands"] = provenance["commands"][:len(BEHAVIOR_COMMANDS)]
+        node_measurement.finish(root, output, node_state)
     provenance["artifacts"] = {}
     for name in ("coverage.json", "complexity.json"):
         artifact = output / name
@@ -239,7 +258,9 @@ def collect(root: Path, output: Path, coverage_python: str, complexity_python: s
     )
     if report["exit_code"]:
         return report["exit_code"]
-    if not provenance["source_unchanged_after_commands"]:
+    if not provenance["source_unchanged_after_commands"] or (
+        node_state and not node_state["source_identity_valid"]
+    ):
         return 2
     return 1 if failed_behavior else 0
 
@@ -250,10 +271,13 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--coverage-python", required=True)
     parser.add_argument("--complexity-python", required=True)
+    parser.add_argument("--node-provider-root", type=Path,
+                        help="Optional locked private c8/TypeScript provider; never added to PATH")
     args = parser.parse_args()
     try:
         return collect(args.root.resolve(), args.output_dir.resolve(),
-                       str(Path(args.coverage_python).absolute()), str(Path(args.complexity_python).absolute()))
+                       str(Path(args.coverage_python).absolute()), str(Path(args.complexity_python).absolute()),
+                       args.node_provider_root.resolve() if args.node_provider_root else None)
     except (OSError, ValueError) as exc:
         print(f"measurement runner: {exc}", file=sys.stderr)
         return 2
