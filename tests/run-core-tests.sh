@@ -41,5 +41,6 @@ python3 tests/shipped/test_gates_and_wrappers.py
 python3 tests/measurement/test_measurement_baseline.py
 python3 tests/measurement/test_measurement_runner.py
 python3 tests/measurement/test_node_measurement.py
+python3 -m unittest discover -s tests/release-assets -p 'test_*.py'
 
 echo "All deterministic core suites passed."
