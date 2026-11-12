@@ -1,0 +1,10 @@
+{
+  "name": "example-agent-12",
+  "description": "Triage an inbound support ticket: classify intent, extract entities, and draft a grounded reply.",
+  "tools": ["Read"],
+  "model": "sonnet",
+  "color": "blue",
+  "version": "1.12.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-12"]
+}

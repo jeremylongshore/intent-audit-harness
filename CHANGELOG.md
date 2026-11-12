@@ -25,6 +25,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Extend opt-in published authoring/v1 conformance to agent frontmatter and plugin
+  manifests, preserving default floors and validating 80 pinned upstream cases.
+
 - Opt-in published marketplace catalog conformance with content-pinned kernel
   schemas, explicit unsupported-schema admission and upstream corpus parity.
 

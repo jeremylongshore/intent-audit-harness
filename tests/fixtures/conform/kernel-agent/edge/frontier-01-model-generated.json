@@ -1,0 +1,10 @@
+{
+  "name": "example-agent-11",
+  "description": "Generate a concise summary of a pull request diff, highlighting risk areas, then propose follow-up tests.",
+  "tools": ["Read", "Grep"],
+  "model": "haiku",
+  "color": "red",
+  "version": "1.11.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-11"]
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/upstream-base/plugin-manifest.v1.json",
+  "title": "plugin-manifest — UPSTREAM BASE (authored by Anthropic/Claude Code, not by IS)",
+  "description": "The upstream projection of the plugin-manifest contract: the `.claude-plugin/plugin.json` field shape owned by Claude Code. THIS FILE IS A VENDORED PROJECTION — it encodes ONLY what the upstream documents, never an IS-specific rule. IS-specific required fields and constraints live in is-overlay/plugin-manifest.v1.json. Convergence (upstream makes one of our overlay extras required) is a mechanical MOVE of a field from is-overlay → here, not an in-place re-edit. Per the upstream doc: 'If you include a manifest, `name` is the only required field.' Every other documented field is OPTIONAL upstream — so the standardFloor here is exactly [name].",
+  "$comment": "PROVENANCE. Authority (registry contract 'plugin-manifest' primary surfaces): code.claude.com/docs/en/plugins-reference § 'Plugin manifest schema' (Required fields + Metadata fields + Component path fields tables); github.com/anthropics/claude-code (plugin.json); github.com/anthropics/claude-plugins-official. Captured 2026-06-11 from code.claude.com/docs/en/plugins-reference; no vendored deep-capture exists yet (registry vendored=null) — a vendored reconciliation is a PUBLISHED-promotion precondition (DR-049). VERBATIM upstream facts encoded here: (1) 'If you include a manifest, name is the only required field' ⇒ required:[name]. (2) name = string, 'Unique identifier (kebab-case, no spaces)'. (3) version = optional string, 'Semantic version'. (4) description = optional string. (5) author = optional OBJECT, 'Author information', example {name,email,url} — NOT a bare string (this differs from skill-frontmatter, whose author is a string). (6) homepage = optional string, 'Documentation URL'. (7) repository = optional string, 'Source code URL'. (8) license = optional string, 'License identifier'. (9) keywords = optional array, 'Discovery tags'. (10) component-path fields (commands, agents, skills, hooks, mcpServers) are string|array(|object); 'Fields with the wrong type still fail' ⇒ a string-typed commands is a load error, so the base types commands as an array. NOTE on name pattern: the doc says 'kebab-case, no spaces' in prose; the pattern here enforces lowercase-letters/digits/hyphens (the same surface the corpus tests via constraint-name-uppercase / constraint-name-spaces / constraint-name-empty). NOTE: the base intentionally does NOT cap description length — the universal disclosureMarkers fold (1536) is the operative IS cap; encoding the upstream's silence as a cap would violate the monotonic-additive invariant. NOTE: homepage/repository URL-format is enforced as `format: uri` (the corpus constraint-homepage-not-url negative tests it).",
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Required fields table): string, 'Unique identifier (kebab-case, no spaces)'. The ONLY required field upstream. The pattern enforces the kebab-case + non-empty surface the corpus tests (constraint-name-empty / constraint-name-spaces / constraint-name-uppercase); 'no spaces' + lowercase are encoded structurally, the namespacing prose is not.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    },
+    "version": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Metadata fields): OPTIONAL string, 'Semantic version'. SemVer format is narrowed by the IS overlay (the corpus constraint-version-not-semver negative); the base only types it as a string.",
+      "type": "string"
+    },
+    "description": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Metadata fields): OPTIONAL string, 'Brief explanation of plugin purpose'. Length cap deliberately NOT encoded here — the universal disclosureMarkers fold (1536) is the operative IS cap.",
+      "type": "string"
+    },
+    "author": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Metadata fields): OPTIONAL OBJECT, 'Author information', documented example {name,email,url}. This is an OBJECT upstream (unlike skill-frontmatter's string author). The base types it as an object and requires `name` inside it (the documented author example always carries a name); email/url are optional. The corpus type-author negative supplies a bare string, which this object type rejects.",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "email": { "type": "string" },
+        "url": { "type": "string" }
+      }
+    },
+    "homepage": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Metadata fields): OPTIONAL string, 'Documentation URL'. URI format enforced (the corpus constraint-homepage-not-url negative supplies 'not-a-url').",
+      "type": "string",
+      "format": "uri"
+    },
+    "repository": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Metadata fields): OPTIONAL string, 'Source code URL'. URI format enforced for parity with homepage. Not promoted to required by the IS overlay (the corpus has no missing-repository negative).",
+      "type": "string",
+      "format": "uri"
+    },
+    "license": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Metadata fields): OPTIONAL string, 'License identifier' (e.g. MIT, Apache-2.0).",
+      "type": "string"
+    },
+    "keywords": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Metadata fields): OPTIONAL array, 'Discovery tags'. 'A keywords value that is a string instead of an array is a load error' ⇒ typed as an array of strings (the corpus type-keywords negative supplies a bare string).",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "commands": {
+      "$comment": "code.claude.com/docs/en/plugins-reference (Component path fields): OPTIONAL string|array, 'Custom flat .md skill files or directories'. The corpus type-commands negative supplies a bare string, and 'Fields with the wrong type still fail' — so the base (and corpus) treat commands as an array of strings. The string-or-array upstream latitude is intentionally NOT modeled (the IS contract narrows to the array form, the same way allowed-tools is narrowed for skill-frontmatter).",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "metadata": {
+      "$comment": "Vendor-namespaced extension object (e.g. metadata.intent-solutions), mirroring the upstream 'Claude Code ignores top-level fields it does not recognize' tolerance. Left as a generic object so a vendor namespace does not violate the shape. The corpus edge-02-extra-optional-metadata fixture exercises this.",
+      "type": "object"
+    }
+  }
+}

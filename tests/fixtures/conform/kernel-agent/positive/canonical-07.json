@@ -1,0 +1,10 @@
+{
+  "name": "example-agent-7",
+  "description": "Example agent number 7.",
+  "tools": ["Read", "Grep"],
+  "model": "opus",
+  "color": "green",
+  "version": "1.7.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-7"]
+}

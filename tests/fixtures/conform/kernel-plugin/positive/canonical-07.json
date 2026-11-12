@@ -1,0 +1,13 @@
+{
+  "name": "example-plugin-7",
+  "version": "2.7.0",
+  "description": "Example plugin number 7.",
+  "author": {
+    "name": "Jeremy Longshore",
+    "email": "jeremy@intentsolutions.io"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/example-plugin-7",
+  "keywords": ["plugin", "kw-7"],
+  "commands": ["/example-7"]
+}

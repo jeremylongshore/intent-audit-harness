@@ -1,0 +1,15 @@
+{
+  "name": "example-agent-10",
+  "description": "Example agent number 10.",
+  "tools": ["Read"],
+  "model": "opus",
+  "color": "green",
+  "version": "1.10.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-10"],
+  "nested": {
+    "deeply": {
+      "value": [1, 2, 3]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "example-agent-4",
+  "description": "A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description. A valid description.",
+  "tools": ["Read"],
+  "model": "opus",
+  "color": "green",
+  "version": "1.4.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-4"]
+}

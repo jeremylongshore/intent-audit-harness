@@ -1,0 +1,10 @@
+{
+  "name": "example-agent-0",
+  "description": "Example agent number 0.",
+  "tools": ["Read"],
+  "model": "sonnet",
+  "color": "rainbow",
+  "version": "1.0.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-0"]
+}

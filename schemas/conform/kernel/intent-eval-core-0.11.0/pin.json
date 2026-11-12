@@ -1,5 +1,5 @@
 {
-  "$comment": "Pin record for the vendored, UNMODIFIED subset of the kernel's authoring/v1 skill-frontmatter and marketplace-catalog contracts. conform.py --tier marketplace refuses to use these files unless every sha256 below matches; this file's own sha256 is the policy_hash of every marketplace-tier row. Refresh: npm pack @intentsolutions/core@<new>, copy package/schemas/authoring/v1/<same paths> byte-for-byte, regenerate this file, re-pin .harness-hash. Never hand-edit a vendored schema.",
+  "$comment": "Pin record for the vendored, UNMODIFIED subset of the kernel's authoring/v1 skill-frontmatter, marketplace-catalog, agent-definition and plugin-manifest contracts. conform.py --tier marketplace refuses to use these files unless every sha256 below matches; this file's own sha256 is the policy_hash of every marketplace-tier row. Refresh: npm pack @intentsolutions/core@<new>, copy package/schemas/authoring/v1/<same paths> byte-for-byte, regenerate this file, re-pin .harness-hash. Never hand-edit a vendored schema.",
   "package": "@intentsolutions/core",
   "version": "0.11.0",
   "source": "https://registry.npmjs.org/@intentsolutions/core/-/core-0.11.0.tgz",
@@ -9,7 +9,9 @@
   "license": "Apache-2.0",
   "entries": {
     "skillmd": "authoring/v1/skill-frontmatter.schema.json",
-    "marketplace": "authoring/v1/marketplace-catalog.schema.json"
+    "marketplace": "authoring/v1/marketplace-catalog.schema.json",
+    "agent": "authoring/v1/agent-definition.schema.json",
+    "plugin": "authoring/v1/plugin-manifest.schema.json"
   },
   "files": {
     "LICENSE": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
@@ -19,6 +21,12 @@
     "authoring/v1/upstream-base/skill-frontmatter.v1.json": "sha256:32ccd48d6aff5484b763372701ceccb63a5bef1c8acd24d50a5fc045215d9b79",
     "authoring/v1/marketplace-catalog.schema.json": "sha256:daf5c4945fbd0909f96fc2db308805eb78f98afdd60dbbfa56a4bb3942706218",
     "authoring/v1/upstream-base/marketplace-catalog.v1.json": "sha256:132cc7e3d06da935d20c4a303880f37f34f2721866de77ca059cb84e63981c26",
-    "authoring/v1/is-overlay/marketplace-catalog.v1.json": "sha256:1398d0dc0024a7914056e7f9d439546d5617c7524243c45fd02bd4246de8cb20"
+    "authoring/v1/is-overlay/marketplace-catalog.v1.json": "sha256:1398d0dc0024a7914056e7f9d439546d5617c7524243c45fd02bd4246de8cb20",
+    "authoring/v1/agent-definition.schema.json": "sha256:44986f699f40ce0ca24088200433556d600e9cf39e862d6b6626bdb45057d589",
+    "authoring/v1/upstream-base/agent-definition.v1.json": "sha256:8a29312ce73d649d5085170e06bf3b9519fb515fa54aeaf80d85220254ac42df",
+    "authoring/v1/is-overlay/agent-definition.v1.json": "sha256:0a84ad6ed64ee343f01822c0b60d28aee9845403cfd362edd3068c531ef5cb5c",
+    "authoring/v1/plugin-manifest.schema.json": "sha256:974ec506218f31dab4bb4030670d7eba238d19c7212ffc8aa80bf472eb105020",
+    "authoring/v1/upstream-base/plugin-manifest.v1.json": "sha256:1a2e35980903f832819914bd3fc14522bdaabddf90b2562597849f6a53ade66f",
+    "authoring/v1/is-overlay/plugin-manifest.v1.json": "sha256:1f26579d0f56894ef0fd856769b887b91e91c9372a82f8acf689001f9c789e37"
   }
 }

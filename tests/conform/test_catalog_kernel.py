@@ -25,10 +25,15 @@ class CatalogKernel(unittest.TestCase):
         import jsonschema
         from referencing import Registry, Resource
 
+        checker = jsonschema.FormatChecker()
+        self.assertIn("uri", checker.checkers)
+        self.assertFalse(checker.conforms("not-a-url", "uri"))
+
         schema, registry, _, _, reason = CF.load_kernel("marketplace")
         self.assertIsNone(reason)
         reference = jsonschema.Draft202012Validator(
             schema,
+            format_checker=checker,
             registry=Registry().with_resources((name, Resource.from_contents(doc)) for name, doc in registry.items()),
         )
         provenance = json.loads((CORPUS / "provenance.json").read_text())

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/is-overlay/agent-definition.v1.json",
+  "title": "agent-definition — IS OVERLAY (authored by Intent Solutions)",
+  "description": "The Intent-Solutions-only delta on top of upstream-base/agent-definition.v1.json. THIS FILE IS THE ONLY PLACE IS POLICY LIVES for this contract. Upstream makes ONLY [name, description] required; the IS marketplace tier promotes three upstream-optional fields (tools, model, color) to IS-required and adds three net-new IS-required tracking fields (version, author, tags) — the same tracking trio skill-frontmatter carries. By the monotonic-additive invariant (DR-044 D7 + CSO position): the overlay may only ADD required fields and NARROW constraints relative to the base — never subtract a base requirement or loosen a base constraint. Each field carries its upstream-convergence trigger: the condition under which the field MOVES from this overlay into upstream-base (a mechanical move, not a re-edit).",
+  "$comment": "OVERLAY REQUIRED DELTA (beyond the base floor [name, description]): [tools, model, color, version, author, tags]. Union with the base floor = the IS 8-field agent-definition required set {name, description, tools, model, color, version, author, tags} — the corpus's missing-* negatives (one per field) are the ground truth this delta is decomposed against. This required set evolves under ISEDC Class-1 ratification only (the 2026-04-28-debacle guard — must not be silently reduced). Citations: code.claude.com/docs/en/sub-agents; tests/authoring/v1/fixtures/agent-definition/ (the corpus-first golden ground truth, plan 033 § 14.21).",
+  "type": "object",
+  "required": ["tools", "model", "color", "version", "author", "tags"],
+  "properties": {
+    "tools": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED (array-of-strings type + empty-array latitude are the base's — the overlay does not re-type it, to keep the wire form single-sourced). An agent that pre-approves zero tools declares an empty array. CONVERGENCE TRIGGER: if code.claude.com/docs/en/sub-agents makes tools required, move the required-membership to upstream-base.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "model": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED (the alias enum is the base's). The IS marketplace tier requires an agent to pin its model explicitly rather than rely on the upstream `inherit` default. CONVERGENCE TRIGGER: if the upstream makes model required, move the required-membership to upstream-base.",
+      "type": "string"
+    },
+    "color": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED (the color enum is the base's). The IS marketplace tier requires a display color for transcript legibility. CONVERGENCE TRIGGER: if the upstream makes color required, move the required-membership to upstream-base.",
+      "type": "string"
+    },
+    "version": {
+      "$comment": "IS: net-new IS-required tracking field (NOT a top-level sub-agents frontmatter field). Strict SemVer 2.0.0 — the corpus type-version negative supplies a number and the contract requires presence. Mirrors the skill-frontmatter / plugin-manifest version tracking field. CONVERGENCE TRIGGER: if code.claude.com/docs/en/sub-agents adds a top-level required `version`, move it to upstream-base.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "author": {
+      "$comment": "IS: net-new IS-required tracking field (the sub-agents frontmatter has no author field). Mirrors the skill-frontmatter author tracking field. CONVERGENCE TRIGGER: if the upstream adds a top-level required `author`, move it to upstream-base.",
+      "type": "string",
+      "minLength": 1
+    },
+    "tags": {
+      "$comment": "IS: net-new IS-required tracking field with ZERO upstream provenance — not in the sub-agents frontmatter nor any Anthropic surface. Pure IS invention; convergence is unlikely (the corpus type-tags negative supplies a bare string). CONVERGENCE TRIGGER: only if the upstream introduces a top-level `tags` array.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

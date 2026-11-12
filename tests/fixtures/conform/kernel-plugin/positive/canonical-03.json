@@ -1,0 +1,13 @@
+{
+  "name": "example-plugin-3",
+  "version": "2.3.0",
+  "description": "Example plugin number 3.",
+  "author": {
+    "name": "Jeremy Longshore",
+    "email": "jeremy@intentsolutions.io"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/example-plugin-3",
+  "keywords": ["plugin", "kw-3"],
+  "commands": ["/example-3"]
+}
