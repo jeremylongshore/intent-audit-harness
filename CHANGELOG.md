@@ -25,6 +25,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add opt-in shared agent body/tool-list checks from a commit-pinned marketplace
+  module. Verify its source and license before loading; bind header/body to one
+  snapshot and retain distinct static errors, warnings and unmeasured results.
+
 - Extend opt-in published authoring/v1 conformance to MCP and hook envelopes,
   embedded declarations and confined local JSON references. Bind exact input
   snapshots, reject ambiguous declarations and preserve explicit unmeasured
