@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from authoring_inputs import (
     InvalidArtifact, MAX_JSON_BYTES, UnmeasuredReference,
-    read_frontmatter_snapshot, read_json_snapshot, reference_path,
+    read_frontmatter_document, read_frontmatter_snapshot, read_json_snapshot, reference_path,
 )
 
 
@@ -91,6 +91,16 @@ class AuthoringInputs(unittest.TestCase):
                 with self.subTest(content=content), self.assertRaises(UnmeasuredReference) as caught:
                     read_frontmatter_snapshot(root, "SKILL.md")
                 self.assertEqual(caught.exception.input_hash, "sha256:" + hashlib.sha256(raw).hexdigest())
+
+    def test_frontmatter_body_and_metadata_share_original_byte_identity(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            raw = b"\xef\xbb\xbf---\r\nname: fixture\r\n---\r\nBody.\r\n```\r\n---\r\n```\r\n"
+            (root / "agent.md").write_bytes(raw)
+            metadata, body, digest = read_frontmatter_document(root, "agent.md")
+            self.assertEqual(metadata, {"name": "fixture"})
+            self.assertEqual(body, "Body.\r\n```\r\n---\r\n```\r\n")
+            self.assertEqual(digest, "sha256:" + hashlib.sha256(raw).hexdigest())
 
 
 if __name__ == "__main__":

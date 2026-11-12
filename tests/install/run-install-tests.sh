@@ -173,6 +173,33 @@ PY_INVALID_ROWS
 then pass "fresh install: missing MCP field remains strict FAIL"
 else fail "fresh-install MCP strict refusal (exit $ec)"; fi
 
+# The opt-in shared checker and its license must also survive offline vendoring.
+SHARED_AGENT="$TMP/shared-agent"
+mkdir -p "$SHARED_AGENT/agents"
+cat > "$SHARED_AGENT/agents/example.md" <<'SHARED_FIXTURE'
+---
+name: fixture
+description: Fixture agent
+tools: [Read]
+---
+Use mcp__fixture__read.
+SHARED_FIXTURE
+if env "${OFFLINE_ENV[@]}" "$CONSUMER/scripts/audit-harness" conform "$SHARED_AGENT" \
+    --shared-validators --strict >"$TMP/shared-agent.json" 2>/dev/null; then ec=0; else ec=$?; fi
+if [ "$ec" -eq 1 ] && python3 - "$TMP/shared-agent.json" <<'PY_SHARED_ROWS'
+import json, sys
+rows = json.load(open(sys.argv[1]))
+selected = [r for r in rows if r["gate_id"].endswith("conform-agent")]
+assert len(selected) == 1, selected
+row = selected[0]
+assert row["result"] == "FAIL" and row["failure_mode"] == "conform:shared-validator-violation", row
+assert row["metadata"]["shared_validator"]["static_only"], row
+assert row["metadata"]["shared_validator"]["errors"], row
+assert not row["metadata"].get("indeterminate"), row
+PY_SHARED_ROWS
+then pass "fresh install: pinned shared agent checker produces strict static-policy FAIL offline"
+else fail "fresh-install shared agent checker (exit $ec)"; fi
+
 # ---- 4: marketplace tier against the installed kernel pin ----
 if (cd "$CONSUMER" && env "${OFFLINE_ENV[@]}" scripts/audit-harness conform . --tier marketplace --strict >"$TMP/mk.json" 2>/dev/null); then
   ec=0; else ec=$?; fi
