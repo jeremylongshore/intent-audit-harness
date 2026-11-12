@@ -1,0 +1,10 @@
+{
+  "name": "example-server-11",
+  "command": "node",
+  "args": ["server-11.js"],
+  "transport": "stdio",
+  "env": {},
+  "description": "Generate a concise summary of a pull request diff, highlighting risk areas, then propose follow-up tests.",
+  "version": "1.11.0",
+  "enabled": true
+}

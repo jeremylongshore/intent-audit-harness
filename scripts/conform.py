@@ -30,13 +30,12 @@ Tiers (--tier, default `floor`):
   floor        the harness's own conform/v1 structural floor (name + description
                for SKILL.md). Unchanged default, so existing consumers see the
                same verdicts.
-  marketplace  SKILL.md frontmatter is validated against the KERNEL's full
-               authoring/v1 skill-frontmatter contract (@intentsolutions/core,
-               vendored unmodified under schemas/conform/kernel/ and pinned by
-               version + per-file sha256 in pin.json): the IS 8-field required
-               set, semver `version`, allowed-tools shape, the universal folds.
-               Other kinds keep the floor schema. A pin mismatch is an
-               indeterminate ADVISORY, never a guessed verdict.
+  marketplace  Published authoring/v1 contracts for skills, agents, plugins,
+               catalogs, MCP entries and hook handlers. MCP/hook envelopes are
+               projected without inventing defaults, binding original bytes.
+               Schemas are vendored unmodified and hash-pinned. Unsupported
+               inputs or a pin mismatch yield indeterminate ADVISORY.
+
 
 Usage:
   python3 scripts/conform.py [REPO_PATH] [--json] [--strict] [--tier floor|marketplace] [--profile PATH|-]
@@ -56,6 +55,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import classify as C  # noqa: E402  (sibling module; reused for the single-source profile)
+from authoring_discovery import embedded_artifacts  # noqa: E402
+from authoring_inputs import (  # noqa: E402
+    InvalidArtifact, UnmeasuredReference, read_frontmatter_snapshot, read_json_snapshot, reference_path,
+)
+from authoring_projection import ProjectionError, component_parts, project_hooks, project_mcp  # noqa: E402
 
 try:
     import yaml  # type: ignore
@@ -133,7 +137,7 @@ def kernel_schema_admission(schema, registry):
     supported = {
         "$schema", "$id", "$ref", "$defs", "$comment", "title", "description",
         "default", "examples", "type", "enum", "const", "minLength", "maxLength",
-        "pattern", "format", "minItems", "maxItems", "items", "required",
+        "pattern", "format", "minimum", "minItems", "maxItems", "items", "required",
         "properties", "additionalProperties", "allOf", "anyOf", "oneOf", "not",
         # Published kyh9 annotation explicitly belongs to generated Zod, not JSON Schema.
         "x-mutually-exclusive-fields",
@@ -206,6 +210,10 @@ def validate_instance(inst, schema, path="$", _ctx=None):
         errs.append(f"{path}: {inst!r} not in enum {schema['enum']}")
     if "const" in schema and inst != schema["const"]:
         errs.append(f"{path}: {inst!r} != const {schema['const']!r}")
+
+    if isinstance(inst, (int, float)) and not isinstance(inst, bool):
+        if "minimum" in schema and inst < schema["minimum"]:
+            errs.append(f"{path}: below minimum {schema['minimum']}")
 
     if isinstance(inst, str):
         if "minLength" in schema and len(inst) < schema["minLength"]:
@@ -406,14 +414,15 @@ def verdict_for(errs, parse_err, enforcement, strict):
 
 
 # --------------------------------------------------------------------------- #
-def compute_profile(repo, registry_path, profile_arg):
+def compute_profile(repo, registry_path, profile_arg, embedded_authoring=False):
     if profile_arg == "-":
         return json.load(sys.stdin)
     if profile_arg:
         with open(profile_arg, "r", encoding="utf-8") as f:
             return json.load(f)
     out = subprocess.run(
-        [sys.executable, os.path.join(HERE, "classify.py"), repo, "--registry", registry_path],
+        [sys.executable, os.path.join(HERE, "classify.py"), repo, "--registry", registry_path]
+        + (["--embedded-authoring"] if embedded_authoring else []),
         capture_output=True, text=True,
     )
     if out.returncode != 0:
@@ -506,7 +515,111 @@ def load_kernel(kind, kernel_dir=None):
     return schema, registry, C.sha256_file(pin_path), label, None
 
 
+def projected_targets(kind, repo, relative, mode, bindings):
+    """Return located entries and retain every consumed artifact digest."""
+    snapshots = {}
+
+    def read(path, frontmatter=False):
+        if path in snapshots:
+            return snapshots[path]
+        try:
+            data, digest = (read_frontmatter_snapshot(repo, path) if frontmatter
+                            else read_json_snapshot(repo, path))
+        except (InvalidArtifact, UnmeasuredReference) as exc:
+            if exc.input_hash:
+                bindings[path] = exc.input_hash
+            raise
+        bindings[path] = digest
+        snapshots[path] = data
+        return data
+
+    def project(data, *, bare=False, base=None):
+        if kind == "mcp":
+            return project_mcp(data, bare=bare, base=base)
+        return project_hooks(data, bare=bare, base=base)
+
+    data = read(relative, mode == "frontmatter")
+    if mode == "manifest":
+        field = "mcpServers" if kind == "mcp" else "hooks"
+        targets = []
+        for pointer, value in component_parts(data, field):
+            if isinstance(value, dict):
+                targets += project(value, bare=True, base=pointer)
+            else:
+                parent = os.path.dirname(relative)
+                if os.path.basename(parent) == ".claude-plugin":
+                    parent = os.path.dirname(parent)
+                path = os.path.join(parent, reference_path(value)).replace(os.sep, "/")
+                referenced = read(path)
+                bare = kind == "mcp" and isinstance(referenced, dict) and "mcpServers" not in referenced
+                targets += [(path + "#" + target, entry) for target, entry in project(referenced, bare=bare)]
+        return targets
+    if mode in ("settings", "frontmatter") and isinstance(data, dict) and "hooks" not in data:
+        return []
+    bare = kind == "mcp" and isinstance(data, dict) and "mcpServers" not in data
+    return project(data, bare=bare)
+
+
+def binding_hash(bindings):
+    if len(bindings) == 1:
+        return next(iter(bindings.values()))
+    return sha256_str(json.dumps({"format": "authoring-inputs/v1", "files": bindings}, sort_keys=True))
+
+
+def run_projected(kind, gate, files, commit_sha, runner, repo, strict):
+    """Measure per-entry v1 contracts while binding the original JSON artifact."""
+    schema, registry, policy_hash, label, reason = load_kernel(kind)
+    if schema is None:
+        return [make_row(gate["gate_id"], "ADVISORY", policy_hash=EMPTY_SHA, input_hash=EMPTY_SHA,
+                         commit_sha=commit_sha, runner=runner, advisory_severity="warn",
+                         metadata={"kind": kind, "tier": "marketplace", "indeterminate": True, "reason": reason})]
+    rows = []
+    modes = dict(embedded_artifacts(repo, kind))
+    for artifact in files:
+        relative = os.path.relpath(artifact, repo)
+        meta = {"kind": kind, "tier": "marketplace", "kernel": label,
+                "schema_id": schema.get("$id", ""), "artifact_path": relative,
+                "validator": "audit-harness-embedded-subset", "projection": "authoring-envelope/v1"}
+        digest, errors, parse_error, bindings = EMPTY_SHA, [], None, {}
+        try:
+            targets = projected_targets(kind, repo, relative, modes.get(relative, "standalone"), bindings)
+            digest = binding_hash(bindings)
+            meta["input_bindings"] = bindings
+            meta["target_pointers"] = [path for path, _ in targets]
+            if not targets:
+                rows.append(make_row(gate["gate_id"], "NOT_APPLICABLE", policy_hash=policy_hash,
+                                     input_hash=digest, commit_sha=commit_sha, runner=runner,
+                                     metadata={**meta, "reason": "no declared measurement targets"}))
+                continue
+            for path, entry in targets:
+                errors += validate_instance(entry, schema, path=path,
+                                            _ctx={"root": schema, "registry": registry})
+        except UnmeasuredReference as exc:
+            digest = binding_hash(bindings) if bindings else (exc.input_hash or digest)
+            meta["input_bindings"] = bindings
+            rows.append(make_row(gate["gate_id"], "ADVISORY", policy_hash=policy_hash,
+                                 input_hash=digest, commit_sha=commit_sha, runner=runner, advisory_severity="warn",
+                                 metadata={**meta, "indeterminate": True, "reason": str(exc)}))
+            continue
+        except InvalidArtifact as exc:
+            digest = binding_hash(bindings) if bindings else (exc.input_hash or EMPTY_SHA)
+            parse_error = str(exc)
+        except ProjectionError as exc:
+            errors = [str(exc)]
+            digest = binding_hash(bindings) if bindings else EMPTY_SHA
+        meta["input_bindings"] = bindings
+        result, failure_mode, severity = verdict_for(errors, parse_error, gate.get("enforcement", "advisory"), strict)
+        if parse_error or errors:
+            meta["errors"] = [parse_error] if parse_error else errors[:20]
+        rows.append(make_row(gate["gate_id"], result, policy_hash=policy_hash, input_hash=digest,
+                             commit_sha=commit_sha, runner=runner, failure_mode=failure_mode,
+                             advisory_severity=severity, metadata=meta))
+    return rows
+
+
 def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor"):
+    if tier == "marketplace" and kind in ("mcp", "hook"):
+        return run_projected(kind, gate, files, commit_sha, runner, repo, strict)
     rows = []
     enforcement = gate.get("enforcement", "advisory")
     registry = {}
@@ -581,7 +694,7 @@ def main():
                     help="Treat every conformance violation as FAIL (exit 1), ignoring advisory default")
     ap.add_argument("--tier", choices=TIERS, default="floor",
                     help="Schema tier: 'floor' (default, harness conform/v1 floor) or 'marketplace' "
-                         "(skills, agents, plugins and catalogs against pinned kernel authoring/v1 contracts)")
+                         "(skills, agents, plugins, catalogs, MCP and hooks against pinned authoring/v1 contracts)")
     ap.add_argument("--registry", default=C.DEFAULT_REGISTRY, help="Path to the dimension-to-gate registry")
     ap.add_argument("--profile", default=None,
                     help="Use a pinned audit-profile/v1 (PATH or '-' for stdin) instead of classifying")
@@ -598,7 +711,7 @@ def main():
         print("[]")
         sys.exit(0)
 
-    profile = compute_profile(repo, registry_path, args.profile)
+    profile = compute_profile(repo, registry_path, args.profile, embedded_authoring=args.tier == "marketplace")
     commit_sha = profile.get("subject", {}).get("commit_sha") or C.git_short_sha(repo)
 
     conf_gates = [g for g in profile.get("gates", [])
@@ -608,6 +721,8 @@ def main():
     for gate in conf_gates:
         kind = kind_of(gate["gate_id"])
         files = locate(kind, repo)
+        if args.tier == "marketplace" and kind in ("mcp", "hook"):
+            files = sorted(set(files) | {os.path.join(repo, path) for path, _ in embedded_artifacts(repo, kind)})
         if not files:
             rows.append(make_row(
                 gate["gate_id"], "NOT_APPLICABLE",
@@ -615,7 +730,7 @@ def main():
                 runner=runner, metadata={"kind": kind, "reason": "no matching artifact found in repo"},
             ))
             continue
-        if kind in BUNDLED or (args.tier == "marketplace" and kind == "marketplace"):
+        if kind in BUNDLED or (args.tier == "marketplace" and kind in ("marketplace", "hook")):
             rows += run_bundled(kind, gate, files, commit_sha, runner, repo, args.strict, args.tier)
         elif kind in SHELLOUT:
             rows += run_shellout(kind, gate, files, commit_sha, runner, repo, args.strict)

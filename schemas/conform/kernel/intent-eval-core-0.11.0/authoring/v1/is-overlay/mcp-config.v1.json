@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/is-overlay/mcp-config.v1.json",
+  "title": "mcp-config — IS OVERLAY (authored by Intent Solutions)",
+  "description": "The Intent-Solutions-only delta on top of upstream-base/mcp-config.v1.json. THIS FILE IS THE ONLY PLACE IS POLICY LIVES for this contract. Upstream requires the launch surface ([name, command, args, transport, env]); the IS marketplace tier adds three net-new IS-required tracking/operational fields (description, version, enabled) and narrows `version` to strict SemVer 2.0.0. By the monotonic-additive invariant (DR-044 D7 + CSO position): the overlay may only ADD required fields and NARROW constraints relative to the base — never subtract a base requirement or loosen a base constraint. Each field carries its upstream-convergence trigger.",
+  "$comment": "OVERLAY REQUIRED DELTA (beyond the base floor [name, command, args, transport, env]): [description, version, enabled]. Union with the base floor = the IS 8-field mcp-config required set {name, command, args, transport, env, description, version, enabled} — the corpus's missing-* negatives (one per field) are the ground truth this delta is decomposed against. This required set evolves under ISEDC Class-1 ratification only (the 2026-04-28-debacle guard). Citations: modelcontextprotocol.io/specification; code.claude.com/docs/en/mcp; tests/authoring/v1/fixtures/mcp-config/ (the corpus-first golden ground truth, plan 033 § 14.21).",
+  "type": "object",
+  "required": ["description", "version", "enabled"],
+  "properties": {
+    "description": {
+      "$comment": "IS: net-new IS-required tracking field (the `.mcp.json` server entry has no description key; the IS marketplace tier requires every published artifact to describe itself — the universal disclosureMarkers fold caps its length at 1536). CONVERGENCE TRIGGER: if the upstream adds a required server `description`, move the required-membership to upstream-base.",
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "$comment": "IS: net-new IS-required tracking field, NARROWED to strict SemVer 2.0.0 (the `.mcp.json` entry carries no version; the corpus type-version negative supplies a number). Mirrors the version tracking field every IS authoring contract carries. CONVERGENCE TRIGGER: if the upstream adds a required server `version`, move the required-membership (and/or pattern) to upstream-base.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "enabled": {
+      "$comment": "IS: net-new IS-required operational field (whether the server is active). The corpus type-enabled negative supplies the string 'true' (rejected — must be a real boolean). CONVERGENCE TRIGGER: Claude Code's marketplace `defaultEnabled` is the nearest upstream analog; if the per-server entry gains a required boolean enablement field, move the required-membership to upstream-base.",
+      "type": "boolean"
+    }
+  }
+}

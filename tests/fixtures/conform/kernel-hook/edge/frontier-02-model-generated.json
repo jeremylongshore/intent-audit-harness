@@ -1,0 +1,10 @@
+{
+  "event": "PreToolUse",
+  "matcher": "Bash",
+  "type": "command",
+  "command": "echo hook-12",
+  "description": "Triage an inbound support ticket: classify intent, extract entities, and draft a grounded reply.",
+  "enabled": true,
+  "timeout": 42,
+  "blocking": true
+}

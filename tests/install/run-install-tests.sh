@@ -123,6 +123,56 @@ PY
 then pass "fresh install: scripts/audit-harness conform -> PASS against the vendored floor schema"
 else fail "fresh-install floor conform (exit $ec): $(cat "$TMP/floor.json" "$TMP/floor.err")"; fi
 
+# Installed imports and pinned MCP/hook schemas must work without the checkout.
+ENVELOPES="$TMP/envelopes"
+mkdir -p "$ENVELOPES/.claude"
+python3 - "$FIX" "$ENVELOPES" <<'PY_ENVELOPES'
+import json, sys
+from pathlib import Path
+fixtures, target = map(Path, sys.argv[1:])
+mcp = json.loads((fixtures / "kernel-mcp/positive/canonical-01.json").read_text())
+name = mcp.pop("name")
+(target / ".mcp.json").write_text(json.dumps({"mcpServers": {name: mcp}}))
+hook = json.loads((fixtures / "kernel-hook/positive/canonical-01.json").read_text())
+event, matcher = hook.pop("event"), hook.pop("matcher")
+(target / ".claude/settings.json").write_text(json.dumps({
+    "hooks": {event: [{"matcher": matcher, "hooks": [hook]}]},
+}))
+PY_ENVELOPES
+if env "${OFFLINE_ENV[@]}" "$CONSUMER/scripts/audit-harness" conform "$ENVELOPES" \
+    --tier marketplace --strict >"$TMP/envelopes.json" 2>"$TMP/envelopes.err" &&
+    python3 - "$TMP/envelopes.json" "$ENVELOPES" <<'PY_ENVELOPE_ROWS'
+import hashlib, json, sys
+from pathlib import Path
+rows = json.loads(Path(sys.argv[1]).read_text())
+for kind, path in (("mcp", ".mcp.json"), ("hook", ".claude/settings.json")):
+    selected = [r for r in rows if r["gate_id"].endswith("conform-" + kind)]
+    assert len(selected) == 1, selected
+    row = selected[0]
+    assert row["result"] == "PASS", row
+    assert row["input_hash"] == "sha256:" + hashlib.sha256((Path(sys.argv[2]) / path).read_bytes()).hexdigest()
+PY_ENVELOPE_ROWS
+then pass "fresh install: MCP and embedded hooks PASS with original-byte binding offline"
+else fail "fresh-install MCP/hooks: $(cat "$TMP/envelopes.json" "$TMP/envelopes.err")"; fi
+
+python3 - "$ENVELOPES/.mcp.json" <<'PY_INVALID_MCP'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+data = json.loads(path.read_text())
+del next(iter(data["mcpServers"].values()))["enabled"]
+path.write_text(json.dumps(data))
+PY_INVALID_MCP
+if env "${OFFLINE_ENV[@]}" "$CONSUMER/scripts/audit-harness" conform "$ENVELOPES" \
+    --tier marketplace --strict >"$TMP/envelopes-fail.json" 2>/dev/null; then ec=0; else ec=$?; fi
+if [ "$ec" -eq 1 ] && python3 - "$TMP/envelopes-fail.json" <<'PY_INVALID_ROWS'
+import json, sys
+rows = json.load(open(sys.argv[1]))
+assert any(r["gate_id"].endswith("conform-mcp") and r["result"] == "FAIL" for r in rows), rows
+PY_INVALID_ROWS
+then pass "fresh install: missing MCP field remains strict FAIL"
+else fail "fresh-install MCP strict refusal (exit $ec)"; fi
+
 # ---- 4: marketplace tier against the installed kernel pin ----
 if (cd "$CONSUMER" && env "${OFFLINE_ENV[@]}" scripts/audit-harness conform . --tier marketplace --strict >"$TMP/mk.json" 2>/dev/null); then
   ec=0; else ec=$?; fi

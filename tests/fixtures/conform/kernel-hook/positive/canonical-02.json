@@ -1,0 +1,10 @@
+{
+  "event": "SessionStart",
+  "matcher": "Write",
+  "type": "command",
+  "command": "echo hook-2",
+  "description": "Example hook number 2.",
+  "enabled": true,
+  "timeout": 32,
+  "blocking": true
+}

@@ -25,6 +25,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Extend opt-in published authoring/v1 conformance to MCP and hook envelopes,
+  embedded declarations and confined local JSON references. Bind exact input
+  snapshots, reject ambiguous declarations and preserve explicit unmeasured
+  results for unsupported inputs. Include 80 pinned upstream corpus cases.
+
 - Extend opt-in published authoring/v1 conformance to agent frontmatter and plugin
   manifests, preserving default floors and validating 80 pinned upstream cases.
 

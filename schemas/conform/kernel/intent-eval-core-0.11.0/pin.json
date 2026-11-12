@@ -11,7 +11,9 @@
     "skillmd": "authoring/v1/skill-frontmatter.schema.json",
     "marketplace": "authoring/v1/marketplace-catalog.schema.json",
     "agent": "authoring/v1/agent-definition.schema.json",
-    "plugin": "authoring/v1/plugin-manifest.schema.json"
+    "plugin": "authoring/v1/plugin-manifest.schema.json",
+    "mcp": "authoring/v1/mcp-config.schema.json",
+    "hook": "authoring/v1/hook-config.schema.json"
   },
   "files": {
     "LICENSE": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
@@ -27,6 +29,12 @@
     "authoring/v1/is-overlay/agent-definition.v1.json": "sha256:0a84ad6ed64ee343f01822c0b60d28aee9845403cfd362edd3068c531ef5cb5c",
     "authoring/v1/plugin-manifest.schema.json": "sha256:974ec506218f31dab4bb4030670d7eba238d19c7212ffc8aa80bf472eb105020",
     "authoring/v1/upstream-base/plugin-manifest.v1.json": "sha256:1a2e35980903f832819914bd3fc14522bdaabddf90b2562597849f6a53ade66f",
-    "authoring/v1/is-overlay/plugin-manifest.v1.json": "sha256:1f26579d0f56894ef0fd856769b887b91e91c9372a82f8acf689001f9c789e37"
+    "authoring/v1/is-overlay/plugin-manifest.v1.json": "sha256:1f26579d0f56894ef0fd856769b887b91e91c9372a82f8acf689001f9c789e37",
+    "authoring/v1/mcp-config.schema.json": "sha256:0c949600cf0b4cc803982ce809f612d4239826cc9a88194321ca6d85ba03bc3c",
+    "authoring/v1/upstream-base/mcp-config.v1.json": "sha256:6880292bf064f6b5442efa9e61674103a82af850f810f60c2d9f6038a8619306",
+    "authoring/v1/is-overlay/mcp-config.v1.json": "sha256:27b9f56a2a1893d6a008d75280e9695b93958454a538f2ecd998affb2ee91cbe",
+    "authoring/v1/hook-config.schema.json": "sha256:afe9ea9141b49a756d6f2ed7dd5960002fa02469aabce644c969832fdc730942",
+    "authoring/v1/upstream-base/hook-config.v1.json": "sha256:e1ac95da247cfc4e33ca625ac1e08791c839c95f209dda243569ffaec79daf70",
+    "authoring/v1/is-overlay/hook-config.v1.json": "sha256:e31ba047a401c7177c68fe482c53f00c4c2962112cb63f25e44591c103dd7efa"
   }
 }
