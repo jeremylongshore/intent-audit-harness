@@ -1,0 +1,10 @@
+{
+  "name": "example-server-12",
+  "command": "node",
+  "args": ["server-12.js"],
+  "transport": "stdio",
+  "env": {},
+  "description": "Triage an inbound support ticket: classify intent, extract entities, and draft a grounded reply.",
+  "version": "1.12.0",
+  "enabled": true
+}

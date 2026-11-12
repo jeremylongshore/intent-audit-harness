@@ -1,0 +1,13 @@
+{
+  "name": "example-server-8",
+  "command": "node",
+  "args": ["server-8.js"],
+  "transport": "stdio",
+  "env": {},
+  "description": "Example MCP server number 8.",
+  "version": "1.8.0",
+  "enabled": true,
+  "unknownVendorField": {
+    "foo": "bar"
+  }
+}

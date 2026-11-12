@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/upstream-base/mcp-config.v1.json",
+  "title": "mcp-config — UPSTREAM BASE (authored by the MCP standard + Claude Code, not by IS)",
+  "description": "The upstream projection of the mcp-config contract: the per-server entry shape of an `.mcp.json` / plugin.json `mcpServers` map. THIS FILE IS A VENDORED PROJECTION — it encodes ONLY what the upstream documents, never an IS-specific rule. IS-specific required fields and constraints live in is-overlay/mcp-config.v1.json. Convergence (upstream makes one of our overlay extras required) is a mechanical MOVE of a field from is-overlay → here, not an in-place re-edit. The MCP specification (the ONE truly machine-readable upstream — schema.ts/schema.json) defines the protocol and its transports; Claude Code's `.mcp.json` page defines the per-server config keys. A stdio server requires a `command` to launch the process; `args`/`env` configure it; `transport` selects the protocol transport. Per the MCP spec the transport set is {stdio, streamable HTTP (alias http), SSE (deprecated), ws}.",
+  "$comment": "PROVENANCE. Authority precedence (registry): official MCP spec > Anthropic doc-about-it. Authorities (registry contract 'mcp-config' primary surfaces): modelcontextprotocol.io/specification (current spec revision 2025-11-25, authoritative via github.com/modelcontextprotocol/modelcontextprotocol schema/2025-11-25/schema.ts — the ONE truly machine-readable upstream); code.claude.com/docs/en/mcp ('.mcp.json' standardized format). Captured 2026-06-11; no vendored deep-capture exists yet (registry vendored=null) — a vendored reconciliation is a PUBLISHED-promotion precondition (DR-049). VERBATIM upstream facts encoded here, projected to the FLATTENED single-server corpus shape (the canonical `.mcp.json` keys a server by name and the spec keys it as a map; the IS contract — and the corpus, plan 033 § 14.21 — lift `name` to a field for a one-server-per-document contract): (1) name = string, kebab-case identifier (the corpus constraint-name-empty / constraint-name-spaces / constraint-name-uppercase negatives mirror the same kebab surface every authoring contract uses for a public identifier). (2) command = string, the stdio launch command ('command: /path/to/server' in the `.mcp.json` standardized format) — non-empty (the corpus constraint-command-empty negative supplies ''). (3) args = array of strings ('args: []' in the standardized format; the corpus type-args negative supplies a bare string; ambiguity-01 accepts an empty array). (4) transport = string enum selecting the MCP transport; the spec defines {stdio, http (alias streamable-http), sse (deprecated), ws}; the corpus uses 'stdio' and constraint-transport-invalid rejects 'carrier-pigeon'. (5) env = object ('env: {}' in the standardized format — environment variables passed to the server; the corpus type-env negative supplies an array). NOTE: the base intentionally does NOT cap description length — the universal disclosureMarkers fold (1536) is the operative IS cap. NOTE: metadata is a generic vendor-namespaced object (the corpus edge-02-extra-optional-metadata fixture exercises this), mirroring Claude Code's tolerance of unrecognized fields.",
+  "type": "object",
+  "required": ["name", "command", "args", "transport", "env"],
+  "properties": {
+    "name": {
+      "$comment": "The MCP server identifier. In the `.mcp.json` standardized format the server is keyed by name in the mcpServers map; the IS one-server-per-document contract lifts it to a kebab-case `name` field. The pattern enforces the kebab-case + non-empty surface the corpus tests (constraint-name-empty / constraint-name-spaces / constraint-name-uppercase).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    },
+    "command": {
+      "$comment": "code.claude.com/docs/en/mcp ('.mcp.json' standardized format): the stdio launch command ('command': '/path/to/server'). Non-empty (the corpus constraint-command-empty negative supplies ''; type-command supplies a number). No pattern/length cap — a command is a free-form executable path/name.",
+      "type": "string",
+      "minLength": 1
+    },
+    "args": {
+      "$comment": "code.claude.com/docs/en/mcp ('.mcp.json' standardized format): the stdio command arguments ('args': []). Array of strings; an empty array is valid (the corpus ambiguity-01 accepts []; type-args supplies a bare string).",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transport": {
+      "$comment": "modelcontextprotocol.io/specification (2025-11-25): the MCP transport. The spec defines stdio + Streamable HTTP (Claude Code aliases 'streamable-http' → 'http') + SSE (deprecated) + ws. Enumerated as {stdio, http, sse, ws}; the corpus uses 'stdio' and constraint-transport-invalid rejects 'carrier-pigeon'.",
+      "type": "string",
+      "enum": ["stdio", "http", "sse", "ws"]
+    },
+    "env": {
+      "$comment": "code.claude.com/docs/en/mcp ('.mcp.json' standardized format): environment variables passed to the server ('env': {}). A string→string map; left as a generic object so any env namespace conforms. The corpus type-env negative supplies an array (rejected); an empty object is valid.",
+      "type": "object"
+    },
+    "metadata": {
+      "$comment": "Vendor-namespaced extension object (e.g. metadata.intent-solutions), mirroring Claude Code's tolerance of unrecognized fields. Left as a generic object. The corpus edge-02-extra-optional-metadata fixture exercises this.",
+      "type": "object"
+    }
+  }
+}

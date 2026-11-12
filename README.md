@@ -35,7 +35,7 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 | `audit-harness crap` | CRAP (Complexity × Coverage) scorer — Python, Go, JS/TS, Rust |
 | `audit-harness emit-evidence` | Wrap a gate-result JSON envelope in an in-toto Statement v1 (predicate `gate-result/v1`); `--output FILE` writes one row, `--append-to BUNDLE` appends it to the JSON-array bundle `intent-rollout-gate` consumes |
 | `audit-harness classify` | Read-only repo classifier → an `audit-profile/v1` value (never writes) |
-| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks skills, agents, plugin manifests and marketplace catalogs against their encoded pinned kernel `authoring/v1` contracts (default `--tier floor`: name + description) |
+| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks skills, agents, plugin manifests, marketplace catalogs, MCP entries and hook handlers against their encoded pinned kernel `authoring/v1` contracts (default `--tier floor`: name + description) |
 | `audit-harness audit` | Read-only testing-depth gate-runner → coverage presence per pyramid layer + crap-score |
 | `audit-harness scan` | Security/hygiene/skill-quality gates; `--fail-closed` requires OSV and profile-required security scanners; optional SBOM export stays outside the audited repo |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
@@ -336,14 +336,39 @@ installable; this does not add files to previously published releases.
 ### Published authoring conformance
 
 `audit-harness conform . --tier marketplace` checks discovered skill and agent
-frontmatter, plugin manifests and marketplace catalogs against the unmodified
-published `@intentsolutions/core@0.11.0` authoring/v1 compositions and shared
-folds. Invalid artifacts produce advisory findings by default; `--strict` turns
-measured violations into failures. Existing default floors for skills, agents,
-plugins and MCP are unchanged; default catalog conformance and hook conformance
-in either tier remain unmeasured. Agent and plugin inputs retain their existing
-whole-object shapes and discovery paths; this does not broaden locator coverage
-or add MCP or hook envelope projections.
+frontmatter, plugin manifests, marketplace catalogs, MCP entries and hook
+handlers against the unmodified published `@intentsolutions/core@0.11.0`
+authoring/v1 compositions and shared folds. Invalid artifacts produce advisory
+findings by default; `--strict` turns measured violations into failures. Default
+floor behavior is unchanged. A supplied `--profile` still selects the gates;
+embedded discovery does not override that selection.
+
+MCP maps lift their actual server keys into `name`; hook groups lift their event
+and explicit matcher into each handler. No transport, arguments, environment,
+enablement, timeout or authoring metadata defaults are invented. Empty envelopes
+are `NOT_APPLICABLE`, never schema passes. Conflicting identities are violations.
+This measures declared entries, not the host application's effective merged
+configuration or handler execution.
+
+Opt-in embedded discovery covers root plugin manifests, `package.json` MCP
+fields, equivalent manifests in immediate `packages/*` directories containing a
+package manifest, repository `.claude/settings.json` and `settings.local.json`,
+and skill/agent frontmatter through directory depth four. It excludes symlink
+directories and trees named `node_modules`, `.git`, `.venv`, `dist`, `build`,
+`fixtures`, `tests`, `test`, `__tests__` or `examples`. Custom component paths
+and operator home configuration are not discovered. Existing standalone MCP and
+hook file locators remain supported.
+
+Plugin fields accept inline declarations or arrays containing inline declarations
+and explicit `./` local JSON references relative to the plugin root. References
+cannot traverse parents, follow symlinks, fetch URLs or extract bundles. Each
+consumed path uses one snapshot per artifact evaluation. Receipts bind original
+source bytes and all referenced bytes, retaining projected source pointers;
+multiple inputs use the `authoring-inputs/v1` binding manifest hash. Reads are
+bounded to 4 MiB and nesting depth 128. Frontmatter also has a 100,000-event
+limit; YAML aliases are explicitly unmeasured and duplicate mapping keys are
+invalid. Missing parser support, unsafe files and unsupported references yield
+indeterminate advisories, including under `--strict`.
 
 The pin identifies the package archive and every bundled schema byte. Its hash
 binds the selected policy in each result. Expanding this shared manifest also
@@ -353,7 +378,7 @@ unresolved/recursive references, and unsupported reachable assertion keywords
 produce an explicit indeterminate advisory instead of a passing verdict. This
 is the encoded published v1 structural contract, not the internal v2 contract,
 source-directory existence checks, license ratification, or the skills' rubric.
-The 120 upstream catalog, agent and plugin fixtures are retained with their exact
+The 200 upstream catalog, agent, plugin, MCP and hook fixtures are retained with their exact
 tag, commit and hashes and checked against a reference JSON Schema validator in the existing
 conformance suite. This proves parity on that corpus, not arbitrary-schema
 equivalence. The reference explicitly enables URI format assertions with the hash-locked

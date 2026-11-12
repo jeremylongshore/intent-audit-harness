@@ -1,0 +1,10 @@
+{
+  "event": "PostToolUse",
+  "matcher": "Read",
+  "type": "command",
+  "command": "echo hook-1",
+  "description": "Example hook number 1.",
+  "enabled": true,
+  "timeout": 31,
+  "blocking": true
+}

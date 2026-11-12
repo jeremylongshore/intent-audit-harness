@@ -52,7 +52,7 @@ class CatalogKernel(unittest.TestCase):
 
     def test_unknown_reachable_assertions_are_refused(self):
         for keyword, value in [
-            ("minimum", 0),
+            ("maximum", 0),
             ("propertyNames", {}),
             ("if", {}),
             ("uniqueItems", True),
@@ -66,7 +66,7 @@ class CatalogKernel(unittest.TestCase):
         uri = "https://example.invalid/schema"
         self.assertIn("unresolvable", CF.kernel_schema_admission({"$ref": uri}, {}))
         self.assertIn("recursive", CF.kernel_schema_admission({"$ref": "#"}, {}))
-        self.assertIn("minimum", CF.kernel_schema_admission({"$ref": uri}, {uri: {"minimum": 0}}))
+        self.assertIn("maximum", CF.kernel_schema_admission({"$ref": uri}, {uri: {"maximum": 0}}))
         self.assertIn("format", CF.kernel_schema_admission({"format": "email"}, {}))
         self.assertIn("non-object", CF.kernel_schema_admission(False, {}))
         self.assertIsNone(CF.kernel_schema_admission({"properties": {"minimum": {"type": "string"}}}, {}))

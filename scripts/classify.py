@@ -13,11 +13,12 @@ Design rules (PP-PLAN-040):
   - Classifications are a UNION, not a winner. A repo that is a monorepo AND ships a
     SKILL.md AND an MCP server carries all three. Dropping any is a false-negative.
   - unresolved[] is the only surface a Claude inspector may later refine.
-  - Stdlib only (json, hashlib, os, re, subprocess, datetime). No third-party deps.
+  - Default classification is stdlib-only. Opt-in embedded frontmatter uses
+    PyYAML when available; missing parser support retains unmeasured candidates.
   - No network. No filesystem mutation.
 
 Usage:
-  python3 scripts/classify.py [REPO_PATH] [--json] [--registry PATH]
+  python3 scripts/classify.py [REPO_PATH] [--json] [--registry PATH] [--embedded-authoring]
   AUDIT_HARNESS_DISABLE=1 python3 scripts/classify.py   # kill-switch
   AUDIT_HARNESS_ADVISORY=gate-id,gate-id ...            # force-advisory specific gates
 """
@@ -183,7 +184,7 @@ def repo_type_signals(pkg, root):
     return found
 
 
-def classify(repo):
+def classify(repo, embedded_authoring=False):
     repo = os.path.abspath(repo)
     found = {}  # kind -> set(signals)
 
@@ -206,6 +207,11 @@ def classify(repo):
         add("hook", "hooks config")
     if has(".mcp.json"):
         add("mcp", ".mcp.json present")
+    if embedded_authoring:
+        from authoring_discovery import embedded_artifacts
+        for kind in ("mcp", "hook"):
+            for path, _mode in embedded_artifacts(repo, kind):
+                add(kind, "embedded authoring candidate:" + path)
     if os.path.isdir(os.path.join(repo, ".claude-plugin")) or has("plugin.json", ".claude-plugin/plugin.json"):
         add("plugin", ".claude-plugin/")
     if has(".claude-plugin/marketplace.json", "marketplace.json"):
@@ -320,6 +326,8 @@ def main():
     ap.add_argument("repo", nargs="?", default=".", help="Repo path (default: cwd)")
     ap.add_argument("--json", action="store_true", help="Emit JSON (default; flag is for symmetry with other gates)")
     ap.add_argument("--registry", default=DEFAULT_REGISTRY, help="Path to the dimension-to-gate registry datum")
+    ap.add_argument("--embedded-authoring", action="store_true",
+                    help="Include repository-local inline MCP/hook candidates for marketplace-tier validation")
     args = ap.parse_args()
 
     repo = os.path.abspath(args.repo)
@@ -340,7 +348,7 @@ def main():
         if gid.strip():
             override["advisory"].append(gid.strip())
 
-    found = classify(repo)
+    found = classify(repo, embedded_authoring=args.embedded_authoring)
 
     # engineer classification pins (declared)
     for k in override.get("classify_pins", []):
