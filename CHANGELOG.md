@@ -25,6 +25,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Opt-in read-only `skill-gates` verifier for current local read/run/report
+  evidence, with existing bundle compatibility and offline falsification tests.
+
 - Extend opt-in published authoring/v1 conformance to MCP and hook envelopes,
   embedded declarations and confined local JSON references. Bind exact input
   snapshots, reject ambiguous declarations and preserve explicit unmeasured

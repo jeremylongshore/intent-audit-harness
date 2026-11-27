@@ -389,3 +389,8 @@ URI validity. The published skill schema explicitly reserves its
 cross-field carve-out remains outside structural conformance. Other unknown
 keywords are not implicitly admitted. No production JSON Schema dependency or
 network fetch is added.
+
+## Skill compliance pilot
+
+See [the read-only skill evidence gate](docs/skill-gates.md) for the opt-in
+versioned policy/receipt verifier and its trust boundaries.
