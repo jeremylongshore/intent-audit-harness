@@ -30,6 +30,7 @@ const COMMANDS = {
   'fp-rate':       { script: 'fp-rate.py',       args: [] },
   'currency':      { script: 'currency.py',      args: [] },
   'migration-notes': { script: 'migration-notes.py', args: [] },
+  'skill-gates': { script: 'skill-gates.py', args: [] },
   'report-lineage': { script: 'report-lineage.py', args: [] },
   'gen-layer-applicability': { script: 'gen-layer-applicability.py', args: [] },
   'worktree-run':  { script: 'worktree-run.sh',  args: [] },
@@ -130,6 +131,9 @@ Commands:
                            a minor/patch boundary reports "no action required".
                            --json emits a migration-notes/v1 envelope. Exit 1 =
                            version/range not in CHANGELOG; 2 = CHANGELOG unreadable.
+  skill-gates              Read-only skill compliance evidence verifier (operational pilot).
+                           --policy PATH --receipt PATH --root PATH --session ID
+                           --collector PATH --json [--strict]. See docs/skill-gates.md.
   report-lineage            Verify J-Rig unified/suite Run/Grade/report lineage
                            and arithmetic. Read-only, offline, advisory by default;
                            --strict turns unverifiable reports into FAIL. Use

@@ -372,7 +372,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Run deterministic Run/Grade/report and sample-balance fixtures
-        run: bash tests/report-lineage/run-report-lineage-tests.sh
+        run: |
+          bash tests/report-lineage/run-report-lineage-tests.sh
+          python3 tests/skill-gates/test_skill_gates.py
 
   version-canonical-check:
     name: Manifest version + license alignment
