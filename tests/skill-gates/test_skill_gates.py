@@ -3,11 +3,13 @@
 import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SOURCE = Path(__file__).resolve().parents[2] / "scripts/skill-gates.py"
 sys.dont_write_bytecode = True
@@ -126,6 +128,47 @@ class SkillGates(unittest.TestCase):
                                         input=json.dumps(row), text=True, capture_output=True)
                 self.assertEqual(output.returncode, 0, output.stderr)
                 self.assertEqual(json.loads(bundle.read_text())[0]["predicate"]["gate_decision"], expected)
+
+    def test_equals_file_options_invalidate_prior_evidence(self):
+        config = self.root / "checks.json"
+        config.write_text('{"strict":true}')
+        self.policy["must_run"][0]["argv"].append("--config=checks.json")
+        before = G.identity(self.root, self.policy, self.policy_hash, SOURCE)
+        self.assertIn("checks.json", before["inputs"])
+        config.write_text('{"strict":false}')
+        after = G.identity(self.root, self.policy, self.policy_hash, SOURCE)
+        self.assertNotEqual(before, after)
+
+    def test_workspace_executable_and_relative_path_ignore_caller_cwd(self):
+        script = self.root / "tool"
+        script.write_text("#!/bin/sh\nexit 0\n")
+        script.chmod(0o700)
+        self.policy["must_run"][0]["argv"] = ["./tool"]
+        before = G.identity(self.root, self.policy, self.policy_hash, SOURCE)
+        with tempfile.TemporaryDirectory() as other:
+            previous = Path.cwd()
+            try:
+                os.chdir(other)
+                self.assertEqual(before, G.identity(self.root, self.policy, self.policy_hash, SOURCE))
+                self.policy["must_run"][0]["argv"] = ["tool"]
+                for path in (".", ""):
+                    with patch.dict(os.environ, {"PATH": path}):
+                        actual = G.identity(self.root, self.policy, self.policy_hash, SOURCE)
+                        self.assertEqual(actual["tools"]["unit"]["path"], str(script))
+            finally:
+                os.chdir(previous)
+
+    def test_overflowing_numbers_produce_unavailable_json_rows(self):
+        for raw in ('{"x":1e999}', '{"x":NaN}', '{"x":Infinity}'):
+            with self.subTest(raw=raw):
+                receipt = self.root / "invalid.json"
+                receipt.write_text(raw)
+                out = subprocess.run([sys.executable, str(SOURCE), "--policy", str(self.path),
+                                      "--receipt", str(receipt), "--root", str(self.root),
+                                      "--session", "session-a", "--collector", str(SOURCE), "--json"],
+                                     capture_output=True, text=True)
+                self.assertEqual(out.returncode, 0, out.stderr)
+                self.assertEqual(json.loads(out.stdout)["result"], "ADVISORY")
 
 
 if __name__ == "__main__":

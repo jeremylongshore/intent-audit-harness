@@ -41,12 +41,16 @@ their reports are trusted reviewed code, not an adversarial execution oracle.
 The `audit-harness/skill-gate-receipt/v1` receipt has exact top-level fields
 `schema`, `session`, `identity`, `reads`, `commands`, and `report`.
 Identity binds absolute workspace, exact policy bytes, declared input hashes,
-file arguments to commands, resolved executable bytes, Python binary/version,
+file arguments to commands (including `--name=file` options), resolved executable
+bytes, Python binary/version,
 and verifier/collector source bytes. Each command and report binds the whole
 identity digest. A source/config/tool change invalidates prior evidence even
 when the old process exited zero. Missing executables and unsupported schemas
 remain unavailable evidence. Freshness covers only the authored inventory;
 environment variables, undeclared inputs and external state remain unbound.
+Relative executable paths and relative/empty PATH entries resolve against
+`--root`, so verification from another directory preserves tool identity.
+Arbitrary compound option syntax is not parsed; inventory those files explicitly.
 
 The result row carries policy and receipt digests, findings, reported checklist
 and `trusted_local_evidence: true`. `commit_sha` is `unknown`; content hashes are
