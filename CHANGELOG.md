@@ -8,6 +8,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Bind skill-gate file-valued options and workspace-relative executable lookup,
+  and reject overflowing JSON numbers without losing advisory result output.
+
 - Ignore local Git replacement refs when preparing release assets, so the pinned
   commit cannot label substituted installer or archive bytes. Refs bead
   `bd_000-projects-k5e22.1`.

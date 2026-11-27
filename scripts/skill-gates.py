@@ -4,6 +4,8 @@
 import argparse
 import hashlib
 import json
+import math
+import os
 from pathlib import Path
 import re
 import shutil
@@ -41,7 +43,13 @@ def load(path):
     def finite(_value):
         raise ValueError("non-finite JSON number")
 
-    return json.loads(raw, object_pairs_hook=unique, parse_constant=finite), digest(raw)
+    def number(value):
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            raise ValueError("overflowing JSON number")
+        return parsed
+
+    return json.loads(raw, object_pairs_hook=unique, parse_constant=finite, parse_float=number), digest(raw)
 
 
 def exact(value, keys):
@@ -114,15 +122,22 @@ def identity(root, policy, policy_hash, collector):
     paths = set(policy["inputs"] + policy["must_read"])
     tools = {}
     for command in policy["must_run"]:
-        executable = shutil.which(command["argv"][0])
+        executable = resolve_executable(root, command["argv"][0])
         if executable is None:
             raise ValueError("command executable unavailable")
         executable = str(Path(executable).resolve())
         tools[command["id"]] = {"path": executable, "sha256": digest(Path(executable).read_bytes())}
         # Explicit files in argv are inputs too; directories/globs still require authored inventory.
         for arg in command["argv"][1:]:
-            if not arg.startswith("-") and (root / arg).is_file():
-                paths.add(relative(arg))
+            candidate = arg.split("=", 1)[1] if arg.startswith("-") and "=" in arg else arg
+            path = root / candidate
+            if not candidate.startswith("-") and path.is_file():
+                if path.is_absolute():
+                    try:
+                        candidate = str(path.relative_to(root))
+                    except ValueError as error:
+                        raise ValueError("file argument outside workspace") from error
+                paths.add(relative(candidate))
     return {
         "root": str(root), "policy_sha256": policy_hash,
         "inputs": {p: digest(file_path(root, p).read_bytes()) for p in sorted(paths)},
@@ -130,6 +145,15 @@ def identity(root, policy, policy_hash, collector):
         "collector_sha256": digest(Path(collector).read_bytes()),
         "python_sha256": digest(Path(sys.executable).read_bytes()), "python_version": sys.version,
     }
+
+
+def resolve_executable(root, name):
+    """Match execution's declared cwd, including relative/empty PATH entries."""
+    if os.path.dirname(name):
+        return shutil.which(str(root / name))
+    entries = os.environ.get("PATH", os.defpath).split(os.pathsep)
+    search = os.pathsep.join(str((root / entry).resolve()) for entry in entries)
+    return shutil.which(name, path=search)
 
 
 def assess(policy, receipt, current, session):
