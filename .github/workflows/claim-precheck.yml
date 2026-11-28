@@ -14,7 +14,7 @@ jobs:
     # P0-RATIFY-4: use the lab's canonical, immutable reusable workflow.
     # External fork PRs are warning-plus-acknowledgment; internal PRs are hard-gated.
     # Refs bead bd_000-projects-rqwk.9.3.
-    uses: jeremylongshore/intent-eval-lab/.github/workflows/claim-precheck-reusable.yml@a263bacaca76457e6b138bef54bc2cbf7100b154 # reviewed workflow snapshot
+    uses: jeremylongshore/intent-eval-lab/.github/workflows/claim-precheck-reusable.yml@2a9132d6ad22fb1c35edf08106a611fcdb825dd9 # reviewed workflow snapshot
     with:
       # The gate script itself is pinned independently from the workflow adapter.
       gate_ref: 7b0bb069d7ce659bee760ac0a45ebdee42569841
