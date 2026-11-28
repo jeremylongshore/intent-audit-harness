@@ -12,6 +12,11 @@ updates:
   # Keep GitHub Actions up to date
   - package-ecosystem: "github-actions"
     directory: "/"
+    # CodeQL init and analyze share one versioned configuration format.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     schedule:
       interval: "weekly"
       day: "monday"
