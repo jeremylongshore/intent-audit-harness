@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/upstream-base/agent-definition.v1.json",
+  "title": "agent-definition — UPSTREAM BASE (authored by Anthropic/Claude Code, not by IS)",
+  "description": "The upstream projection of the agent-definition contract: the YAML frontmatter shape of a subagent file (agents/*.md) owned by Claude Code. THIS FILE IS A VENDORED PROJECTION — it encodes ONLY what the upstream documents, never an IS-specific rule. IS-specific required fields and constraints live in is-overlay/agent-definition.v1.json. Convergence (upstream makes one of our overlay extras required) is a mechanical MOVE of a field from is-overlay → here, not an in-place re-edit. Per the upstream doc: 'Only `name` and `description` are required.' Every other documented field is OPTIONAL upstream — so the standardFloor here is exactly [name, description].",
+  "$comment": "PROVENANCE. Authority (registry contract 'agent-definition' primary surfaces): code.claude.com/docs/en/sub-agents § 'Supported frontmatter fields' (the field table); platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices. Captured 2026-06-11 from code.claude.com/docs/en/sub-agents; no vendored deep-capture exists yet (registry vendored=null) — a vendored reconciliation is a PUBLISHED-promotion precondition (DR-049). VERBATIM upstream facts encoded here: (1) 'Only `name` and `description` are required.' ⇒ required:[name, description]. (2) name = string, 'Unique identifier using lowercase letters and hyphens' ⇒ kebab-case pattern + non-empty (the corpus constraint-name-empty / constraint-name-spaces / constraint-name-uppercase negatives). (3) description = string, 'When Claude should delegate to this subagent'. (4) tools = OPTIONAL, '[Tools] the subagent can use. Inherits all tools if omitted.' The doc shows a comma-separated YAML string form; the IS contract (and corpus) fix the wire form to an array of tool identifiers — a permitted narrowing, the same one skill-frontmatter applies to allowed-tools. Typed here as an array of strings (the corpus type-tools negative supplies a bare string). (5) model = OPTIONAL enum, documented aliases 'sonnet', 'opus', 'haiku', 'fable', plus a full model ID or 'inherit'. The base enumerates the documented aliases the corpus exercises {sonnet, opus, haiku} and the published extras {fable, inherit}; the corpus constraint-model-invalid negative ('gpt-9') is rejected. (Full-model-ID acceptance is an upstream latitude intentionally NOT modeled — the IS contract narrows to the alias set, matching the corpus.) (6) color = OPTIONAL enum: 'Accepts red, blue, green, yellow, purple, orange, pink, or cyan.' ⇒ those 8 values exactly (the corpus constraint-color-invalid negative 'rainbow' is rejected). NOTE: the base intentionally does NOT cap description length — the universal disclosureMarkers fold (1536) is the operative IS cap; encoding the upstream's silence as a cap would violate the monotonic-additive invariant. NOTE: metadata is a generic vendor-namespaced object (the corpus edge-02-extra-optional-metadata fixture exercises this), mirroring 'Claude Code ignores fields it does not recognize'.",
+  "type": "object",
+  "required": ["name", "description"],
+  "properties": {
+    "name": {
+      "$comment": "code.claude.com/docs/en/sub-agents (frontmatter table): string, 'Unique identifier using lowercase letters and hyphens'. The ONLY identity field. The pattern enforces the kebab-case + non-empty surface the corpus tests (constraint-name-empty / constraint-name-spaces / constraint-name-uppercase).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    },
+    "description": {
+      "$comment": "code.claude.com/docs/en/sub-agents (frontmatter table): string, 'When Claude should delegate to this subagent'. Length cap deliberately NOT encoded here — the universal disclosureMarkers fold (1536) is the operative IS cap.",
+      "type": "string",
+      "minLength": 1
+    },
+    "tools": {
+      "$comment": "code.claude.com/docs/en/sub-agents (frontmatter table): OPTIONAL, '[Tools] the subagent can use. Inherits all tools if omitted.' The upstream shows a comma-separated string; the IS contract narrows the wire form to a YAML array of tool identifiers (the corpus type-tools negative supplies a bare string, and ambiguity-01 accepts an empty array — a subagent that pre-approves zero tools).",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "model": {
+      "$comment": "code.claude.com/docs/en/sub-agents (frontmatter table + 'Choose a model'): OPTIONAL. Documented aliases sonnet/opus/haiku/fable, plus 'inherit' or a full model ID. The base enumerates the alias set {sonnet, opus, haiku, fable, inherit} the corpus exercises; the corpus constraint-model-invalid negative ('gpt-9') is rejected. Full-model-ID latitude is intentionally not modeled (the IS contract narrows to the alias set).",
+      "type": "string",
+      "enum": ["sonnet", "opus", "haiku", "fable", "inherit"]
+    },
+    "color": {
+      "$comment": "code.claude.com/docs/en/sub-agents (frontmatter table): OPTIONAL, 'Accepts red, blue, green, yellow, purple, orange, pink, or cyan.' Enumerated exactly as documented (the corpus constraint-color-invalid negative 'rainbow' is rejected).",
+      "type": "string",
+      "enum": ["red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"]
+    },
+    "metadata": {
+      "$comment": "Vendor-namespaced extension object (e.g. metadata.intent-solutions), mirroring the upstream 'Claude Code ignores fields it does not recognize' tolerance. Left as a generic object so a vendor namespace does not violate the shape. The corpus edge-02-extra-optional-metadata fixture exercises this.",
+      "type": "object"
+    }
+  }
+}

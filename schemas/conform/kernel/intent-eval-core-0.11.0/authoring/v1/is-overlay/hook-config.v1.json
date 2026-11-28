@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/is-overlay/hook-config.v1.json",
+  "title": "hook-config — IS OVERLAY (authored by Intent Solutions)",
+  "description": "The Intent-Solutions-only delta on top of upstream-base/hook-config.v1.json. THIS FILE IS THE ONLY PLACE IS POLICY LIVES for this contract. Upstream requires the trigger + handler surface ([event, matcher, type, command]); `timeout` is upstream-OPTIONAL (promoted to IS-required); `description`, `enabled`, and `blocking` are net-new IS-required operational/tracking fields. By the monotonic-additive invariant (DR-044 D7 + CSO position): the overlay may only ADD required fields and NARROW constraints relative to the base — never subtract a base requirement or loosen a base constraint. Each field carries its upstream-convergence trigger.",
+  "$comment": "OVERLAY REQUIRED DELTA (beyond the base floor [event, matcher, type, command]): [description, enabled, timeout, blocking]. Union with the base floor = the IS 8-field hook-config required set {event, matcher, type, command, description, enabled, timeout, blocking} — the corpus's missing-* negatives (one per field) are the ground truth this delta is decomposed against. This required set evolves under ISEDC Class-1 ratification only (the 2026-04-28-debacle guard). Note: this contract carries no `name`/`version` — a hook handler has no public identifier and no independent version (it ships inside a plugin whose plugin-manifest carries the version). Citations: code.claude.com/docs/en/hooks; code.claude.com/docs/en/settings; tests/authoring/v1/fixtures/hook-config/ (the corpus-first golden ground truth, plan 033 § 14.21).",
+  "type": "object",
+  "required": ["description", "enabled", "timeout", "blocking"],
+  "properties": {
+    "description": {
+      "$comment": "IS: net-new IS-required tracking field (a hook handler has no upstream description key; the IS marketplace tier requires every published artifact to describe itself — the universal disclosureMarkers fold caps its length at 1536). CONVERGENCE TRIGGER: if the upstream adds a required handler `description`, move the required-membership to upstream-base.",
+      "type": "string",
+      "minLength": 1
+    },
+    "enabled": {
+      "$comment": "IS: net-new IS-required operational field (whether the hook is active). The corpus type-enabled negative supplies the string 'yes' (rejected — must be a real boolean). CONVERGENCE TRIGGER: if the upstream adds a required handler enablement boolean, move the required-membership to upstream-base.",
+      "type": "boolean"
+    },
+    "timeout": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED (code.claude.com/docs/en/hooks documents `timeout` as optional 'Seconds before canceling'). The IS marketplace tier requires an explicit, non-negative integer timeout (no silent default). The corpus constraint-timeout-negative negative supplies -5 (rejected) and type-timeout supplies the string '30' (rejected). CONVERGENCE TRIGGER: if the upstream makes timeout required, move the required-membership to upstream-base.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "blocking": {
+      "$comment": "IS: net-new IS-required tracking field — whether this hook is intended to BLOCK on failure (exit-code-2 semantics, per code.claude.com/docs/en/hooks: 'For a policy-enforcing hook, use exit 2'). Declaring blocking-intent explicitly makes the policy posture auditable. The corpus type-blocking negative supplies 1 (rejected — must be a real boolean). CONVERGENCE TRIGGER: if the upstream adds a required blocking-intent boolean to the handler shape, move the required-membership to upstream-base.",
+      "type": "boolean"
+    }
+  }
+}

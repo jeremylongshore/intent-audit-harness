@@ -273,5 +273,25 @@ else
 fi
 
 echo ""
+if python3 "$ROOT/tests/conform/test_catalog_kernel.py"; then
+  pass "published marketplace catalog corpus and CLI admission"
+else
+  fail "published marketplace catalog corpus and CLI admission"
+fi
+
+if python3 "$ROOT/tests/conform/test_agent_plugin_kernel.py"; then
+  pass "published agent/plugin corpora and CLI admission"
+else
+  fail "published agent/plugin corpora and CLI admission"
+fi
+
+for suite in test_authoring_inputs test_authoring_projection test_projected_kernel; do
+  if python3 "$ROOT/tests/conform/$suite.py"; then
+    pass "$suite"
+  else
+    fail "$suite"
+  fi
+done
+
 echo "conform suite: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

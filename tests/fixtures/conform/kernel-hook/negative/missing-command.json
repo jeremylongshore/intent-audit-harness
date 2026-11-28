@@ -1,0 +1,9 @@
+{
+  "event": "PreToolUse",
+  "matcher": "Bash",
+  "type": "command",
+  "description": "Example hook number 0.",
+  "enabled": true,
+  "timeout": 30,
+  "blocking": true
+}

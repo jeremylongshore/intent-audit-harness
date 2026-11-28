@@ -13,6 +13,12 @@ on:
 permissions:
   contents: read
 
+# Only superseded PR validation is disposable. Keep every main/scheduled run
+# independent so evidence for distinct commits is never canceled or replaced.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   canonical-dashboard-evidence:
     name: Canonical dashboard evidence contracts
@@ -75,6 +81,8 @@ jobs:
         id: node
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: ci/typescript-provider/package-lock.json
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         id: python
         with:
@@ -90,7 +98,11 @@ jobs:
           python3 -m venv "$MEASUREMENT_PROVIDER"
           "$MEASUREMENT_PROVIDER/bin/python" -m pip install --require-hashes --only-binary=:all: -r ci/requirements.txt
           "$MEASUREMENT_PROVIDER/bin/python" -m pip install --require-hashes --only-binary=:all: -r ci/measurement-requirements.txt
-      - name: Collect Python observations and explicit unavailable reasons
+      - name: Install locked private Node measurement provider
+        id: node-providers
+        if: always() && steps.checkout.outcome == 'success' && steps.node.outcome == 'success'
+        run: npm ci --ignore-scripts --prefix ci/typescript-provider
+      - name: Collect Python and Node observations in one behavioral run
         id: measurement
         if: always() && steps.checkout.outcome == 'success'
         env:
@@ -104,6 +116,7 @@ jobs:
             --output-dir "$MEASUREMENT_OUTPUT" \
             --coverage-python "$MEASUREMENT_PROVIDER/bin/python" \
             --complexity-python "$MEASUREMENT_PROVIDER/bin/python" \
+            --node-provider-root "$GITHUB_WORKSPACE/ci/typescript-provider" \
             2>&1 | tee "$MEASUREMENT_OUTPUT.runner.log" || runner_status=$?
           mkdir -p "$MEASUREMENT_OUTPUT"
           mv -f "$MEASUREMENT_OUTPUT.runner.log" "$MEASUREMENT_OUTPUT/runner.log"
@@ -116,6 +129,7 @@ jobs:
           NODE_OUTCOME: ${{ steps.node.outcome }}
           PYTHON_OUTCOME: ${{ steps.python.outcome }}
           PROVIDERS_OUTCOME: ${{ steps.providers.outcome }}
+          NODE_PROVIDERS_OUTCOME: ${{ steps.node-providers.outcome }}
           MEASUREMENT_OUTCOME: ${{ steps.measurement.outcome }}
         run: |
           mkdir -p "$MEASUREMENT_OUTPUT"
@@ -131,9 +145,15 @@ jobs:
               echo "The runner did not emit both summary.json and summary.md. No measurement or pass claim is available."
             } | tee "$MEASUREMENT_OUTPUT/ci-summary.md" >> "$GITHUB_STEP_SUMMARY"
           fi
+          if [[ -s "$MEASUREMENT_OUTPUT/node-summary.md" ]]; then
+            cat "$MEASUREMENT_OUTPUT/node-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Node observations unavailable; no Node measurement claim"
+          fi
           cat > "$MEASUREMENT_OUTPUT/ci-diagnostic.json" <<EOF
           {
             "schema_version": "audit-harness-self-measurement-ci-diagnostic/v1",
+            "node_providers_outcome": "$NODE_PROVIDERS_OUTCOME",
             "enforcement": "advisory",
             "report_available": $report_available,
             "steps": {
@@ -179,6 +199,9 @@ jobs:
 
       - name: audit-harness verify (self-check via dispatcher)
         run: node bin/audit-harness.js verify
+
+      - name: CLI timeout and process-tree regression tests
+        run: node --test tests/cli/timeout.test.cjs
 
       - name: audit-harness list (self-check enumeration)
         # Self-pin landed via iep-P3 iah-self-pin (bd_000-projects-itpl).
@@ -226,6 +249,19 @@ jobs:
             echo "::warning::escape-scan did NOT refuse on synthetic threshold-lowering input — review scripts/escape-scan.sh"
             # tighten to exit 1 once escape-scan output is deterministic
           fi
+
+  timeout-windows:
+    name: CLI timeout process tree (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+      - name: Exercise native taskkill and dispatcher contracts
+        run: node --test tests/cli/timeout.test.cjs
 
   shellcheck:
     name: shellcheck (script lint)
@@ -336,7 +372,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Run deterministic Run/Grade/report and sample-balance fixtures
-        run: bash tests/report-lineage/run-report-lineage-tests.sh
+        run: |
+          bash tests/report-lineage/run-report-lineage-tests.sh
+          python3 tests/skill-gates/test_skill_gates.py
 
   version-canonical-check:
     name: Manifest version + license alignment
@@ -608,6 +646,8 @@ jobs:
         run: bash tests/conform/run-conform-tests.sh
       - name: Run installer offline suite (fresh install.sh can run conform)
         run: bash tests/install/run-install-tests.sh
+      - name: Verify release asset identity and pre-execution checks offline
+        run: python3 -m unittest discover -s tests/release-assets -p 'test_*.py'
 
   audit:
     name: audit golden suite (testing-depth gate-runner)
@@ -719,7 +759,16 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ci/typescript-provider/package-lock.json
+      - name: Install locked optional TypeScript test provider
+        run: npm ci --ignore-scripts --prefix ci/typescript-provider
       - name: Run crap-score join-regression suite
+        env:
+          AUDIT_HARNESS_TYPESCRIPT_ROOT: ${{ github.workspace }}/ci/typescript-provider
         run: bash tests/crap-score/run-crap-score-tests.sh
 
   golden:

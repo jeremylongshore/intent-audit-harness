@@ -118,6 +118,27 @@ jobs:
           path: build/security/dependency-gate-results.json
           if-no-files-found: error
 
+      - name: Prepare installer assets from the exact release commit
+        run: |
+          python3 scripts/build-release-assets.py \
+            --tag "${GITHUB_REF#refs/tags/}" --expected-commit "$GITHUB_SHA" \
+            --output "$RUNNER_TEMP/installer-assets"
+
+      - name: Install pinned Cosign for installer signatures
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+        with:
+          cosign-release: v2.5.2
+
+      - name: Sign and verify installer checksum manifest
+        run: |
+          cosign sign-blob --yes --new-bundle-format \
+            --bundle "$RUNNER_TEMP/installer-assets/SHA256SUMS.sigstore.json" \
+            "$RUNNER_TEMP/installer-assets/SHA256SUMS"
+          python3 scripts/verify-release-assets.py \
+            --source "$RUNNER_TEMP/installer-assets" \
+            --output "$RUNNER_TEMP/verified-installer-assets" \
+            --tag "${GITHUB_REF#refs/tags/}" --expected-commit "$GITHUB_SHA"
+
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
         env:
@@ -137,6 +158,17 @@ jobs:
           else
             gh release create "$tag" --title "audit-harness $tag" --generate-notes --latest
           fi
+
+      - name: Upload verified installer release assets without overwriting existing evidence
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${GITHUB_REF#refs/tags/}" \
+            "$RUNNER_TEMP/verified-installer-assets/install.sh" \
+            "$RUNNER_TEMP/verified-installer-assets/audit-harness.tar.gz" \
+            "$RUNNER_TEMP/verified-installer-assets/release.json" \
+            "$RUNNER_TEMP/verified-installer-assets/SHA256SUMS" \
+            "$RUNNER_TEMP/verified-installer-assets/SHA256SUMS.sigstore.json"
 
   # ── Emit this repo's own testing evidence for the dashboard (bead nr75.12) ──
   #

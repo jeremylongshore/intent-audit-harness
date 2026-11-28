@@ -2,10 +2,14 @@
 
 Rust-native install of the Intent Solutions deterministic test-enforcement toolkit.
 
-Mirrors the CLI surface of the Node package
+This wrapper exposes `verify`, `init`, `list`, `escape-scan`, `arch`, `bias`,
+`gherkin-lint`, and `crap`. It does not expose `classify` or `conform`, or bundle
+their registry and conformance schemas. Use the canonical npm package
 [`@intentsolutions/audit-harness`](https://www.npmjs.com/package/@intentsolutions/audit-harness)
-and the Python package `intent-audit-harness` so the command line is identical across
-ecosystems.
+or the root project's `install.sh` for those commands, including when auditing a
+Rust project. Installing a newer wrapper version does not imply command parity.
+
+See the [distribution contract](../000-docs/015-AT-DECR-classify-conform-distribution-contract-2026-11-12.md).
 
 ## Install
 

@@ -1,0 +1,10 @@
+{
+  "name": "example-agent-5",
+  "description": "Example agent number 5.",
+  "tools": ["Read", "Grep"],
+  "model": "haiku",
+  "color": "red",
+  "version": "1.5.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-5"]
+}

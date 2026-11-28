@@ -1,0 +1,18 @@
+# Exact historical findings only. Each line names one commit:file:rule:line; a
+# credential anywhere else, or in a different commit, still fires.
+#
+# 2026-04-21 commit 9b97217, python/PUBLISH.md:24: a PyPI API token. The file was
+# redacted later, the GitHub PYPI_TOKEN secret was deleted 2026-09-13, PyPI
+# publishing is retired (frozen at 1.4.0), and the owner revoked the token on
+# pypi.org 2026-10-27. History is kept so published tags and provenance stay
+# valid. Incident record: issue #166, bead bd_000-projects-wcze.4.
+9b97217ab639219bdd81ed6ac11bad5c1485ba62:python/PUBLISH.md:generic-api-key:24
+
+# 2026-06-13 commits 25ca060 and c4706a9 (PRs #77, #80): planted fixtures for the
+# provider credential gate's own tests in tests/cred-gate/run-cred-gate-tests.sh.
+# Every value carries the NOTREAL marker; they exist so the gate has known
+# credential shapes to detect and redact.
+25ca0605e4c6216dfd8f1d08a660e0b6404dc90d:tests/cred-gate/run-cred-gate-tests.sh:aws-access-token:71
+c4706a93cdfea550205ae8bcc9f4eea33aca142b:tests/cred-gate/run-cred-gate-tests.sh:aws-access-token:87
+c4706a93cdfea550205ae8bcc9f4eea33aca142b:tests/cred-gate/run-cred-gate-tests.sh:gcp-api-key:88
+c4706a93cdfea550205ae8bcc9f4eea33aca142b:tests/cred-gate/run-cred-gate-tests.sh:github-pat:89

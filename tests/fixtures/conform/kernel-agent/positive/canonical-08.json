@@ -1,0 +1,10 @@
+{
+  "name": "example-agent-8",
+  "description": "Example agent number 8.",
+  "tools": ["Read"],
+  "model": "haiku",
+  "color": "red",
+  "version": "1.8.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-8"]
+}

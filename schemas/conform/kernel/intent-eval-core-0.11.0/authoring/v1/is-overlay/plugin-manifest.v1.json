@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/is-overlay/plugin-manifest.v1.json",
+  "title": "plugin-manifest — IS OVERLAY (authored by Intent Solutions)",
+  "description": "The Intent-Solutions-only delta on top of upstream-base/plugin-manifest.v1.json. THIS FILE IS THE ONLY PLACE IS POLICY LIVES for this contract. Upstream makes ONLY `name` required (everything else optional); the IS marketplace tier promotes seven upstream-optional metadata fields (version, description, author, homepage, license, keywords, commands) to IS-required, and narrows `version` to strict SemVer 2.0.0. By the monotonic-additive invariant (DR-044 D7 + CSO position): the overlay may only ADD required fields and NARROW constraints relative to the base — never subtract a base requirement or loosen a base constraint. Each promoted field carries its upstream-convergence trigger: the condition under which the field MOVES from this overlay into upstream-base (a mechanical move, not a re-edit).",
+  "$comment": "OVERLAY REQUIRED DELTA (beyond the base floor [name]): [version, description, author, homepage, license, keywords, commands]. Union with the base floor = the IS 8-field plugin-manifest required set {name, version, description, author, homepage, license, keywords, commands} — the corpus's missing-* negatives (one per field) are the ground truth this delta is decomposed against. This required set evolves under ISEDC Class-1 ratification only (the 2026-04-28-debacle guard — must not be silently reduced). Note: `repository` is upstream-optional and stays optional (no missing-repository negative in the corpus). Citations: code.claude.com/docs/en/plugins-reference; tests/authoring/v1/fixtures/plugin-manifest/ (the corpus-first golden ground truth, plan 033 § 14.21).",
+  "type": "object",
+  "required": ["version", "description", "author", "homepage", "license", "keywords", "commands"],
+  "properties": {
+    "version": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED, and NARROWED to strict SemVer 2.0.0 (the base only types it as a string; the upstream prose says 'Semantic version' but does not pin a grammar). The corpus constraint-version-not-semver negative supplies '2.0', which this pattern rejects. CONVERGENCE TRIGGER: if code.claude.com/docs/en/plugins-reference makes version required (or pins a SemVer grammar), move the required-membership (and/or the pattern) to upstream-base.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+    },
+    "description": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED (type unchanged from base — the universal disclosureMarkers fold caps its length at 1536). CONVERGENCE TRIGGER: if the upstream makes description required, move the required-membership to upstream-base.",
+      "type": "string",
+      "minLength": 1
+    },
+    "author": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED. The object shape ({name} required, email/url optional) is the base's — the overlay does not re-type it, to keep the wire form single-sourced. CONVERGENCE TRIGGER: if the upstream makes author required, move the required-membership to upstream-base.",
+      "type": "object"
+    },
+    "homepage": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED (URI format is the base's). CONVERGENCE TRIGGER: if the upstream makes homepage required, move the required-membership to upstream-base.",
+      "type": "string"
+    },
+    "license": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED (type unchanged from base). Mirrors the skill-frontmatter marketplace-tier requirement that every published artifact declare a license. CONVERGENCE TRIGGER: if the upstream makes license required, move the required-membership to upstream-base.",
+      "type": "string",
+      "minLength": 1
+    },
+    "keywords": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED (array-of-strings type is the base's). CONVERGENCE TRIGGER: if the upstream makes keywords required, move the required-membership to upstream-base.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "commands": {
+      "$comment": "IS: promoted from upstream-OPTIONAL to IS-REQUIRED, and NARROWED to the array-of-strings form (the upstream permits string|array; the IS contract fixes the wire form to an array, the same permitted narrowing skill-frontmatter applies to allowed-tools). A plugin with zero commands declares an empty array. CONVERGENCE TRIGGER: if the upstream makes commands required (or fixes it to an array), move the required-membership (and/or the array narrowing) to upstream-base.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

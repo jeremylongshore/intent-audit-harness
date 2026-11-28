@@ -1,0 +1,10 @@
+{
+  "event": "SessionStart",
+  "matcher": "Write",
+  "type": "command",
+  "command": "echo hook-11",
+  "description": "Generate a concise summary of a pull request diff, highlighting risk areas, then propose follow-up tests.",
+  "enabled": true,
+  "timeout": 41,
+  "blocking": true
+}

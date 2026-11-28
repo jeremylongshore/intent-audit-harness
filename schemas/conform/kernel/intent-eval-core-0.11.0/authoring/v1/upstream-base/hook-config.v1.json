@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremylongshore/intent-eval-core/schemas/authoring/v1/upstream-base/hook-config.v1.json",
+  "title": "hook-config — UPSTREAM BASE (authored by Anthropic/Claude Code, not by IS)",
+  "description": "The upstream projection of the hook-config contract: a single hook-handler entry from a hooks.json / settings.json hooks block, owned by Claude Code. THIS FILE IS A VENDORED PROJECTION — it encodes ONLY what the upstream documents, never an IS-specific rule. IS-specific required fields and constraints live in is-overlay/hook-config.v1.json. Convergence (upstream makes one of our overlay extras required) is a mechanical MOVE of a field from is-overlay → here, not an in-place re-edit. Note the projection: the live Claude Code hooks block is a 3-level nesting (event → [{matcher, hooks:[handler...]}]); the IS contract (and the corpus, plan 033 § 14.21) FLATTEN a single hook to one entry carrying its event + matcher + handler fields, so a contract validates one hook at a time. A command handler requires a `command` (the type-specific required field); `type` selects the handler kind; `event` + `matcher` scope when it fires.",
+  "$comment": "PROVENANCE. Authorities (registry contract 'hook-config' primary surfaces): code.claude.com/docs/en/hooks (Hook lifecycle event table + the per-handler field tables, exit-code-2 blocking semantics); code.claude.com/docs/en/settings (hooks block placement). Captured 2026-06-11 from code.claude.com/docs/en/hooks; no vendored deep-capture exists yet (registry vendored=null) — a vendored reconciliation is a PUBLISHED-promotion precondition (DR-049). VERBATIM upstream facts encoded here, projected to the FLATTENED single-hook corpus shape: (1) event = string enum from the documented Hook lifecycle table — the full set is {SessionStart, Setup, UserPromptSubmit, UserPromptExpansion, PreToolUse, PermissionRequest, PermissionDenied, PostToolUse, PostToolUseFailure, PostToolBatch, Notification, MessageDisplay, SubagentStart, SubagentStop, TaskCreated, TaskCompleted, Stop, StopFailure, TeammateIdle, InstructionsLoaded, ConfigChange, CwdChanged, FileChanged, WorktreeCreate, WorktreeRemove, PreCompact, PostCompact, Elicitation, ElicitationResult, SessionEnd}; the corpus exercises PreToolUse/PostToolUse/SessionStart and constraint-event-invalid rejects 'NotAnEvent'. (2) matcher = string scoping the hook ('*'/''/omitted match all; letters/digits/_/| = exact-or-list; otherwise a JS regex). The corpus treats matcher as required + non-empty (constraint-matcher-empty supplies ''); the upstream allows omission for match-all, but the IS contract (corpus) requires an explicit matcher. (3) type = string enum, the handler kind: {command, http, mcp_tool, prompt, agent} (verbatim from the doc); the corpus uses 'command' and constraint-type-invalid rejects 'sorcery'. (4) command = string, the type-specific REQUIRED field for a command handler; non-empty (the corpus constraint-command-empty supplies ''; type-command supplies an array). NOTE: no `name` field — a hook handler has no public identifier, so the universal securityChecks name/reserved-word fold simply does not fire on this contract (correct: a hook is not a named artifact). NOTE: description length is NOT capped here — the universal disclosureMarkers fold (1536) is the operative IS cap. NOTE: metadata is a generic vendor-namespaced object (the corpus edge-02-extra-optional-metadata fixture exercises this).",
+  "type": "object",
+  "required": ["event", "matcher", "type", "command"],
+  "properties": {
+    "event": {
+      "$comment": "code.claude.com/docs/en/hooks (Hook lifecycle table): the event that triggers the hook. Enumerated as the full documented event set; the corpus uses PreToolUse/PostToolUse/SessionStart and constraint-event-invalid rejects 'NotAnEvent' (type-event supplies a number).",
+      "type": "string",
+      "enum": [
+        "SessionStart",
+        "Setup",
+        "UserPromptSubmit",
+        "UserPromptExpansion",
+        "PreToolUse",
+        "PermissionRequest",
+        "PermissionDenied",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "PostToolBatch",
+        "Notification",
+        "MessageDisplay",
+        "SubagentStart",
+        "SubagentStop",
+        "TaskCreated",
+        "TaskCompleted",
+        "Stop",
+        "StopFailure",
+        "TeammateIdle",
+        "InstructionsLoaded",
+        "ConfigChange",
+        "CwdChanged",
+        "FileChanged",
+        "WorktreeCreate",
+        "WorktreeRemove",
+        "PreCompact",
+        "PostCompact",
+        "Elicitation",
+        "ElicitationResult",
+        "SessionEnd"
+      ]
+    },
+    "matcher": {
+      "$comment": "code.claude.com/docs/en/hooks: scopes when the hook fires (matches tool_name for tool events, the start reason for SessionStart, etc.). The upstream permits omission/'' for match-all; the IS contract requires an explicit non-empty matcher (the corpus constraint-matcher-empty negative supplies '').",
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "$comment": "code.claude.com/docs/en/hooks: the handler kind — verbatim enum {command, http, mcp_tool, prompt, agent}. The corpus uses 'command' and constraint-type-invalid rejects 'sorcery' (type-event/etc. cover the others).",
+      "type": "string",
+      "enum": ["command", "http", "mcp_tool", "prompt", "agent"]
+    },
+    "command": {
+      "$comment": "code.claude.com/docs/en/hooks: the type-specific REQUIRED field for a command handler (the shell command to run). Non-empty (the corpus constraint-command-empty supplies ''; type-command supplies an array). No length cap.",
+      "type": "string",
+      "minLength": 1
+    },
+    "metadata": {
+      "$comment": "Vendor-namespaced extension object (e.g. metadata.intent-solutions), mirroring Claude Code's tolerance of unrecognized fields. Left as a generic object. The corpus edge-02-extra-optional-metadata fixture exercises this.",
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "example-server-4",
+  "command": "node",
+  "args": ["server-4.js"],
+  "transport": "stdio",
+  "env": {},
+  "description": "Example MCP server number 4.",
+  "version": "1.4.0",
+  "enabled": true
+}
