@@ -41,6 +41,7 @@ the cost of a silent CI breakage across N adopter repositories.
 | `crap` | 0 | within thresholds | v0.1.0 |
 | `crap` | 1 | thresholds exceeded | v0.1.0 |
 | `crap` | 2 | unsupported language | v0.1.0 |
+| `crap` | 2 | indeterminate, absent, malformed or incomplete measurement | v3.0.0 (source prepared; not yet published) |
 | `arch` | 0 | rules pass | v0.1.0 |
 | `arch` | 1 | rule violations | v0.1.0 |
 | `arch` | 2 | no tool / no config / unsupported | v0.1.0 |

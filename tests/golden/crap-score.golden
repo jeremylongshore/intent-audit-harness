@@ -1,16 +1,37 @@
 {
+  "advisory_severity": "warn",
   "gate_id": "audit-harness:ci:crap-score",
   "input_hash": "sha256:ed01314f74813df64ce82386b6407a51b5ce313f9e376a249d818f8d195f3034",
   "metadata": {
     "avg_fail": false,
+    "coverage_policy": "existing coverage joined where available; otherwise conservative zero",
+    "indeterminate": true,
     "language": "python",
-    "production_avg_crap": 0.0,
+    "partitions": {
+      "src": {
+        "candidate_files": 1,
+        "methods_scored": 0,
+        "reason": "src/messy.py: radon not installed",
+        "status": "unmeasured"
+      },
+      "test": {
+        "candidate_files": 0,
+        "methods_scored": 0,
+        "reason": "no candidate source files",
+        "status": "empty"
+      }
+    },
+    "production_avg_crap": null,
     "production_blockers_count": 0,
-    "production_max_crap": 0.0,
+    "production_max_crap": null,
     "production_methods_scored": 0,
+    "requested_partitions": [
+      "src",
+      "test"
+    ],
     "summary_path": "<OUT>/summary.json",
     "test_blockers_count": 0,
-    "test_max_crap": 0.0,
+    "test_max_crap": null,
     "test_methods_scored": 0,
     "thresholds": {
       "production_max": 30.0,
@@ -19,5 +40,5 @@
     }
   },
   "policy_hash": "sha256:b484c2c96b294eac9c1fd940ed6f6b30950ffd8cd821fdc29c207e7ddb1d2bd1",
-  "result": "PASS"
+  "result": "ADVISORY"
 }
