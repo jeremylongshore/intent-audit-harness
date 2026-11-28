@@ -128,6 +128,12 @@ def read_json_snapshot(root, relative_path):
 
 
 def read_frontmatter_snapshot(root, relative_path):
+    data, _body, digest = read_frontmatter_document(root, relative_path)
+    return data, digest
+
+
+def read_frontmatter_document(root, relative_path):
+    """Bind parsed metadata and body to the same original file snapshot."""
     raw, digest = read_bytes_snapshot(root, relative_path)
     try:
         import yaml
@@ -176,4 +182,4 @@ def read_frontmatter_snapshot(root, relative_path):
         raise UnmeasuredReference("frontmatter exceeds supported measurement bounds", digest) from exc
     except (ValueError, UnicodeError, yaml.YAMLError) as exc:
         raise InvalidArtifact("artifact is not valid frontmatter", digest) from exc
-    return data, digest
+    return data, text[match.end():], digest

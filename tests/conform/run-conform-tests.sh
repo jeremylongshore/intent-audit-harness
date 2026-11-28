@@ -285,7 +285,7 @@ else
   fail "published agent/plugin corpora and CLI admission"
 fi
 
-for suite in test_authoring_inputs test_authoring_projection test_projected_kernel; do
+for suite in test_authoring_inputs test_authoring_projection test_projected_kernel test_shared_authoring; do
   if python3 "$ROOT/tests/conform/$suite.py"; then
     pass "$suite"
   else

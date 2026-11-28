@@ -57,9 +57,11 @@ if HERE not in sys.path:
 import classify as C  # noqa: E402  (sibling module; reused for the single-source profile)
 from authoring_discovery import embedded_artifacts  # noqa: E402
 from authoring_inputs import (  # noqa: E402
-    InvalidArtifact, UnmeasuredReference, read_frontmatter_snapshot, read_json_snapshot, reference_path,
+    InvalidArtifact, UnmeasuredReference, read_frontmatter_snapshot, read_frontmatter_document,
+    read_json_snapshot, reference_path,
 )
 from authoring_projection import ProjectionError, component_parts, project_hooks, project_mcp  # noqa: E402
+from shared_authoring import agent_findings, combined_policy_hash, load_agent_checker  # noqa: E402
 
 try:
     import yaml  # type: ignore
@@ -617,7 +619,7 @@ def run_projected(kind, gate, files, commit_sha, runner, repo, strict):
     return rows
 
 
-def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor"):
+def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor", shared_validators=False):
     if tier == "marketplace" and kind in ("mcp", "hook"):
         return run_projected(kind, gate, files, commit_sha, runner, repo, strict)
     rows = []
@@ -650,8 +652,23 @@ def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor
             return rows
         policy_hash = C.sha256_file(schema_path)
     schema_id = schema.get("$id", "")
+    shared_agent = shared_validators and kind == "agent"
+    schema_policy = policy_hash
+    checker, shared_policy, checker_reason = (load_agent_checker() if shared_agent else (None, EMPTY_SHA, None))
+    if shared_agent:
+        policy_hash = combined_policy_hash(schema_policy, shared_policy)
     for art in files:
-        if kind in FRONTMATTER_KINDS:
+        input_digest, body, input_reason = None, "", None
+        if shared_agent:
+            try:
+                data, body, input_digest = read_frontmatter_document(repo, os.path.relpath(art, repo))
+                parse_err = None
+            except InvalidArtifact as exc:
+                data, parse_err, input_digest = None, str(exc), exc.input_hash or EMPTY_SHA
+            except UnmeasuredReference as exc:
+                data, parse_err, input_reason = None, None, str(exc)
+                input_digest = exc.input_hash or EMPTY_SHA
+        elif kind in FRONTMATTER_KINDS:
             data, parse_err = extract_frontmatter(art)
         else:
             data, parse_err = parse_json_file(art)
@@ -669,8 +686,15 @@ def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor
             continue
 
         errs = (validate_instance(data, schema, _ctx={"root": schema, "registry": registry})
-                if parse_err is None else [])
-        result, fm, sev = verdict_for(errs, parse_err, enforcement, strict)
+                if parse_err is None and input_reason is None else [])
+        shared_errors, shared_warnings, shared_reason = [], [], checker_reason or input_reason
+        if shared_agent and checker is not None and parse_err is None and input_reason is None:
+            shared_errors, shared_warnings, shared_reason = agent_findings(checker, data, body)
+        result, fm, sev = verdict_for(errs + shared_errors, parse_err, enforcement, strict)
+        if result == "FAIL" and shared_errors and not errs and parse_err is None:
+            fm = "conform:shared-validator-violation"
+        if result == "PASS" and (shared_warnings or shared_reason):
+            result, sev = "ADVISORY", "warn"
         meta = {"kind": kind, "validator": "audit-harness-embedded-subset",
                 "schema_id": schema_id, "artifact_path": os.path.relpath(art, repo),
                 **tier_meta}
@@ -678,8 +702,19 @@ def run_bundled(kind, gate, files, commit_sha, runner, repo, strict, tier="floor
             meta["errors"] = [parse_err]
         elif errs:
             meta["errors"] = errs[:20]
+        if shared_agent:
+            meta["schema_policy_hash"] = schema_policy
+            meta["shared_validator"] = {
+                "name": "agent-body-tools", "policy_hash": shared_policy, "static_only": True,
+                "errors": shared_errors[:20], "warnings": shared_warnings[:20],
+                "interpretation": "Lexical policy findings, not observed tool calls or runtime denials; "
+                                  "omitted and empty tool lists share legacy findings, and inheritance is not modeled.",
+            }
+            if shared_reason:
+                meta.update(indeterminate=True, reason=shared_reason)
         rows.append(make_row(
-            gate["gate_id"], result, policy_hash=policy_hash, input_hash=sha256_path(art),
+            gate["gate_id"], result, policy_hash=policy_hash,
+            input_hash=input_digest if input_digest is not None else sha256_path(art),
             commit_sha=commit_sha, runner=runner, failure_mode=fm, advisory_severity=sev,
             metadata=meta,
         ))
@@ -696,6 +731,8 @@ def main():
                     help="Schema tier: 'floor' (default, harness conform/v1 floor) or 'marketplace' "
                          "(skills, agents, plugins, catalogs, MCP and hooks against pinned authoring/v1 contracts)")
     ap.add_argument("--registry", default=C.DEFAULT_REGISTRY, help="Path to the dimension-to-gate registry")
+    ap.add_argument("--shared-validators", action="store_true",
+                    help="Opt into pinned marketplace static checks (currently agent body/tool-list consistency)")
     ap.add_argument("--profile", default=None,
                     help="Use a pinned audit-profile/v1 (PATH or '-' for stdin) instead of classifying")
     args = ap.parse_args()
@@ -731,7 +768,8 @@ def main():
             ))
             continue
         if kind in BUNDLED or (args.tier == "marketplace" and kind in ("marketplace", "hook")):
-            rows += run_bundled(kind, gate, files, commit_sha, runner, repo, args.strict, args.tier)
+            rows += run_bundled(kind, gate, files, commit_sha, runner, repo, args.strict, args.tier,
+                                shared_validators=args.shared_validators)
         elif kind in SHELLOUT:
             rows += run_shellout(kind, gate, files, commit_sha, runner, repo, args.strict)
         else:

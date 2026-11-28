@@ -333,6 +333,13 @@ discrepancy. The installer copies available `docs/` alongside README so its
 relative documentation links remain usable. Older archives without docs remain
 installable; this does not add files to previously published releases.
 
+### Shared deterministic checks
+
+`audit-harness conform . --shared-validators` adds an opt-in, pinned agent
+body/tool-list consistency check. Static errors and warnings remain distinct;
+these lexical findings do not establish runtime tool invocation or denial.
+See [shared validators](docs/shared-validators.md) for scope, provenance and limits.
+
 ### Published authoring conformance
 
 `audit-harness conform . --tier marketplace` checks discovered skill and agent
