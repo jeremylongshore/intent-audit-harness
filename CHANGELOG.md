@@ -6,6 +6,22 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-28
+
+Source preparation only: this version is not tagged or published. The current
+published 2.0.0 npm, Python and Rust artifacts and existing consumer pins remain
+unchanged. Release/security approval and publishing are separate operations.
+
+### Breaking changes
+
+- CRAP scoring reports ADVISORY with exit 2 for absent, failed, malformed or
+  incomplete measurement, rather than a measured PASS. Known method violations
+  remain FAIL/exit 1 even when another requested partition is unmeasured.
+  Deep audit validates child measurement provenance and keeps generated reports
+  outside the subject. Python nested functions, Go function identity and Rust
+  function spaces retain their individual measurement identity. Thresholds are
+  unchanged. See [migration notes](docs/migrations/measured-crap.md).
+
 ### Fixed
 
 - Bind skill-gate file-valued options and workspace-relative executable lookup,

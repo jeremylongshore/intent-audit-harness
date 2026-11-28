@@ -24,3 +24,4 @@ python3 "$ROOT/tests/crap-score/test_crap_score_joins.py"
 python3 "$ROOT/tests/crap-score/test_crap_strict.py"
 
 python3 "$ROOT/tests/crap-score/test_crap_typescript.py"
+python3 "$ROOT/tests/crap-score/test_crap_measurement.py"
