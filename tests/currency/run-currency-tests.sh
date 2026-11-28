@@ -133,6 +133,10 @@ then
   pass "shipped pins.v1.json parses + covers all 16 registry surfaces + 3 internal-contract pins"
 else fail "shipped pins relation did not report cleanly / registry coverage incomplete"; fi
 
+if python3 "$ROOT/tests/currency/test_observations.py"; then
+  pass "new observations remain separate from retained contracts and poll freshness"
+else fail "observation metadata changed or hid the retained contract"; fi
+
 echo ""
 echo "currency suite: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

@@ -35,7 +35,7 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 | `audit-harness crap` | CRAP (Complexity × Coverage) scorer — Python, Go, JS/TS, Rust |
 | `audit-harness emit-evidence` | Wrap a gate-result JSON envelope in an in-toto Statement v1 (predicate `gate-result/v1`); `--output FILE` writes one row, `--append-to BUNDLE` appends it to the JSON-array bundle `intent-rollout-gate` consumes |
 | `audit-harness classify` | Read-only repo classifier → an `audit-profile/v1` value (never writes) |
-| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks SKILL.md against the pinned kernel `authoring/v1` skill-frontmatter contract (default `--tier floor`: name + description) |
+| `audit-harness conform` | Read-only conformance gate-runner → `gate-result/v1` rows against bundled content-addressed schemas; `--tier marketplace` checks skills, agents, plugin manifests, marketplace catalogs, MCP entries and hook handlers against their encoded pinned kernel `authoring/v1` contracts (default `--tier floor`: name + description) |
 | `audit-harness audit` | Read-only testing-depth gate-runner → coverage presence per pyramid layer + crap-score |
 | `audit-harness scan` | Security/hygiene/skill-quality gates; `--fail-closed` requires OSV and profile-required security scanners; optional SBOM export stays outside the audited repo |
 | `audit-harness fp-rate` | Measure each gate's false-positive / false-negative rate over a labeled corpus |
@@ -49,6 +49,12 @@ A small CLI dispatching deterministic commands (shell + stdlib-Python scripts), 
 
 The npm package is the canonical, actively released distribution. The Rust
 wrapper remains an optional crates.io distribution.
+
+The command table above describes the npm CLI. `classify` and `conform`, including
+their bundled registry and schemas, are supported through npm and `install.sh`.
+The Rust and frozen Python wrappers expose only `verify`, `init`, `list`,
+`escape-scan`, `arch`, `bias`, `gherkin-lint`, and `crap`; they do not provide
+`classify` or `conform`. See the [distribution contract](000-docs/015-AT-DECR-classify-conform-distribution-contract-2026-11-12.md).
 
 **Node / JS / TS** (from npm):
 
@@ -68,13 +74,108 @@ package above or use the vendored-script path below.
 cargo install intent-audit-harness
 ```
 
+For classification and conformance in Rust or Python projects, use the npm package
+or the vendored installer below. The language of the audited project does not
+require the same-language wrapper.
+
 **Any other language** (Go, Ruby, PHP, Java, .NET, shell, etc.) — vendor the scripts:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/jeremylongshore/intent-audit-harness/main/install.sh | bash
 ```
 
+The installer prepares a replacement before changing the existing harness or
+wrapper. Failed downloads, invalid archives and catchable publication failures
+leave the prior installation usable. Archive links/special files and symlink
+installation destinations are refused. Explicit versions and offline tarball
+URLs remain supported; this validation is not release-signature verification.
+
+A repository-local `.audit-harness-install.lock` serializes installations. On
+SIGKILL or power loss, traps cannot restore state: the lock and private
+`.audit-harness-install.*` directory remain for inspection. Do not simply delete
+them and retry. With no installer running, inspect `previous-tree` and
+`previous-wrapper` backups, restore the prior pair if publication was incomplete,
+and retain recovery evidence before removing the stale lock. Two destination
+renames are recoverable on ordinary failure, not a single atomic filesystem
+transaction or a guarantee against concurrent external edits.
+
+**Verified release assets (unreleased):** the next release workflow prepares a
+commit-bound installer/archive checksum manifest and Sigstore verification
+bundle. Use an independently trusted verifier and expected release commit before
+executing either payload. The current `curl | bash` example does not perform that
+verification. See the [verified installer contract](000-docs/016-AT-SPEC-verified-installer-release-assets-2026-11-12.md)
+for the download, verification and installation sequence; existing releases are
+not claimed to contain these assets.
+
 ## Quick usage
+
+### Strict CRAP measurement (unreleased)
+
+The opt-in `crap --strict-measurement` mode rejects incomplete measurement
+instead of accepting an empty score set. It supports Python functions using Radon
+and coverage.py JSON, or TypeScript functions using a caller-installed TypeScript
+compiler and Istanbul `coverage-final.json`. Mixed-language scopes are refused.
+
+```bash
+audit-harness crap --strict-measurement --lang python --target both \
+  --source-glob 'packages/*/src/*.py' --test-glob 'tests/test_*.py' \
+  --coverage-json coverage.json --out reports/crap-strict --json
+```
+
+Install Radon separately and collect coverage for both requested scopes before
+running the command. Repeat the glob options to declare additional files.
+Recursive scope discovery rejects symlink directories beneath the resolved
+prefix before the first `**`; unrelated package dependency symlinks outside
+a requested `src` tree do not expand its scope.
+The report distinguishes requested patterns, discovered files/functions and
+scored files/functions. Missing providers, unmatched patterns, omitted function
+measurements, malformed results, and missing coverage produce incomplete
+measurement, not a pass. Exit codes are 0 for complete measurement within the
+limits, 1 for measured threshold violations, and 2 for incomplete measurement
+or invalid arguments. Existing non-strict commands keep their previous behavior.
+
+Python CRAP uses each file's line coverage as a **function coverage proxy**. It does
+not claim function-level coverage or attest that caller-supplied coverage was
+executed against the current source. Source and coverage hashes and the Radon launcher hash
+bind the inputs observed by this invocation; the launcher hash does not attest
+the installed Radon package or its dependencies, and execution provenance remains the
+caller's responsibility. Existing threshold options apply; no consumer policy
+is automatically promoted by installing this mode.
+
+### Strict TypeScript measurement (unreleased)
+
+```bash
+audit-harness crap --strict-measurement --lang typescript --target src \
+  --source-glob 'packages/*/src/**/*.ts' \
+  --coverage-json coverage/coverage-final.json --out reports/crap-typescript --json
+```
+
+The target root must contain `node_modules/typescript/lib/typescript.js` and
+Node must be on PATH. The harness adds no npm runtime dependency. Declare scopes
+that classify source and tests without overlap; a broad source glob above also
+includes colocated tests, which require their own coverage if included. Repeat
+explicit globs or paths to match the intended inventory.
+
+The provider inventories body-bearing functions, arrows, methods, constructors
+and accessors. Its `typescript-function-decisions/v1` complexity starts at one
+and adds conditional/loop/catch/non-default-case decisions, logical operators
+and assignments, and optional accesses/calls. Nested functions score separately;
+module and class initializer expressions are not claimed as functions.
+
+TypeScript CRAP uses **file statement coverage as a function coverage proxy**.
+It does not match remapped Istanbul function spans to AST functions or claim
+per-function coverage. Runtime files require coverage, including files without
+functions; narrowly proven type-only files are explicitly classified and exempt
+from runtime coverage. A requested source/test kind with zero scored functions
+cannot pass. Missing/malformed files, counters, source locations or provider
+results make measurement incomplete.
+
+Evidence binds source, coverage, helper, Node and compiler-file hashes plus the
+compiler version. This identifies observed inputs, not coverage execution
+provenance or every installed dependency. Ordinary Vitest coverage excludes its
+test files even when configured exclusions are empty: requesting tests requires
+a collector that actually covers them. J-Rig adoption remains incomplete until
+that evidence exists; this command does not waive it or upgrade consumers.
 
 ### Pre-commit hook (`.husky/pre-commit`)
 
@@ -223,3 +324,80 @@ This is infrastructure code. Changes need to be conservative. Before opening a P
 1. Read `audit-tests/references/philosophy.md` (in the companion skill) to understand the escape-grammar design
 2. Run `bash scripts/escape-scan.sh --staged` on your own diff — yes, the harness tests itself
 3. Add test cases if you're adding a new pattern to escape-scan or a new command to the CLI
+
+### Validation and vendored documentation scope
+
+See [validation scope](docs/validation-scope.md) for timestamp/classifier inputs,
+structural conformance limits and the pinned snapshot’s allowed-tools prose
+discrepancy. The installer copies available `docs/` alongside README so its
+relative documentation links remain usable. Older archives without docs remain
+installable; this does not add files to previously published releases.
+
+### Shared deterministic checks
+
+`audit-harness conform . --shared-validators` adds an opt-in, pinned agent
+body/tool-list consistency check. Static errors and warnings remain distinct;
+these lexical findings do not establish runtime tool invocation or denial.
+See [shared validators](docs/shared-validators.md) for scope, provenance and limits.
+
+### Published authoring conformance
+
+`audit-harness conform . --tier marketplace` checks discovered skill and agent
+frontmatter, plugin manifests, marketplace catalogs, MCP entries and hook
+handlers against the unmodified published `@intentsolutions/core@0.11.0`
+authoring/v1 compositions and shared folds. Invalid artifacts produce advisory
+findings by default; `--strict` turns measured violations into failures. Default
+floor behavior is unchanged. A supplied `--profile` still selects the gates;
+embedded discovery does not override that selection.
+
+MCP maps lift their actual server keys into `name`; hook groups lift their event
+and explicit matcher into each handler. No transport, arguments, environment,
+enablement, timeout or authoring metadata defaults are invented. Empty envelopes
+are `NOT_APPLICABLE`, never schema passes. Conflicting identities are violations.
+This measures declared entries, not the host application's effective merged
+configuration or handler execution.
+
+Opt-in embedded discovery covers root plugin manifests, `package.json` MCP
+fields, equivalent manifests in immediate `packages/*` directories containing a
+package manifest, repository `.claude/settings.json` and `settings.local.json`,
+and skill/agent frontmatter through directory depth four. It excludes symlink
+directories and trees named `node_modules`, `.git`, `.venv`, `dist`, `build`,
+`fixtures`, `tests`, `test`, `__tests__` or `examples`. Custom component paths
+and operator home configuration are not discovered. Existing standalone MCP and
+hook file locators remain supported.
+
+Plugin fields accept inline declarations or arrays containing inline declarations
+and explicit `./` local JSON references relative to the plugin root. References
+cannot traverse parents, follow symlinks, fetch URLs or extract bundles. Each
+consumed path uses one snapshot per artifact evaluation. Receipts bind original
+source bytes and all referenced bytes, retaining projected source pointers;
+multiple inputs use the `authoring-inputs/v1` binding manifest hash. Reads are
+bounded to 4 MiB and nesting depth 128. Frontmatter also has a 100,000-event
+limit; YAML aliases are explicitly unmeasured and duplicate mapping keys are
+invalid. Missing parser support, unsafe files and unsupported references yield
+indeterminate advisories, including under `--strict`.
+
+The pin identifies the package archive and every bundled schema byte. Its hash
+binds the selected policy in each result. Expanding this shared manifest also
+changes the policy hashes of previously supported marketplace-tier rows,
+although their schema bytes and rules are unchanged. Missing or changed schema bytes,
+unresolved/recursive references, and unsupported reachable assertion keywords
+produce an explicit indeterminate advisory instead of a passing verdict. This
+is the encoded published v1 structural contract, not the internal v2 contract,
+source-directory existence checks, license ratification, or the skills' rubric.
+The 200 upstream catalog, agent, plugin, MCP and hook fixtures are retained with their exact
+tag, commit and hashes and checked against a reference JSON Schema validator in the existing
+conformance suite. This proves parity on that corpus, not arbitrary-schema
+equivalence. The reference explicitly enables URI format assertions with the hash-locked
+CI-only RFC validator and verifies that it rejects a known invalid URI. The
+existing embedded URI/URL check remains lexical and does not establish complete
+URI validity. The published skill schema explicitly reserves its
+`x-mutually-exclusive-fields` annotation for generated Zod; that existing
+cross-field carve-out remains outside structural conformance. Other unknown
+keywords are not implicitly admitted. No production JSON Schema dependency or
+network fetch is added.
+
+## Skill compliance pilot
+
+See [the read-only skill evidence gate](docs/skill-gates.md) for the opt-in
+versioned policy/receipt verifier and its trust boundaries.

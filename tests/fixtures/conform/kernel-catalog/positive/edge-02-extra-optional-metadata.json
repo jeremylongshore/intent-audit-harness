@@ -1,0 +1,22 @@
+{
+  "name": "example-marketplace-2",
+  "owner": {
+    "name": "Jeremy Longshore"
+  },
+  "plugins": [
+    {
+      "name": "plugin-2",
+      "source": "./plugins/plugin-2"
+    }
+  ],
+  "version": "1.2.0",
+  "description": "Example marketplace catalog number 2.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/jeremylongshore/marketplace-2",
+  "keywords": ["marketplace", "kw-2"],
+  "metadata": {
+    "intent-solutions": {
+      "note": "optional vendor-namespaced metadata"
+    }
+  }
+}

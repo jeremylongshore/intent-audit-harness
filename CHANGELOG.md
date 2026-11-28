@@ -6,6 +6,107 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-28
+
+Source preparation only: this version is not tagged or published. The current
+published 2.0.0 npm, Python and Rust artifacts and existing consumer pins remain
+unchanged. Release/security approval and publishing are separate operations.
+
+### Breaking changes
+
+- CRAP scoring reports ADVISORY with exit 2 for absent, failed, malformed or
+  incomplete measurement, rather than a measured PASS. Known method violations
+  remain FAIL/exit 1 even when another requested partition is unmeasured.
+  Deep audit validates child measurement provenance and keeps generated reports
+  outside the subject. Python nested functions, Go function identity and Rust
+  function spaces retain their individual measurement identity. Thresholds are
+  unchanged. See [migration notes](docs/migrations/measured-crap.md).
+
+### Fixed
+
+- Bind skill-gate file-valued options and workspace-relative executable lookup,
+  and reject overflowing JSON numbers without losing advisory result output.
+
+- Ignore local Git replacement refs when preparing release assets, so the pinned
+  commit cannot label substituted installer or archive bytes. Refs bead
+  `bd_000-projects-k5e22.1`.
+
+- Stage vendored harness upgrades before replacing the existing installation,
+  preserving its tree and wrapper on failed downloads, invalid archives,
+  publication errors and catchable interruption. Refuse unsafe archive entries
+  and symlink destinations; retain recovery state after uncatchable termination.
+
+- Strict Istanbul validation recognizes the exact implicit-else branch sentinel
+  emitted by ast-v8-to-istanbul. The absent else arm has a counter and no source
+  span; its enclosing if and first arm must still have valid locations. Missing
+  statement/function locations, invalid counters and nonfinite columns remain
+  rejected. Refs bead `bd_000-projects-h08j.6.7`.
+
+### Added
+
+- Opt-in read-only `skill-gates` verifier for current local read/run/report
+  evidence, with existing bundle compatibility and offline falsification tests.
+
+- Add opt-in shared agent body/tool-list checks from a commit-pinned marketplace
+  module. Verify its source and license before loading; bind header/body to one
+  snapshot and retain distinct static errors, warnings and unmeasured results.
+
+- Extend opt-in published authoring/v1 conformance to MCP and hook envelopes,
+  embedded declarations and confined local JSON references. Bind exact input
+  snapshots, reject ambiguous declarations and preserve explicit unmeasured
+  results for unsupported inputs. Include 80 pinned upstream corpus cases.
+
+- Extend opt-in published authoring/v1 conformance to agent frontmatter and plugin
+  manifests, preserving default floors and validating 80 pinned upstream cases.
+
+- Opt-in published marketplace catalog conformance with content-pinned kernel
+  schemas, explicit unsupported-schema admission and upstream corpus parity.
+
+- Prepare installer release assets from an exact tag/commit, sign their checksum
+  manifest with the pinned release-workflow identity and verify private snapshots
+  before publication or consumer execution. Include offline identity, tamper and
+  filesystem-boundary tests. Signing assets remain unreleased; the verifier must
+  come from an independently trusted source. Refs bead `bd_000-projects-k5e22`.
+
+- Advisory native Node coverage collected alongside the existing Python
+  measurement run, using an isolated locked c8 provider. Exact source/report
+  inventories retain unexecuted files and reject incomplete or inconsistent
+  observations. Public CLI defaults, runtime dependencies and policy thresholds
+  are unchanged; Node AST complexity and mutation remain unmeasured. Refs bead
+  `bd_000-projects-0wvb`.
+
+- Strict TypeScript CRAP measurement through a caller-installed compiler, with
+  explicit function inventory and validated Istanbul file-statement coverage
+  proxy. Missing runtime evidence refuses completion; type-only files are
+  classified explicitly. Node, Python and Rust distributions bundle the helper;
+  no runtime dependency or consumer upgrade is added. Actual J-Rig test coverage
+  collection remains outstanding. Refs bead `bd_000-projects-h08j.6.7`.
+
+- Opt-in `crap --strict-measurement` with explicit source/test globs, Python
+  AST/Radon inventory reconciliation, validated coverage.py line evidence, and
+  requested/discovered/scored denominators. Incomplete measurement refuses to
+  pass; legacy defaults remain unchanged. File coverage is a function coverage
+  proxy rather than per-function coverage. Refs bead
+  `bd_000-projects-h08j.6.6`.
+
+## [2.0.0] - 2026-10-27
+
+### Changed
+
+- **Breaking:** release the accumulated security-scanner and wrapper corrections
+  under a major version, as `SEMVER.md` requires for changed existing failure
+  outcomes and text-output contracts. Fail-closed scanner runs now refuse
+  operationally incomplete required measurements; Python module dispatch
+  preserves gate failure exits. See [migration notes](docs/migration-2.0.0.md)
+  before upgrading pinned CI.
+- **Breaking:** currency reports preserve optional per-identity observation and
+  disposition evidence separately from retained references and checked dates. A
+  dated record covers 18 stale upstream identities without updating their dates,
+  baselines or compatibility status. Pending and indeterminate results remain
+  visible. The default text output changes; exact-text consumers must migrate
+  using [`docs/currency/MIGRATION-2.md`](docs/currency/MIGRATION-2.md). Refs
+  `compile-then-govern-8pg` (reverification still in progress).
+
 ### Added
 
 - An advisory CI baseline measures canonical Python scripts and Python tests
@@ -19,6 +120,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- The private CI signing reconciler resolves Zod 4.6.7, correcting the affected
+  transitive resolution without changing the published zero-runtime-dependency
+  surface or the canonical kernel pin.
+
 - Refresh the development lockfile from `brace-expansion` 5.0.9 to 5.0.12,
   removing the known brace-parser denial-of-service advisories reached through
   ESLint and minimatch. Only that locked package changes; direct dependency
@@ -26,6 +131,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Refs bead `bd_000-projects-wcze.8`.
 
 ### Fixed
+
+- The installer copies documentation from the selected release archive, keeping
+  README links usable; older archives without docs remain installable. Profile
+  and structural-conformance documentation distinguishes timestamps, classifier
+  versions and omitted semantic checks without changing existing CLI help.
+
+- Node CLI timeouts supervise a POSIX process group through TERM and the
+  subsequent bounded KILL cleanup even when its immediate shell exits first.
+  On Windows, a bounded `taskkill /T /F` request targets the child tree;
+  cleanup failures are reported explicitly. Normal command arguments and exit
+  codes are preserved. This is process supervision, not containment of commands
+  that deliberately detach into another session. Refs `compile-then-govern-c0r`.
 
 - The `iah` dashboard emitter carries kernel-valid in-toto statement arrays and
   binds their complete canonical bytes, subjects, predicate types and row count
@@ -634,7 +751,8 @@ Initial release. Extracted from the `audit-tests` Claude Code skill v7.0.0 to en
 - **`audit-harness gherkin-lint`** — advisory Gherkin quality check.
 - **`audit-harness crap`** — CRAP (Complexity × Coverage) scorer for Python, JS/TS, Go, Rust.
 
-[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/jeremylongshore/intent-audit-harness/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.1...v2.0.0
 [1.5.1]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/jeremylongshore/intent-audit-harness/compare/v1.3.1...v1.4.0

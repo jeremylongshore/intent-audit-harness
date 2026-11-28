@@ -1,0 +1,12 @@
+{
+  "format": "shared-validator-pin/v1",
+  "validator": "agent-body-tools",
+  "source_repository": "https://github.com/jeremylongshore/tons-of-skills-marketplace",
+  "source_commit": "433a2c4788e33000b8a398b94a8c7044351e8356",
+  "source_path": "scripts/agent_body_tools.py",
+  "license": "MIT",
+  "files": {
+    "scripts/agent_body_tools.py": "sha256:646c4bd196086c3102b1c9604c884787481db39494d0c1c286e97b9f992bfaf6",
+    "schemas/conform/shared-validators/marketplace-LICENSE": "sha256:32ef688a3e3c3b0c811cb5909788e1e4af711f2a672ee3a9941702e6603aa33b"
+  }
+}

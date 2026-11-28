@@ -1,17 +1,20 @@
 # intent-audit-harness (Python)
 
-Python-native install of the Intent Solutions deterministic test-enforcement toolkit.
-
-Mirrors the CLI surface of the Node package
+The PyPI distribution is frozen at `1.4.0`; use the canonical npm package
 [`@intentsolutions/audit-harness`](https://www.npmjs.com/package/@intentsolutions/audit-harness)
-so the command line is identical across ecosystems.
+or the root project's `install.sh` for new rollouts, including Python projects.
 
-## Install
+This wrapper exposes `verify`, `init`, `list`, `escape-scan`, `arch`, `bias`,
+`gherkin-lint`, and `crap`. It does not expose `classify` or `conform`, or bundle
+their registry and conformance schemas. Source-tree version alignment does not
+mean a new wheel was published. See the [distribution contract](../000-docs/015-AT-DECR-classify-conform-distribution-contract-2026-11-12.md).
+
+## Existing frozen installation
 
 ```bash
-pip install intent-audit-harness
+pip install intent-audit-harness==1.4.0
 # or, inside a project venv:
-python -m pip install intent-audit-harness
+python -m pip install intent-audit-harness==1.4.0
 ```
 
 This ships a console script `audit-harness` and a module entry point
@@ -38,7 +41,8 @@ See the root project for the full docs:
 
 ## What this package does
 
-Dispatches to the same shell/python scripts shipped with the canonical npm package.
+Dispatches to the shell/Python scripts bundled in that wheel; these are not
+automatically updated from the current npm package.
 The Python wheel bundles:
 
 - `harness-hash.sh`  — pinning / verification

@@ -1,0 +1,10 @@
+{
+  "name": "example-agent-9",
+  "description": "Example agent number 9.",
+  "tools": ["Read", "Grep"],
+  "model": "sonnet",
+  "color": "blue",
+  "version": "1.9.0",
+  "author": "Jeremy Longshore",
+  "tags": ["agent", "topic-9"]
+}
