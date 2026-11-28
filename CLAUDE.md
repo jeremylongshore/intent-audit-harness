@@ -15,7 +15,7 @@ The canonical implementation of the test-enforcement scripts used by the `audit-
 5. **The harness tests itself.** Run `bash scripts/escape-scan.sh --staged` on any proposed diff before committing.
 
 6. **Kernel validation is exact and current.** The CI-only evidence emitter
-   installs `@intentsolutions/core@0.10.0` in the release workflow; the
+   installs `@intentsolutions/core@0.11.1` in the release workflow; the
    published harness remains zero-runtime-dependency. `kernel-shadow-check`
    treats a dependency range that cannot resolve to that canonical surface as
    the same compatibility risk as a local contract re-declaration.
